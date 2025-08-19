@@ -28,8 +28,8 @@ bool g_bIsWaitingRespawn[MAXPLAYERS+1];
 float g_fDeadTime[MAXPLAYERS+1];
 char g_ClientName[MAXPLAYERS+1][32];
 
-Handle SpawnPoint;
-Handle TimerTask[MAXPLAYERS+1] = {INVALID_HANDLE,...};
+Handle h_SpawnPoint;
+Handle h_RepeatTask[MAXPLAYERS+1] = {INVALID_HANDLE,...};
 
 ConVar cvarRespawnLives;
 ConVar cvarRespawnCountdown;
@@ -54,21 +54,21 @@ public void OnPluginStart()
     cvarRespawnCountdown = CreateConVar("sm_hzs_botfakerespawn_countdown", "15.0", "BOT伪复活倒计时", FCVAR_NOTIFY, true, 0.0);
     cvarRespawnProtect = CreateConVar("sm_hzs_botfakerespawn_protect", "3.0", "BOT伪复活无敌时间", FCVAR_NOTIFY, true, 0.0);
 
-    HookEvent("player_spawn", Event_PlayerSpawn);                          // 真重生时，所有数组都初始化
-    HookEvent("round_freeze_end", Event_RoundFreezeEnd);                   // 为了配合round exec插件，即便晚于round start加载插件，也能顺利获取地图出生点实体信息
+    HookEvent("player_spawn", Event_PlayerSpawn);                          // 真重生时，所有数组都初始化，生命总数重置
     HookUserMessage(GetUserMessageId("SayText2"), Hook_SayText2, true);    // 避免改名信息刷屏
 
-    SpawnPoint = CreateArray(1);           
+    HookEvent("round_freeze_end", Event_RoundFreezeEnd);                   // 为了配合round exec插件，即便晚于round start加载插件，也能顺利获取地图出生点实体信息
+    h_SpawnPoint = CreateArray(1);                                         // 保存复活点实体信息
 }
 
 public void OnMapStart()
 {
     for (int i = 1; i <= MaxClients; i++)
     {
-        if (TimerTask[i] != INVALID_HANDLE)
+        if (h_RepeatTask[i] != INVALID_HANDLE)
         {
-            CloseHandle(TimerTask[i]);
-            TimerTask[i] = INVALID_HANDLE;
+            CloseHandle(h_RepeatTask[i]);
+            h_RepeatTask[i] = INVALID_HANDLE;
         }
     }  
 }
@@ -91,18 +91,18 @@ public void OnClientDisconnect_Post(int client)
 
 public void Event_RoundFreezeEnd(Handle event, const char[] name, bool dontBroadcast)
 {
-    ClearArray(SpawnPoint);
+    ClearArray(h_SpawnPoint);
 
     int entity;
 
-    while ((entity = FindEntityByClassname(entity, "info_player_counterterrorist")) != -1)      // 伪复活只传送CT复活点
+    while ((entity = FindEntityByClassname(entity, "info_player_counterterrorist")) != -1)      // 伪复活只传送到CT复活点
     {
-        PushArrayCell(SpawnPoint, EntIndexToEntRef(entity));
+        PushArrayCell(h_SpawnPoint, EntIndexToEntRef(entity));
     }
 
-    // while ((entity = FindEntityByClassname(entity, "info_player_terrorist")) != -1) 
+    // while ((entity = FindEntityByClassname(entity, "info_player_terrorist")) != -1)          // 如果需要T复活点就注释掉这个
     // {
-    //     PushArrayCell(SpawnPoint, EntIndexToEntRef(entity));
+    //     PushArrayCell(h_SpawnPoint, EntIndexToEntRef(entity));
     // }
 }
 
@@ -116,60 +116,65 @@ public void Event_PlayerSpawn(Handle event, const char[] name, bool dontBroadcas
         g_bIsWaitingRespawn[client] = false;
         g_iLivesRemaining[client] = GetConVarInt(cvarRespawnLives);
         
-        // 刚复活时的前缀更新
+        // 刚复活时的名字前缀更新
         UpdateNamePrefix(client);
     }
 }
 
 public Action OnTakeDamage(int victim, int &attacker, int &inflictor, float &damage, int &damagetype)
 {
-    if (GetClientHealth(victim) > damage || g_bIsWaitingRespawn[victim] || !IsFakeClient(victim) || g_iLivesRemaining[victim] <= 0) return Plugin_Continue;
-
-    if (!IsValidClient(attacker, false))     //  在0 0 0点，同为人类可能因为一些缘故相互误伤，同时这个damage可能被误判，所以要验证attacker
+    if (g_bIsWaitingRespawn[victim])
     {
-        // int weapon = GetEntPropEnt(, Prop_Data, "m_hActiveWeapon");
-        // char classname[32];
-        // GetEntityClassname(weapon, classname, sizeof(classname));
-        // PrintToChatAll("凶手：%N %s, 血量：%d-%f=%f", attacker, classname, GetClientHealth(victim), damage, GetClientHealth(victim) - damage);
+        damage = 0.0;
+        return Plugin_Changed;
+    }
 
-        g_iLivesRemaining[victim]--;
+    if (GetClientHealth(victim) > damage || !IsFakeClient(victim) || g_iLivesRemaining[victim] <= 0) return Plugin_Continue;       // 基本的过滤验证
 
-        if (g_iLivesRemaining[victim] > 0)  // 减完之后还剩
+    if (IsValidClient(attacker, false)) return Plugin_Continue;    //  在0 0 0点，同为人类可能因为一些缘故相互误伤，同时这个damage可能被误判，所以要验证attacker，如果是合法client就过滤掉
+
+    // int weapon = GetEntPropEnt(, Prop_Data, "m_hActiveWeapon");
+    // char classname[32];
+    // GetEntityClassname(weapon, classname, sizeof(classname));
+    // PrintToChatAll("凶手：%N %s, 血量：%d-%f=%f", attacker, classname, GetClientHealth(victim), damage, GetClientHealth(victim) - damage);
+
+    g_iLivesRemaining[victim]--;
+
+    if (g_iLivesRemaining[victim] > 0)  // 减完之后还剩
+    {
+        if (Han_IsZombie(attacker) && IsValidEntity(attacker))
         {
-            if (Han_IsZombie(attacker) && IsValidEntity(attacker))
-            {
-                char ZombieName[32];
-                Han_GetZombieName(attacker, ZombieName, sizeof(ZombieName));
-                CPrintToChatAll("{green}[华仔] {red}%s被%s杀死了！他还剩%d条命", g_ClientName[victim], ZombieName, g_iLivesRemaining[victim]);
-            }
-            else
-            {
-                CPrintToChatAll("{green}[华仔] {red}%s死了！他还剩%d条命", g_ClientName[victim], g_iLivesRemaining[victim]);
-            }
-
-            g_bIsWaitingRespawn[victim] = true;
-            g_fDeadTime[victim] = GetGameTime();
-
-            TeleportEntity(victim, view_as<float>({0.0, 0.0, 0.0}), view_as<float>({0.0, 0.0, 0.0}), view_as<float>({0.0, 0.0, 0.0}));      // 怕提前死了，先传送了
-
-            damage = 0.0;
-            return Plugin_Changed;
+            char ZombieName[32];
+            Han_GetZombieName(attacker, ZombieName, sizeof(ZombieName));
+            CPrintToChatAll("{green}[华仔] {red}%s被%s杀死了！他还剩%d条命", g_ClientName[victim], ZombieName, g_iLivesRemaining[victim]);
         }
         else
         {
-            if (Han_IsZombie(attacker) && IsValidEntity(attacker))
-            {
-                char ZombieName[32];
-                Han_GetZombieName(attacker, ZombieName, sizeof(ZombieName));
-                CPrintToChatAll("{green}[华仔] {red}%s被%s杀死了！彻底死透了！", g_ClientName[victim], ZombieName);
-            }
-            else
-            {
-                CPrintToChatAll("{green}[华仔] {red}%s死了！彻底死透了！", g_ClientName[victim]);
-            }
-
-            UpdateNamePrefix(victim);   // 彻底死了的也会更新前缀
+            CPrintToChatAll("{green}[华仔] {red}%s死了！他还剩%d条命", g_ClientName[victim], g_iLivesRemaining[victim]);       // 被炸死
         }
+
+        g_bIsWaitingRespawn[victim] = true;
+        g_fDeadTime[victim] = GetGameTime();
+
+        SetEntProp(victim, Prop_Data, "m_takedamage", 0, 1);      // 保险措施
+
+        damage = 0.0;
+        return Plugin_Changed;
+    }
+    else
+    {
+        if (Han_IsZombie(attacker) && IsValidEntity(attacker))
+        {
+            char ZombieName[32];
+            Han_GetZombieName(attacker, ZombieName, sizeof(ZombieName));
+            CPrintToChatAll("{green}[华仔] {red}%s被%s杀死了！彻底死透了！", g_ClientName[victim], ZombieName);
+        }
+        else
+        {
+            CPrintToChatAll("{green}[华仔] {red}%s死了！彻底死透了！", g_ClientName[victim]);
+        }
+
+        UpdateNamePrefix(victim);   // 彻底死了的也要更新一次前缀
     }
 
     return Plugin_Continue;
@@ -177,25 +182,34 @@ public Action OnTakeDamage(int victim, int &attacker, int &inflictor, float &dam
 
 public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3], float angles[3], int &weapon, int &subtype, int &cmdnum, int &tickcount, int &seed, int mouse[2])
 {
-    if (g_bIsWaitingRespawn[client] && IsFakeClient(client))
+    if (!g_bIsWaitingRespawn[client] || !IsFakeClient(client)) return Plugin_Continue;
+
+    if (GetGameTime() - g_fDeadTime[client] > GetConVarFloat(cvarRespawnCountdown))
     {
-        if (GetGameTime() - g_fDeadTime[client] > GetConVarFloat(cvarRespawnCountdown))
-        {
-            SetClientHealth(client, 100);
-            FakeClientCommand(client, "buy vesthelm");
-            FakeClientCommand(client, "buy vest");
+        // 状态回满
+        SetClientHealth(client, 100);
+        FakeClientCommand(client, "buy vesthelm");
+        FakeClientCommand(client, "buy vest");
 
-            TeleportRespawnPoint(client);
+        // 传回出生点
+        TeleportRespawnPoint(client);
 
-            g_bIsWaitingRespawn[client] = false;
-        }
-        else
-        {
-            TeleportEntity(client, view_as<float>({0.0, 0.0, 0.0}), view_as<float>({0.0, 0.0, 0.0}), view_as<float>({0.0, 0.0, 0.0}));
-        }
+        // 取消碰撞然后延时恢复
+        SetEntProp(client, Prop_Data, "m_CollisionGroup", 2);                                                              // COLLISION_GROUP_DEBRIS_TRIGGER 消除碰撞体积
+        h_RepeatTask[client] = CreateTimer(1.0, Timer_SetCollision, client, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);       // 每秒进行一次碰撞检测
 
-        UpdateNamePrefix(client);     // 复活倒计时在名字上实时更新
+        // 设置无敌时间
+        ProtectClient(client, GetConVarFloat(cvarRespawnProtect));
+
+        // 终止此处的高频执行
+        g_bIsWaitingRespawn[client] = false;
     }
+    else
+    {
+        TeleportEntity(client, view_as<float>({0.0, 0.0, 0.0}), view_as<float>({0.0, 0.0, 0.0}), view_as<float>({0.0, 0.0, 0.0}));      // 反复传送至0 0 0点
+    }
+
+    UpdateNamePrefix(client);     // 复活倒计时在名字上实时更新
 
     return Plugin_Continue;
 }
@@ -246,23 +260,16 @@ void UpdateNamePrefix(int client)
 
 void TeleportRespawnPoint(int client)
 {
-    int rand = GetRandomInt(0, GetArraySize(SpawnPoint)-1);    // 随机数
+    int rand = GetRandomInt(0, GetArraySize(h_SpawnPoint)-1);    // 随机数
 
-    int ref = GetArrayCell(SpawnPoint, rand, 0);
+    int ref = GetArrayCell(h_SpawnPoint, rand, 0);
 
     if (ref != INVALID_ENT_REFERENCE)
     {
-        float Pos[3], Ang[3];
-        GetEntPropVector(ref, Prop_Send, "m_vecOrigin", Pos);
-        GetEntPropVector(ref, Prop_Send, "m_angRotation", Ang);
-        TeleportEntity(client, Pos, Ang, NULL_VECTOR);
-
-        // 取消碰撞然后延时恢复
-        SetEntProp(client, Prop_Data, "m_CollisionGroup", 2);                                                           // COLLISION_GROUP_DEBRIS_TRIGGER 消除碰撞体积
-        TimerTask[client] = CreateTimer(1.0, Timer_SetCollision, client, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);       // 每秒进行一次碰撞检测
-
-        // 无敌时间
-        ProtectClient(client, GetConVarFloat(cvarRespawnProtect));
+        float pos[3], ang[3];
+        GetEntPropVector(ref, Prop_Send, "m_vecOrigin", pos);
+        GetEntPropVector(ref, Prop_Send, "m_angRotation", ang);
+        TeleportEntity(client, pos, ang, NULL_VECTOR);
     }
 }
 
@@ -283,7 +290,7 @@ public Action Timer_SetCollision(Handle timer, int client)
     }
 
     KillTimer(timer);
-    TimerTask[client] = INVALID_HANDLE;
+    h_RepeatTask[client] = INVALID_HANDLE;
 
     return Plugin_Continue;
 }
