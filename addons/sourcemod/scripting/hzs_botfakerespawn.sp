@@ -188,11 +188,13 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
     {
         // 状态回满
         SetClientHealth(client, 100);
-        FakeClientCommand(client, "buy vesthelm");
-        FakeClientCommand(client, "buy vest");
 
         // 传回出生点
         TeleportRespawnPoint(client);
+
+        // 没传送前就买甲，疑似有这个红字报错 Item item_assaultsuit fell out of level at 0.000000,0.000000,0.000000
+        FakeClientCommand(client, "buy vesthelm");
+        FakeClientCommand(client, "buy vest");
 
         // 取消碰撞然后延时恢复
         SetEntProp(client, Prop_Data, "m_CollisionGroup", 2);                                                              // COLLISION_GROUP_DEBRIS_TRIGGER 消除碰撞体积
