@@ -25,7 +25,7 @@ public Plugin myinfo =
 {
     name = "HZS Zombie Skill",
     author = "Ducheese",
-    description = "用伪死亡和伪复活来解决H-AN大灾变模式插件BOT不能复活的问题",
+    description = "实现NPC僵尸技能和BOSS技能",
     version = VERSION,
     url = "https://space.bilibili.com/1889622121"
 }
