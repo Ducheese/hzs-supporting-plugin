@@ -94,6 +94,9 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
         if (g_bIsStuck[client])
         {
             vel[0] = vel[1] = vel[2] = 0.0;
+
+            if (buttons & IN_JUMP)
+                buttons &= ~IN_JUMP;      // 禁止跳跃
         }
         else if (g_bIsDisorder[client])
         {
