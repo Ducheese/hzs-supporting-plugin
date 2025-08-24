@@ -10,6 +10,10 @@ void CreateSmoke(float pos[3])
 
     if (ent != -1)
     {
+        char Origin[32];
+        Format(Origin, sizeof(Origin), "%f %f %f", pos[0], pos[1], pos[2]);
+
+        DispatchKeyValue(ent, "Origin", Origin);
         DispatchKeyValue(ent, "SmokeMaterial", "particle/particle_smokegrenade.vmt");
         DispatchKeyValue(ent, "BaseSpread", "100");        // Amount of random spread in the origins of the smoke particles when they're spawned.
         DispatchKeyValue(ent, "SpreadSpeed", "70");        // Amount of random spread in the velocity of the smoke particles after they're spawned.
@@ -27,7 +31,7 @@ void CreateSmoke(float pos[3])
 
         AcceptEntityInput(ent, "TurnOn");
 
-        TeleportEntity(ent, pos, NULL_VECTOR, NULL_VECTOR);
+        // TeleportEntity(ent, pos, NULL_VECTOR, NULL_VECTOR);
 
         CreateTimer(SmokeFadeTime, Timer_StopSmoke, ent);
         CreateTimer(SmokeKillTime, Timer_KillSmoke, ent);
@@ -76,6 +80,10 @@ public Action Timer_CreateExplosion(Handle timer, DataPack pack)
 
     if (ent != -1)
     {
+        char Origin[32];
+        Format(Origin, sizeof(Origin), "%f %f %f", pos[0], pos[1], pos[2]);
+
+        DispatchKeyValue(ent, "Origin", Origin);
         DispatchKeyValue(ent, "iMagnitude", ExplodeDamage);
         DispatchKeyValue(ent, "iRadiusOverride", ExplodeRange);
 
@@ -84,12 +92,13 @@ public Action Timer_CreateExplosion(Handle timer, DataPack pack)
 
         AcceptEntityInput(ent, "Explode");                                // 实体会自己删除，不需要特别去kill
 
-        TeleportEntity(ent, pos, NULL_VECTOR, NULL_VECTOR);
+        // TeleportEntity(ent, pos, NULL_VECTOR, NULL_VECTOR);            // 傻了，怎么能先爆炸再传送呢
 
         TE_SetupSparks(pos, view_as<float>({0.0, 0.0, 2.0}), 600, 8);     // 更多的火花效果（参考Rocket HE_ZDT.sp）
         TE_SendToAll();
 
-        SetEntPropEnt(ent, Prop_Send, "m_hOwnerEntity", zombie);          // 希望爆炸杀伤能返回正确的
+        if (IsValidEntity(zombie))
+            SetEntPropEnt(ent, Prop_Send, "m_hOwnerEntity", zombie);      // 希望爆炸杀伤能返回有效的killer
     }
 
     EmitAmbientSound(SFX_EXPLODE2, pos, _, SNDLEVEL_GUNFIRE, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
