@@ -120,8 +120,8 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
         }
     }
 
-    // 呼唤僵尸攻击人类，死后处理
-    if (g_iZombieCall[client] != -1 && IsFakeClient(client) && IsZeroPostion(client))
+    // 呼唤僵尸攻击人类，死后处理（草，忘了真死的情况）
+    if (g_iZombieCall[client] != -1 && (IsZeroPostion(client) || !IsPlayerAlive(client)))
     {
         g_iZombieCall[client] = -1;            // 防止这里重复执行
 
