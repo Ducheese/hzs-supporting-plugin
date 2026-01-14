@@ -123,20 +123,30 @@ public void Event_PlayerSpawn(Handle event, const char[] name, bool dontBroadcas
 
 public Action OnTakeDamage(int victim, int &attacker, int &inflictor, float &damage, int &damagetype)
 {
+    // 如果目标本就处于无敌状态，那就没必要执行后续那些复杂的生杀逻辑了，不是吗？
+    if (GetEntProp(victim, Prop_Data, "m_takedamage") != 2)
+    {
+        return Plugin_Continue;
+    }
+
     if (g_bIsWaitingRespawn[victim])
     {
         damage = 0.0;
         return Plugin_Changed;
     }
 
+    // if (damagetype & DMG_FALL)    // 假设无视摔伤
+    // {
+    //     return Plugin_Continue;
+    // }
+
+    // char Name[32];
+    // Han_GetZombieName(attacker, Name, sizeof(Name));
+    // PrintToChatAll("凶手：%s, 玩家%N血量：%d-%f=%f", Name, victim, GetClientHealth(victim), damage, GetClientHealth(victim) - damage);
+
     if (GetClientHealth(victim) > damage || !IsFakeClient(victim) || g_iLivesRemaining[victim] <= 0) return Plugin_Continue;       // 基本的过滤验证
 
     if (IsValidClient(attacker, false)) return Plugin_Continue;    //  在0 0 0点，同为人类可能因为一些缘故相互误伤，同时这个damage可能被误判，所以要验证attacker，如果是合法client就过滤掉
-
-    // int weapon = GetEntPropEnt(, Prop_Data, "m_hActiveWeapon");
-    // char classname[32];
-    // GetEntityClassname(weapon, classname, sizeof(classname));
-    // PrintToChatAll("凶手：%N %s, 血量：%d-%f=%f", attacker, classname, GetClientHealth(victim), damage, GetClientHealth(victim) - damage);
 
     g_iLivesRemaining[victim]--;
 
