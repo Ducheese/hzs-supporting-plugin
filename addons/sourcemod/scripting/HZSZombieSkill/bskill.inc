@@ -374,9 +374,9 @@ void ZombieFlyingLogic(int zombie)
     // 飞行模式分支
     if (g_Mode[zombie] == FLY_RANDOM)     // 没有目标或目标太远（看的是水平距离），高飞
     {
-        if (dist <= 600.0)                // 高度小于 600.0 继续抬升
+        if (dist <= 400.0)                // 高度小于 600.0 继续抬升
         {
-            FlyForce[2] = 600.0;
+            FlyForce[2] = 800.0;
             TeleportEntity(zombie, NULL_VECTOR, NULL_VECTOR, FlyForce);   // 不能理解为速度，更像是力，需要高频给与才有效果
             // PrintToChatAll("高飞模式 +");
         } 
@@ -439,7 +439,7 @@ void GetFlyingMode(int zombie, int target, float hitPos[3])
         float fTargetPosition[3];
         GetEntPropVector(target, Prop_Send, "m_vecOrigin", fTargetPosition);
 
-        if (GetVectorDistance(hitPos, fTargetPosition) <= 400.0)    // 大概8米 目标离近了，就低飞并展开喷毒，看的是水平距离小于400.0（引擎单位）
+        if (GetVectorDistance(hitPos, fTargetPosition) <= 600.0)    // 大概8米 目标离近了，就低飞并展开喷毒，看的是水平距离小于400.0（引擎单位）
         {
             g_Mode[zombie] = FLY_TARGET;                // 执行低飞模式
         }
