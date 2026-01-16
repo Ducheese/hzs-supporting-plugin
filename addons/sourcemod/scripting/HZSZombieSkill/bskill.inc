@@ -225,7 +225,7 @@ void CreateZombieCall(int victim, float dist, float duration)
     CreateTimer(duration, Timer_DeZombieCall, victim);
 
     // 发出声音的实体填了1，如果写横线，大灾变插件里的soundhook会报错
-    EmitSoundToAll(SFX_ZOMBIECALL, 1, SNDCHAN_STATIC, SNDLEVEL_NORMAL, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
+    EmitSoundToAll(SFX_CALL, 1, SNDCHAN_STATIC, SNDLEVEL_NORMAL, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
 }
 
 public Action Timer_DeZombieCall(Handle timer, int client)
@@ -257,7 +257,7 @@ public Action Timer_ZombieSelfHealing(Handle timer, int zombie)
     GetEntPropVector(zombie, Prop_Send, "m_vecOrigin", pos);
 
     // 自愈过程被打断
-    if (g_iBulletCount[zombie] >= BulletThreshold)
+    if (g_iBulletCount[zombie] >= BulletRequirement)
     {
         g_bIsSkillUsed[zombie] = false;
 
@@ -506,7 +506,7 @@ void GetFlyingMode(int zombie, int target, float hitPos[3])
 void CreateCharge(int zombie, int victim)
 {
     // npc僵尸能能冲刺的关键
-    SetEntityMoveType(zombie, MOVETYPE_FLY);
+    SetEntityMoveType(zombie, MOVETYPE_FLYGRAVITY);
 
     // 冲刺方向实时调节，脚步声同步 (每0.5秒执行一次)
     DataPack pack = new DataPack();
@@ -544,13 +544,6 @@ public Action Timer_ChargeThink(Handle timer, DataPack pack)
     int zombie = pack.ReadCell();
     int victim = pack.ReadCell();
 
-    float pos[3], fTargetOrigin[3];
-    GetEntPropVector(zombie, Prop_Send, "m_vecOrigin", pos);
-    GetEntPropVector(victim, Prop_Send, "m_vecOrigin", fTargetOrigin);
-
-    // 震地音效
-    EmitAmbientSound(SFX_CHARGE_SHAKE, pos, _, SNDLEVEL_GUNFIRE, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
-
     // 验证合法性
     if (!IsValidEntity(zombie) || GetEntProp(zombie, Prop_Data, "m_iHealth") <= 0 || !IsValidClient(victim, true))     // 没抱到人，关闭冲刺句柄即可
     {
@@ -563,8 +556,13 @@ public Action Timer_ChargeThink(Handle timer, DataPack pack)
         return Plugin_Continue;
     }
 
+    float pos[3], fTargetOrigin[3];
+    GetEntPropVector(zombie, Prop_Send, "m_vecOrigin", pos);
+    GetEntPropVector(victim, Prop_Send, "m_vecOrigin", fTargetOrigin);
+    float fTargetDistance = GetVectorDistance(pos, fTargetOrigin);
+
     // 触发擒抱
-    if (GetVectorDistance(pos, fTargetOrigin) <= GrappleRange)     // 关闭冲刺，开始擒抱逻辑
+    if (fTargetDistance*GAMEUNITS_TO_METERS <= GrappleRange)     // 关闭冲刺，开始擒抱逻辑
     {
         StartGrapple(zombie, victim);
 
@@ -578,16 +576,15 @@ public Action Timer_ChargeThink(Handle timer, DataPack pack)
     }
 
     // 如果不是，持续施加向目标的推力
-    float vReturn[3], fTempAngles[3], fTempPoints[3];
+    float dir[3], force[3];
+    MakeVectorFromPoints(pos, fTargetOrigin, dir);
+    NormalizeVector(dir, force);
+    ScaleVector(force, ChargeForce);
 
-    MakeVectorFromPoints(pos, fTargetOrigin, fTempPoints);
-    GetVectorAngles(fTempPoints, fTempAngles);
+    TeleportEntity(zombie, NULL_VECTOR, NULL_VECTOR, force);
 
-    vReturn[0] = Cosine(DegToRad(fTempAngles[1])) * ChargeForce;
-    vReturn[1] = Sine(DegToRad(fTempAngles[1])) * ChargeForce;
-    vReturn[2] = 0.0;
-
-    TeleportEntity(zombie, NULL_VECTOR, NULL_VECTOR, vReturn);
+    // 震地音效
+    EmitAmbientSound(SFX_CHARGE_SHAKE, pos, _, SNDLEVEL_GUNFIRE, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
     
     return Plugin_Continue;
 }
@@ -599,7 +596,16 @@ void StartGrapple(int zombie, int victim)
     g_bIsGrappled[victim] = true;
 
     // 更换受害者视角
-    SetClientViewEntity(victim, zombie);
+    int viewControl = CreateEntityByName("point_viewcontrol");
+    SetVariantString("!activator");
+    AcceptEntityInput(viewControl, "SetParent", zombie);
+    float viewOffset[3] = {150.0, 0.0, 250.0};    // 这个位置决定了“眼睛”在哪里，可以放在僵尸的肩膀或头顶
+    float viewAngles[3] = {15.0, 180.0, 0.0};    // 这个角度决定了“眼睛”朝哪里看，{0, 180, 0} 大致是朝向后方，即僵尸的脸
+    TeleportEntity(viewControl, viewOffset, viewAngles, NULL_VECTOR);
+    DispatchSpawn(viewControl);
+    ActivateEntity(viewControl);
+    AcceptEntityInput(viewControl, "Enable");
+    SetClientViewEntity(victim, viewControl);
 
     // 启动伤害计时器（无需管挣脱，只看生死）
     DataPack pack = new DataPack();

@@ -66,7 +66,7 @@ public void OnPluginStart()
     PrecacheSound(SFX_BREATH_PULL, true);
     PrecacheSound(SFX_SMASH, true);
     PrecacheSound(SFX_SWING, true);
-    PrecacheSound(SFX_ZOMBIECALL, true);
+    PrecacheSound(SFX_CALL, true);
     PrecacheSound(SFX_BREATH_HEAL_ING, true);
     PrecacheSound(SFX_BREATH_HEAL_FULL, true);
     PrecacheSound(SFX_BREATH_HEAL_FAIL, true);
