@@ -33,7 +33,7 @@ public Plugin myinfo =
 public void OnPluginStart()
 {
     // 获取NPC在追随什么目标
-    g_LeaderOffset = FindSendPropInfo("CHostage", "m_leader");
+    g_iLeaderOffset = FindSendPropInfo("CHostage", "m_leader");
 
     // 玩家相关数组初始化
     for (int i = 1; i <= MaxClients; i++)
@@ -41,16 +41,18 @@ public void OnPluginStart()
         g_iZombieCall[i] = g_iZombiePull[i] = -1;
         g_bIsStuck[i] = g_bIsDisorder[i] = false;
 
-        g_iGrappledBy[i] = -1;
+        g_bIsGrappled[i] = false;
         g_iUsePressCount[i] = 0;
-        g_iLastButtons[i] = 0;
+        g_iLastButtons[i] = -1;
     }
 
     // 贴图缓存
     // PrecacheModel("particle/particle_smokegrenade.vmt", true);           // 迷雾僵尸所用的烟雾贴图，不用预缓存
-    PrecacheModel("models/heavyzombietrap/zombitrap.mdl", true);         // 憎恶屠夫鬼手陷阱
 
-    // 音频缓存
+    // 模型缓存
+    PrecacheModel("models/heavyzombietrap/zombitrap.mdl", true);          // 憎恶屠夫鬼手陷阱
+
+    // 特殊僵尸技能音频缓存
     PrecacheSound(SFX_SMOKE1, true);
     PrecacheSound(SFX_SMOKE2, true);
     PrecacheSound(SFX_EXPLODE1, true);
@@ -59,6 +61,7 @@ public void OnPluginStart()
     PrecacheSound(SFX_STUCK, true);
     PrecacheSound(SFX_DISORDER, true);
 
+    // BOSS安哥拉技能音频缓存
     PrecacheSound(SFX_PULL, true);
     PrecacheSound(SFX_BREATH_PULL, true);
     PrecacheSound(SFX_SMASH, true);
@@ -70,6 +73,7 @@ public void OnPluginStart()
     PrecacheSound(SFX_FLY, true);
     PrecacheSound(SFX_POISON, true);
 
+    // BOSS胖子技能音频缓存
     PrecacheSound(SFX_CHARGE_HOWL, true);
     PrecacheSound(SFX_CHARGE_SHAKE, true);
     PrecacheSound(SFX_GRAPPLE_HURT, true);
@@ -101,12 +105,12 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
     {
         if (g_bIsStuck[client])
         {
-            vel[0] = vel[1] = vel[2] = 0.0;
+            vel[0] = vel[1] = vel[2] = 0.0;     // 其实可以不管垂直速度，禁止跳即可
 
             if (buttons & IN_JUMP)
                 buttons &= ~IN_JUMP;      // 禁止跳跃
         }
-        else if (g_bIsDisorder[client])
+        else if (g_bIsDisorder[client])     // 应当增加一个视觉反馈
         {
             vel[0] = -vel[0];
             vel[1] = -vel[1];
@@ -124,9 +128,9 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 
             CreateKnockback(pos, client, view_as<float>({-PullPower, -PullPower, -PullPower}));      // 击退的反方向就是吸力
 
-            EmitSoundToClient(client, SFX_PULL, _, SNDCHAN_STATIC, SNDLEVEL_NORMAL, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
+            EmitSoundToClient(client, SFX_PULL, _, SNDCHAN_STATIC, SNDLEVEL_NORMAL, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);    // 这样写，音效比较有魄力
         }
-        else if (g_iGrappledBy[client] != -1)
+        else if (g_bIsGrappled[client])
         {
             // 擒抱状态下，玩家无法移动和攻击
             vel[0] = vel[1] = vel[2] = 0.0;
@@ -144,7 +148,7 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
             }
         }
 
-        g_iLastButtons[client] = buttons;   // 虽然多个数组，但这样写确实简洁
+        g_iLastButtons[client] = buttons;   // 虽然多了个数组，但这样写确实简洁
     }
 
     // 呼唤僵尸攻击人类，死后处理（草，忘了真死的情况）

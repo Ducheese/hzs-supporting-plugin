@@ -6,7 +6,7 @@ void CreatePull(int zombie, float pos[3])
 {
     for (int i = 1; i <= MaxClients; i++)
     {
-        if (IsValidClient(i, true) && !IsZeroPostion(i))
+        if (IsValidClient(i, true) && !IsZeroPostion(i))    // 如果刚复活就不会被吸，毕竟还要买武器，降低难度吧
         {
             g_bIsStuck[i] = false;                // 解除憎恶屠夫的控制
             g_iZombiePull[i] = zombie;            // 记录安哥拉实体号
@@ -56,6 +56,13 @@ public Action Timer_PullParticle(Handle timer, DataPack pack)
     }
 
     WriteParticle("z_shield_buff", pos, 1.0);
+
+    return Plugin_Continue;
+}
+
+public Action Timer_DePull(Handle timer, int client)
+{
+    g_iZombiePull[client] = -1;
 
     return Plugin_Continue;
 }
@@ -183,10 +190,10 @@ public Action Timer_CreateGroupKnockback2(Handle timer, DataPack pack)
 // 安哥拉技能：呼唤僵尸集中攻击一个人类
 //========================================================================================
 
-void CreateZombieCall(int client, float dist, float duration)
+void CreateZombieCall(int victim, float dist, float duration)
 {
-    float fClientOrigin[3], fTargetOrigin[3];
-    GetEntPropVector(client, Prop_Send, "m_vecOrigin", fClientOrigin);
+    float fTargetOrigin[3], fZombieOrigin[3];
+    GetEntPropVector(victim, Prop_Send, "m_vecOrigin", fTargetOrigin);
 
     float fTargetDistance;
 
@@ -203,77 +210,84 @@ void CreateZombieCall(int client, float dist, float duration)
                 continue;
             }
 
-            GetEntPropVector(zombie, Prop_Send, "m_vecOrigin", fTargetOrigin);
-            fTargetDistance = GetVectorDistance(fClientOrigin, fTargetOrigin);
+            GetEntPropVector(zombie, Prop_Send, "m_vecOrigin", fZombieOrigin);
+            fTargetDistance = GetVectorDistance(fTargetOrigin, fZombieOrigin);
 
             if (fTargetDistance*GAMEUNITS_TO_METERS > dist)
             {
                 continue;
             }
 
-            Han_SetZombieTarget(zombie, client, duration);
+            Han_SetZombieTarget(zombie, victim, duration);   // 不需要特别Han_UnlockZombie
         }
     }
 
-    CreateTimer(15.0, Timer_DeZombieCall, client);
+    CreateTimer(duration, Timer_DeZombieCall, victim);
 
     // 发出声音的实体填了1，如果写横线，大灾变插件里的soundhook会报错
     EmitSoundToAll(SFX_ZOMBIECALL, 1, SNDCHAN_STATIC, SNDLEVEL_NORMAL, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
+}
+
+public Action Timer_DeZombieCall(Handle timer, int client)
+{
+    g_iZombieCall[client] = -1;
+
+    return Plugin_Continue;
 }
 
 //========================================================================================
 // 安哥拉技能：可以被打断的自愈，半血以下受击有概率使用
 //========================================================================================
 
-public Action Timer_ZombieSelfHealing(Handle timer, int entity)
+public Action Timer_ZombieSelfHealing(Handle timer, int zombie)
 {
     // 僵尸状态验证
-    if (!IsValidEntity(entity) || GetEntProp(entity, Prop_Data, "m_iHealth") <= 0)
+    if (!IsValidEntity(zombie) || GetEntProp(zombie, Prop_Data, "m_iHealth") <= 0)
     {
         KillTimer(timer);
-        RepeatTask[entity] = INVALID_HANDLE;
+        RepeatTask[zombie] = INVALID_HANDLE;
         return Plugin_Continue;
     }
 
     // 基础信息，结束repeat时要用到
     char ZombieName[32];
-    Han_GetZombieName(entity, ZombieName, sizeof(ZombieName));
+    Han_GetZombieName(zombie, ZombieName, sizeof(ZombieName));
 
     float pos[3];
-    GetEntPropVector(entity, Prop_Send, "m_vecOrigin", pos);
+    GetEntPropVector(zombie, Prop_Send, "m_vecOrigin", pos);
 
     // 自愈过程被打断
-    if (g_iBulletCount[entity] >= BulletThreshold)
+    if (g_iBulletCount[zombie] >= BulletThreshold)
     {
-        g_bIsSkillUsed[entity] = false;
+        g_bIsSkillUsed[zombie] = false;
 
-        Han_UnlockZombie(entity);
+        Han_UnlockZombie(zombie);
 
         EmitAmbientSound(SFX_BREATH_HEAL_FAIL, pos, _, SNDLEVEL_GUNFIRE, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
         CPrintToChatAll("{green}[华仔] {red}%s的自愈被打断，快乘胜追击！", ZombieName);
 
         KillTimer(timer);
-        RepeatTask[entity] = INVALID_HANDLE;
+        RepeatTask[zombie] = INVALID_HANDLE;
         return Plugin_Continue;
     }
 
     // 自愈以至于回满血了
-    if (GetEntProp(entity, Prop_Data, "m_iHealth") == g_iMaxHealth[entity])
+    if (GetEntProp(zombie, Prop_Data, "m_iHealth") == g_iMaxHealth[zombie])
     {
-        g_bIsSkillUsed[entity] = false;
+        g_bIsSkillUsed[zombie] = false;
 
-        Han_UnlockZombie(entity);
+        Han_UnlockZombie(zombie);
 
         EmitAmbientSound(SFX_BREATH_HEAL_FULL, pos, _, SNDLEVEL_GUNFIRE, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
         CPrintToChatAll("{green}[华仔] {red}%s完全自愈了，小心！", ZombieName);
 
         KillTimer(timer);
-        RepeatTask[entity] = INVALID_HANDLE;
+        RepeatTask[zombie] = INVALID_HANDLE;
         return Plugin_Continue;
     }
 
     // 自愈过程中
-    SetEntProp(entity, Prop_Data, "m_iHealth", GetEntProp(entity, Prop_Data, "m_iHealth") + SelfHealDamage < g_iMaxHealth[entity] ? GetEntProp(entity, Prop_Data, "m_iHealth") + SelfHealDamage : g_iMaxHealth[entity]);
+    SetEntProp(zombie, Prop_Data, "m_iHealth", GetEntProp(zombie, Prop_Data, "m_iHealth") + SelfHealDamage < g_iMaxHealth[zombie] ? GetEntProp(zombie, Prop_Data, "m_iHealth") + SelfHealDamage : g_iMaxHealth[zombie]);
 
     pos[2] += 100.0;
     WriteParticle("z_group_healer_zombie_buff", pos, 1.0);
@@ -291,7 +305,7 @@ void InitFlyingState(int zombie)
     g_BossState[zombie] = STATE_GROUND;           // 默认在地上
     g_Mode[zombie] = FLY_RANDOM;                  // 默认高飞模式
 
-    g_LastFlySound[zombie] = GetEngineTime();
+    g_flLastFlySound[zombie] = GetEngineTime();
 }
 
 public Action Timer_ZombieFlyingThink(Handle timer, int zombie)
@@ -309,7 +323,7 @@ public Action Timer_ZombieFlyingThink(Handle timer, int zombie)
     // 如果当前是地面模式，检查冷却是否结束
     if (g_BossState[zombie] == STATE_GROUND)
     {
-        if (currentTime - g_LastFlyEnd[zombie] >= g_FlyCDTime)      // 飞行的CD
+        if (currentTime - g_flLastFlyEnd[zombie] >= FlyCDTime)      // 飞行的CD
         {
             if (!g_bIsSkillUsed[zombie])                            // 正在使用其它技能时无法飞行，避免冲突
                 EnterFlyingMode(zombie);                            // 有CD立刻起飞
@@ -322,7 +336,7 @@ public Action Timer_ZombieFlyingThink(Handle timer, int zombie)
     // 如果当前是飞行模式，检查持续时间
     else if (g_BossState[zombie] == STATE_FLYING)
     {
-        if (currentTime - g_LastFlyEnd[zombie] >= g_FlyDuration)    // 飞行持续时间
+        if (currentTime - g_flLastFlyEnd[zombie] >= FlyDuration)    // 飞行持续时间
         {
             EnterGroundMode(zombie);
         }
@@ -342,7 +356,7 @@ void EnterFlyingMode(int zombie)
     SetEntProp(zombie, Prop_Data, "m_takedamage", 0, 1);     // 飞的时候无敌，避免死在天上不好看
 
     g_BossState[zombie] = STATE_FLYING;
-    g_LastFlyEnd[zombie] = GetEngineTime();                  // 飞行开始计时（共用一个数组）
+    g_flLastFlyEnd[zombie] = GetEngineTime();                  // 飞行开始计时（共用一个数组）
 }
 
 void EnterGroundMode(int zombie)
@@ -354,12 +368,12 @@ void EnterGroundMode(int zombie)
     CreateTimer(5.0, Timer_SkillEnd, zombie);
 
     g_BossState[zombie] = STATE_GROUND;
-    g_LastFlyEnd[zombie] = GetEngineTime();                            // 冷却开始计时（共用一个数组）
+    g_flLastFlyEnd[zombie] = GetEngineTime();                            // 冷却开始计时（共用一个数组）
 }
 
 void ZombieFlyingLogic(int zombie)
 {
-    int target = GetEntDataEnt2(zombie, g_LeaderOffset);      // target可能为0
+    int target = GetEntDataEnt2(zombie, g_iLeaderOffset);      // target可能为0
 
     float pos[3];
     GetEntPropVector(zombie, Prop_Send, "m_vecOrigin", pos);
@@ -402,9 +416,9 @@ void ZombieFlyingLogic(int zombie)
     // 扇动翅膀的声音
     float currentTime = GetEngineTime();
 
-    if (currentTime - g_LastFlySound[zombie] >= 0.8)
+    if (currentTime - g_flLastFlySound[zombie] >= 0.8)
     {
-        g_LastFlySound[zombie] = currentTime;
+        g_flLastFlySound[zombie] = currentTime;
         
         Han_SetCustomAnimationEx(zombie, "run_upper_knife", 0.9);
         EmitAmbientSound(SFX_FLY, pos, _, SNDLEVEL_GUNFIRE, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL)
@@ -518,10 +532,8 @@ public Action Timer_EndCharge(Handle timer, int zombie)
         CloseHandle(RepeatTask4[zombie]);
         RepeatTask4[zombie] = INVALID_HANDLE;
 
-        return Plugin_Continue;
+        SetEntityMoveType(zombie, MOVETYPE_STEP);
     }
-
-    SetEntityMoveType(zombie, MOVETYPE_STEP);
 
     return Plugin_Continue;
 }
@@ -546,6 +558,8 @@ public Action Timer_ChargeThink(Handle timer, DataPack pack)
 
         KillTimer(timer);
         RepeatTask4[zombie] = INVALID_HANDLE;
+
+        SetEntityMoveType(zombie, MOVETYPE_STEP);
         return Plugin_Continue;
     }
 
@@ -558,6 +572,8 @@ public Action Timer_ChargeThink(Handle timer, DataPack pack)
 
         KillTimer(timer);
         RepeatTask4[zombie] = INVALID_HANDLE;
+
+        SetEntityMoveType(zombie, MOVETYPE_STEP);
         return Plugin_Continue;
     }
 
@@ -580,7 +596,7 @@ void StartGrapple(int zombie, int victim)
 {
     // 数组更新
     g_iGrappling[zombie] = victim;
-    g_iGrappledBy[victim] = zombie;
+    g_bIsGrappled[victim] = true;
 
     // 更换受害者视角
     SetClientViewEntity(victim, zombie);
@@ -594,7 +610,7 @@ void StartGrapple(int zombie, int victim)
     // 处理挣脱逻辑
     if (IsFakeClient(victim))
     {
-        CreateTimer(GetRandomFloat(EscapeMinTime, EscapeMaxTime), Timer_BotEscape, pack);      // 这里重用pack逻辑需谨慎，建议重新打包
+        CreateTimer(GetRandomFloat(1.0, 5.0), Timer_BotEscape, pack);      // 这里重用pack逻辑需谨慎，建议重新打包
     }
     else
     {
@@ -665,7 +681,7 @@ public Action Timer_CheckPlayerEscape(Handle timer, DataPack pack)
     return Plugin_Continue;
 }
 
-public Action Timer_BotEscape(Handle timer, DataPack pack)   // 
+public Action Timer_BotEscape(Handle timer, DataPack pack)
 {
     pack.Reset();
     int zombie = pack.ReadCell();
@@ -684,24 +700,7 @@ public Action Timer_BotEscape(Handle timer, DataPack pack)   //
 void EndGrapple(int zombie, int victim)
 {
     g_iGrappling[zombie] = -1;
-    g_iGrappledBy[victim] = -1;
+    g_bIsGrappled[victim] = false;
     SetClientViewEntity(victim, victim);  // 恢复视角
-}
-
-//========================================================================================
-// TIMER
-//========================================================================================
-
-public Action Timer_DeZombieCall(Handle timer, int client)
-{
-    g_iZombieCall[client] = -1;
-
-    return Plugin_Continue;
-}
-
-public Action Timer_DePull(Handle timer, int client)
-{
-    g_iZombiePull[client] = -1;
-
-    return Plugin_Continue;
+    CreateTimer(ChargeCDTime, Timer_SkillEnd, zombie);
 }

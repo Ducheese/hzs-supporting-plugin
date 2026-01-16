@@ -251,7 +251,7 @@ public void Han_OnZombieAttack(int zombie, int victim)
             g_bIsSkillUsed[zombie] = true;
             g_iZombieCall[victim] = zombie;                    // 如果死了要提前unlock
 
-            CreateZombieCall(victim, 9999.0, 15.0);            // 如果victim在这期间死了，还需要再处理
+            CreateZombieCall(victim, 9999.0, CallDuration);            // 如果victim在这期间死了，还需要再处理
             CreateTimer(5.0, Timer_SkillEnd, zombie);
 
             CPrintToChatAll("{green}[华仔] {red}%s正在呼唤所有僵尸攻击%s，快去帮忙掩护！", ZombieName, g_ClientName[victim]);
