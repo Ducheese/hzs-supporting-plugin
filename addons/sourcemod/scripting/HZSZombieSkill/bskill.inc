@@ -486,6 +486,209 @@ void GetFlyingMode(int zombie, int target, float hitPos[3])
 } */
 
 //========================================================================================
+// 巨型狂暴形态僵尸技能：冲刺擒抱
+//========================================================================================
+
+void CreateCharge(int zombie, int victim)
+{
+    // npc僵尸能能冲刺的关键
+    SetEntityMoveType(zombie, MOVETYPE_FLY);
+
+    // 冲刺方向实时调节，脚步声同步 (每0.5秒执行一次)
+    DataPack pack = new DataPack();
+    pack.WriteCell(zombie);
+    pack.WriteCell(victim);
+    RepeatTask4[zombie] = CreateTimer(0.5, Timer_ChargeThink, pack, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
+    
+    // 时间到了且未擒抱到人，自动结束冲刺
+    CreateTimer(ChargeDuration, Timer_EndCharge, zombie);
+
+    // 吼叫音效
+    float pos[3];
+    GetEntPropVector(zombie, Prop_Send, "m_vecOrigin", pos);
+    EmitAmbientSound(SFX_CHARGE_HOWL, pos, _, SNDLEVEL_GUNFIRE, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
+}
+
+public Action Timer_EndCharge(Handle timer, int zombie)
+{
+    if (RepeatTask4[zombie] != INVALID_HANDLE)    // 没有抱到人，关闭冲刺句柄，进入CD冷却
+    {
+        CreateTimer(ChargeCDTime, Timer_SkillEnd, zombie);   // 擒抱完后再进CD
+
+        CloseHandle(RepeatTask4[zombie]);
+        RepeatTask4[zombie] = INVALID_HANDLE;
+
+        return Plugin_Continue;
+    }
+
+    SetEntityMoveType(zombie, MOVETYPE_STEP);
+
+    return Plugin_Continue;
+}
+
+public Action Timer_ChargeThink(Handle timer, DataPack pack)
+{
+    pack.Reset();
+    int zombie = pack.ReadCell();
+    int victim = pack.ReadCell();
+
+    float pos[3], fTargetOrigin[3];
+    GetEntPropVector(zombie, Prop_Send, "m_vecOrigin", pos);
+    GetEntPropVector(victim, Prop_Send, "m_vecOrigin", fTargetOrigin);
+
+    // 震地音效
+    EmitAmbientSound(SFX_CHARGE_SHAKE, pos, _, SNDLEVEL_GUNFIRE, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
+
+    // 验证合法性
+    if (!IsValidEntity(zombie) || GetEntProp(zombie, Prop_Data, "m_iHealth") <= 0 || !IsValidClient(victim, true))     // 没抱到人，关闭冲刺句柄即可
+    {
+        CloseHandle(pack);            // repeat timer不能提前closehandle
+
+        KillTimer(timer);
+        RepeatTask4[zombie] = INVALID_HANDLE;
+        return Plugin_Continue;
+    }
+
+    // 触发擒抱
+    if (GetVectorDistance(pos, fTargetOrigin) <= GrappleRange)     // 关闭冲刺，开始擒抱逻辑
+    {
+        StartGrapple(zombie, victim);
+
+        CloseHandle(pack);            // repeat timer不能提前closehandle
+
+        KillTimer(timer);
+        RepeatTask4[zombie] = INVALID_HANDLE;
+        return Plugin_Continue;
+    }
+
+    // 如果不是，持续施加向目标的推力
+    float vReturn[3], fTempAngles[3], fTempPoints[3];
+
+    MakeVectorFromPoints(pos, fTargetOrigin, fTempPoints);
+    GetVectorAngles(fTempPoints, fTempAngles);
+
+    vReturn[0] = Cosine(DegToRad(fTempAngles[1])) * ChargeForce;
+    vReturn[1] = Sine(DegToRad(fTempAngles[1])) * ChargeForce;
+    vReturn[2] = 0.0;
+
+    TeleportEntity(zombie, NULL_VECTOR, NULL_VECTOR, vReturn);
+    
+    return Plugin_Continue;
+}
+
+void StartGrapple(int zombie, int victim)
+{
+    // 数组更新
+    g_iGrappling[zombie] = victim;
+    g_iGrappledBy[victim] = zombie;
+
+    // 更换受害者视角
+    SetClientViewEntity(victim, zombie);
+
+    // 启动伤害计时器（无需管挣脱，只看生死）
+    DataPack pack = new DataPack();
+    pack.WriteCell(zombie);
+    pack.WriteCell(victim);
+    RepeatTask5[victim] = CreateTimer(1.0, Timer_GrappleDamage, pack, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
+
+    // 处理挣脱逻辑
+    if (IsFakeClient(victim))
+    {
+        CreateTimer(GetRandomFloat(EscapeMinTime, EscapeMaxTime), Timer_BotEscape, pack);      // 这里重用pack逻辑需谨慎，建议重新打包
+    }
+    else
+    {
+        g_iUsePressCount[victim] = 0;   // 初始化
+        RepeatTask6[victim] = CreateTimer(1.0, Timer_CheckPlayerEscape, pack, TIMER_REPEAT);
+
+        CPrintToChat(victim, "{green}[华仔] {red}你被擒抱住了！快连按E键挣脱！");
+    }
+
+    char ZombieName[32];
+    Han_GetZombieName(zombie, ZombieName, sizeof(ZombieName));
+    CPrintToChatAll("{green}[华仔] {red}%s擒抱住了%s，快去帮忙掩护！", ZombieName, g_ClientName[victim]);
+}
+
+public Action Timer_GrappleDamage(Handle timer, DataPack pack)
+{
+    pack.Reset();
+    int zombie = pack.ReadCell();
+    int victim = pack.ReadCell();
+
+    // 不负责验证合法性，交给Timer_CheckPlayerEscape处理
+
+    // 伤害和音效
+    SDKHooks_TakeDamage(victim, zombie, zombie, GrappleDamage, DMG_SLASH, _, _, _, false);
+    EmitSoundToClient(victim, SFX_GRAPPLE_HURT, _, SNDCHAN_STATIC, SNDLEVEL_NORMAL, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
+
+    return Plugin_Continue;
+}
+
+public Action Timer_CheckPlayerEscape(Handle timer, DataPack pack)
+{
+    pack.Reset();
+    int zombie = pack.ReadCell();
+    int victim = pack.ReadCell();
+
+    // 验证合法性
+    if (!IsValidEntity(zombie) || GetEntProp(zombie, Prop_Data, "m_iHealth") <= 0 || !IsValidClient(victim, true))
+    {
+        EndGrapple(zombie, victim);
+
+        CloseHandle(pack);            // repeat timer不能提前closehandle
+
+        CloseHandle(RepeatTask5[victim]);
+        RepeatTask5[victim] = INVALID_HANDLE;
+
+        KillTimer(timer);
+        RepeatTask6[victim] = INVALID_HANDLE;
+        return Plugin_Continue;
+    }
+
+    // 连按速率达标
+    if (g_iUsePressCount[victim] >= EscapeKeyPressRate)
+    {
+        EndGrapple(zombie, victim);
+
+        CloseHandle(pack);            // repeat timer不能提前closehandle
+
+        CloseHandle(RepeatTask5[victim]);
+        RepeatTask5[victim] = INVALID_HANDLE;
+
+        KillTimer(timer);
+        RepeatTask6[victim] = INVALID_HANDLE;
+        return Plugin_Continue;
+    }
+
+    g_iUsePressCount[victim] = 0;     // 每秒重置计数，意味着必须在1秒内按够次数
+
+    return Plugin_Continue;
+}
+
+public Action Timer_BotEscape(Handle timer, DataPack pack)   // 
+{
+    pack.Reset();
+    int zombie = pack.ReadCell();
+    int victim = pack.ReadCell();
+
+    CloseHandle(pack);            // repeat timer不能提前closehandle
+
+    CloseHandle(RepeatTask5[victim]);
+    RepeatTask5[victim] = INVALID_HANDLE;
+
+    EndGrapple(zombie, victim);
+
+    return Plugin_Continue;
+}
+
+void EndGrapple(int zombie, int victim)
+{
+    g_iGrappling[zombie] = -1;
+    g_iGrappledBy[victim] = -1;
+    SetClientViewEntity(victim, victim);  // 恢复视角
+}
+
+//========================================================================================
 // TIMER
 //========================================================================================
 

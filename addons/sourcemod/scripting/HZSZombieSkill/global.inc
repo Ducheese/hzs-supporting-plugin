@@ -17,6 +17,7 @@
 #define ZOMBIE_WITCH            "嗜血女巫"
 #define ZOMBIE_GHOST            "幽灵僵尸"
 #define BOSS_ANGELA             "安哥拉"
+#define BOSS_PANGZI             "巨型狂暴形态僵尸"
 
 // 技能参数
 #define SmokeFadeTime           5.0        // 几秒后迷雾僵尸的烟开始消散
@@ -35,6 +36,15 @@
 // #define GroupKnockPower         800.0      // 两种群体击飞动作，已经设计好了水平和垂直方向上的区别，不方便在这里修改值
 #define GroupKnockDamage        20.0       // 安哥拉群体击飞生成的伤害值
 #define GroupKnockRange         10.0       // 安哥拉群体击飞作用范围（单位：米）
+
+#define ChargeDuration          3.0        // 巨型狂暴形态僵尸冲刺持续时间
+#define ChargeForce             500.0      // 巨型狂暴形态僵尸冲刺的力度
+#define ChargeCDTime            2.0       // 巨型狂暴形态僵尸冲刺的冷却时间（秒）
+#define GrappleRange            150.0      // 巨型狂暴形态僵尸触发擒抱的距离（引擎单位）
+#define GrappleDamage           10.0       // 巨型狂暴形态僵尸擒抱每秒伤害
+#define EscapeKeyPressRate      4          // 真人玩家挣脱所需的每秒按键速率 (E键)
+#define EscapeMinTime           1.0        // Bot挣脱的最短时间
+#define EscapeMaxTime           5.0        // Bot挣脱的最长时间
 
 // 音效路径
 #define SFX_SMOKE1              "custom/gas_cough_gasp_1.wav"                // 迷雾僵尸吐烟时的音效1（咳嗽声）
@@ -55,6 +65,10 @@
 #define SFX_BREATH_HEAL_FAIL    "custom/tank_growl_02.wav"                   // 安哥拉自愈被打断时的吐息声
 #define SFX_FLY                 "weapons/angela/angra_zbs_fly2.wav"          // 安哥拉扇动翅膀的音效
 #define SFX_POISON              "weapons/angela/angra_zbs_poison_spit.wav"   // 安哥拉喷毒的音效
+
+#define SFX_CHARGE_HOWL         "custom/charger_charge_02.wav"               // 巨型狂暴形态僵尸冲刺嚎叫
+#define SFX_CHARGE_SHAKE        "custom/tank_walk06.wav"                     // 巨型狂暴形态僵尸冲刺震地
+#define SFX_GRAPPLE_HURT        "custom/charger_smash_01.wav"                // 巨型狂暴形态僵尸擒抱伤害的音效
 
 //========================================================================================
 // HANDLES & VARIABLES
@@ -105,3 +119,18 @@ float g_LastFlyEnd[2048];        // 记录上一次飞行结束的时间（飞�
 float g_LastFlySound[2048];      // 记录上一次扇翅膀音效的时间
 
 Handle RepeatTask3[2048] = {INVALID_HANDLE,...};
+
+//========================================================================================
+// BOSS擒抱逻辑 Gemini提供
+//========================================================================================
+
+int g_iGrappledBy[MAXPLAYERS+1];          // 玩家是否被擒抱，记录僵尸的实体号
+int g_iUsePressCount[MAXPLAYERS+1];       // 玩家在1秒内按E的次数
+int g_iLastButtons[MAXPLAYERS+1];         // 玩家上一帧的按键（连按逻辑）
+
+Handle RepeatTask5[MAXPLAYERS+1] = {INVALID_HANDLE, ...};   // 擒抱伤害句柄
+Handle RepeatTask6[MAXPLAYERS+1] = {INVALID_HANDLE, ...};   // 按键脱离句柄
+
+int g_iGrappling[2048];                   // 僵尸是否在擒抱，记录玩家的实体号
+
+Handle RepeatTask4[2048] = {INVALID_HANDLE,...};     // 狂暴僵尸冲刺擒抱

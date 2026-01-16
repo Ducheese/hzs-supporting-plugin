@@ -40,6 +40,10 @@ public void OnPluginStart()
     {
         g_iZombieCall[i] = g_iZombiePull[i] = -1;
         g_bIsStuck[i] = g_bIsDisorder[i] = false;
+
+        g_iGrappledBy[i] = -1;
+        g_iUsePressCount[i] = 0;
+        g_iLastButtons[i] = 0;
     }
 
     // 贴图缓存
@@ -65,6 +69,10 @@ public void OnPluginStart()
     PrecacheSound(SFX_BREATH_HEAL_FAIL, true);
     PrecacheSound(SFX_FLY, true);
     PrecacheSound(SFX_POISON, true);
+
+    PrecacheSound(SFX_CHARGE_HOWL, true);
+    PrecacheSound(SFX_CHARGE_SHAKE, true);
+    PrecacheSound(SFX_GRAPPLE_HURT, true);
 }
 
 public void OnMapStart()
@@ -118,6 +126,25 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 
             EmitSoundToClient(client, SFX_PULL, _, SNDCHAN_STATIC, SNDLEVEL_NORMAL, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
         }
+        else if (g_iGrappledBy[client] != -1)
+        {
+            // 擒抱状态下，玩家无法移动和攻击
+            vel[0] = vel[1] = vel[2] = 0.0;
+
+            // 全都做不了
+            buttons &= ~IN_ATTACK;
+            buttons &= ~IN_ATTACK2;
+            buttons &= ~IN_RELOAD;
+            buttons &= ~IN_JUMP;
+
+            // 检测E键连打
+            if ((buttons & IN_USE) && !(g_iLastButtons[client] & IN_USE))   // 毕竟有松开键位才算按一次
+            {
+                g_iUsePressCount[client]++;
+            }
+        }
+
+        g_iLastButtons[client] = buttons;   // 虽然多个数组，但这样写确实简洁
     }
 
     // 呼唤僵尸攻击人类，死后处理（草，忘了真死的情况）

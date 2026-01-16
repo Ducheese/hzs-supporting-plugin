@@ -7,6 +7,9 @@ public void Han_OnZombieCreated(int zombie)
     // 安哥拉使用的数组
     g_iBulletCount[zombie] = 0;
 
+    // 巨型狂暴使用的数组
+    g_iGrappling[zombie] = -1;
+
     // 共用数组
     g_bIsSkillUsed[zombie] = false;
     g_iMaxHealth[zombie] = GetEntProp(zombie, Prop_Data, "m_iHealth");
@@ -54,6 +57,12 @@ public void Han_OnZombieDeath(int zombie, int killer)
         RepeatTask3[zombie] = INVALID_HANDLE;
     }
 
+    if (RepeatTask4[zombie] != INVALID_HANDLE)
+    {
+        CloseHandle(RepeatTask4[zombie]);
+        RepeatTask4[zombie] = INVALID_HANDLE;
+    }
+
     // 僵尸种类分支
     if (IsSameName(zombie, ZOMBIE_EXPLODE))
     {
@@ -79,6 +88,16 @@ public void Han_OnZombieDeath(int zombie, int killer)
             SetEntityRenderMode(AnimEnt, RENDER_NORMAL);
             SetEntityRenderFx(AnimEnt, RENDERFX_NONE);
             SetEntityRenderColor(AnimEnt, 255, 255, 255, 255);
+        }
+    }
+    else if (IsSameName(zombie, BOSS_PANGZI))
+    {
+        if (g_iGrappling[zombie] != -1 && IsFakeClient(g_iGrappling[zombie]))      // 保证作用于Bot的负面效果及时清理
+        {
+            CloseHandle(RepeatTask5[g_iGrappling[zombie]]);
+            RepeatTask5[g_iGrappling[zombie]] = INVALID_HANDLE;
+
+            EndGrapple(zombie, g_iGrappling[zombie]);
         }
     }
     // else if (IsSameName(zombie, ZOMBIE_BUTCHER))
@@ -159,6 +178,20 @@ public void Han_OnZombieHurt(int zombie, int attacker)
                 InitFlyingState(zombie);
                 RepeatTask3[zombie] = CreateTimer(0.0, Timer_ZombieFlyingThink, zombie, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
             }
+        }
+    }
+    else if (IsSameName(zombie, BOSS_PANGZI) && !g_bIsSkillUsed[zombie])
+    {
+        if (GetRandomInt(1, 3) == 1)   // 33% 概率
+        {
+            g_bIsSkillUsed[zombie] = true;
+
+            Han_SetCustomAnimation(zombie, "run_upper_knife", ChargeDuration);
+            ProtectZombie(zombie, ChargeDuration);
+            CreateCharge(zombie, attacker);      // 冲刺+擒抱的逻辑
+            // CreateTimer(ChargeDuration + ChargeCDTime, Timer_SkillEnd, zombie);   // 应该擒抱完后再计CD
+
+            CPrintToChat(attacker, "{green}[华仔] {red}小心，%s向你冲过来了！", ZombieName);
         }
     }
 }
