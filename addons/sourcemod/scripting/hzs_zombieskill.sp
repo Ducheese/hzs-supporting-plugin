@@ -35,48 +35,58 @@ public void OnPluginStart()
     // 获取NPC在追随什么目标
     g_iLeaderOffset = FindSendPropInfo("CHostage", "m_leader");
 
-    // 玩家相关数组初始化
+    // 玩家相关数组初始化（不爽的位置）
     for (int i = 1; i <= MaxClients; i++)
     {
         g_iZombieCall[i] = g_iZombiePull[i] = -1;
-        g_bIsStuck[i] = g_bIsDisorder[i] = false;
+        g_bIsStuck[i] = g_bIsInvert[i] = false;
 
         g_bIsGrappled[i] = false;
         g_iUsePressCount[i] = 0;
         g_iLastButtons[i] = -1;
+
+        if (RepeatTask5[i] != INVALID_HANDLE)
+        {
+            CloseHandle(RepeatTask5[i]);
+            RepeatTask5[i] = INVALID_HANDLE;
+        }
+
+        if (RepeatTask6[i] != INVALID_HANDLE)
+        {
+            CloseHandle(RepeatTask6[i]);
+            RepeatTask6[i] = INVALID_HANDLE;
+        }
     }
 
-    // 贴图缓存
-    // PrecacheModel("particle/particle_smokegrenade.vmt", true);           // 迷雾僵尸所用的烟雾贴图，不用预缓存
+    // 模型预缓存
+    g_iBeamSprite = PrecacheModel("materials/sprites/physbeam.vmt", true);	       // 辅助线
+    g_iZombieTrap = PrecacheModel("models/heavyzombietrap/zombitrap.mdl", true);   // 鬼手陷阱
 
-    // 模型缓存
-    PrecacheModel("models/heavyzombietrap/zombitrap.mdl", true);          // 憎恶屠夫鬼手陷阱
-
-    // 特殊僵尸技能音频缓存
+    // 音频预缓存
     PrecacheSound(SFX_SMOKE1, true);
     PrecacheSound(SFX_SMOKE2, true);
     PrecacheSound(SFX_EXPLODE1, true);
     PrecacheSound(SFX_EXPLODE2, true);
     PrecacheSound(SFX_KNOCKBACK, true);
-    PrecacheSound(SFX_STUCK, true);
-    PrecacheSound(SFX_DISORDER, true);
+    PrecacheSound(SFX_BUTCHER, true);
+    PrecacheSound(SFX_WITCH, true);
 
-    // BOSS安哥拉技能音频缓存
-    PrecacheSound(SFX_PULL, true);
-    PrecacheSound(SFX_BREATH_PULL, true);
+    // 音频预缓存（BOSS安哥拉）
+    PrecacheSound(SFX_PULL1, true);
+    PrecacheSound(SFX_PULL2, true);
     PrecacheSound(SFX_SMASH, true);
     PrecacheSound(SFX_SWING, true);
     PrecacheSound(SFX_CALL, true);
-    PrecacheSound(SFX_BREATH_HEAL_ING, true);
-    PrecacheSound(SFX_BREATH_HEAL_FULL, true);
-    PrecacheSound(SFX_BREATH_HEAL_FAIL, true);
+    PrecacheSound(SFX_HEAL1, true);
+    PrecacheSound(SFX_HEAL2, true);
+    PrecacheSound(SFX_HEAL3, true);
     PrecacheSound(SFX_FLY, true);
     PrecacheSound(SFX_POISON, true);
 
-    // BOSS胖子技能音频缓存
-    PrecacheSound(SFX_CHARGE_HOWL, true);
-    PrecacheSound(SFX_CHARGE_SHAKE, true);
-    PrecacheSound(SFX_GRAPPLE_HURT, true);
+    // 音频预缓存（BOSS巨型狂暴形态僵尸）
+    PrecacheSound(SFX_CHARGE1, true);
+    PrecacheSound(SFX_CHARGE2, true);
+    PrecacheSound(SFX_GRAPPLE, true);
 }
 
 public void OnMapStart()
@@ -86,7 +96,7 @@ public void OnMapStart()
 
 public void OnClientPutInServer(int client)
 {
-    GetClientName(client, g_ClientName[client], 32);
+    GetClientName(client, g_ClientName[client], 32);   // 伪复活插件会更换玩家名字，所以要提前保存
 }
 
 public void OnClientDisconnect_Post(int client)
@@ -107,16 +117,18 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
         {
             vel[0] = vel[1] = vel[2] = 0.0;     // 其实可以不管垂直速度，禁止跳即可
 
-            if (buttons & IN_JUMP)
-                buttons &= ~IN_JUMP;      // 禁止跳跃
+            buttons &= ~IN_JUMP;
         }
-        else if (g_bIsDisorder[client])     // 应当增加一个视觉反馈
+        else if (g_bIsInvert[client])     // 应当增加一个视觉反馈
         {
             vel[0] = -vel[0];
             vel[1] = -vel[1];
             vel[2] = -vel[2];
+
+            SetHudTextParams(0.50, 0.45, 0.1, 255, 0, 0, 255);
+            ShowHudText(client, -1, "  方向键取反了!!!");
         }
-        else if (g_iZombiePull[client] != -1 && !IsZeroPostion(client))                              // 在0 0 0点等待复活的人类不会被吸
+        else if (g_iZombiePull[client] != -1 && !IsZeroPostion(client))     // 在0 0 0点等待复活的人类不会被吸
         {
             int zombie = g_iZombiePull[client];
 
@@ -126,9 +138,9 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
             float pos[3];
             GetEntPropVector(zombie, Prop_Send, "m_vecOrigin", pos);
 
-            CreateKnockback(pos, client, view_as<float>({-PullPower, -PullPower, -PullPower}));      // 击退的反方向就是吸力
+            CreateKnockback(pos, client, view_as<float>({-ANGELA_PULL_POWER, -ANGELA_PULL_POWER, -ANGELA_PULL_POWER}));      // 击退的反方向就是吸力
 
-            EmitSoundToClient(client, SFX_PULL, _, SNDCHAN_STATIC, SNDLEVEL_NORMAL, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);    // 这样写，音效比较有魄力
+            EmitSoundToClient(client, SFX_PULL1, _, SNDCHAN_STATIC, SNDLEVEL_NORMAL, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);    // 这样写，音效比较有魄力
         }
         else if (g_bIsGrappled[client])
         {
@@ -154,7 +166,7 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
     // 呼唤僵尸攻击人类，死后处理（草，忘了真死的情况）
     if (g_iZombieCall[client] != -1 && (IsZeroPostion(client) || !IsPlayerAlive(client)))
     {
-        g_iZombieCall[client] = -1;            // 防止这里重复执行
+        g_iZombieCall[client] = -1;         // 防止这里重复执行
 
         int count = Han_GetZombieCount();
 
@@ -169,7 +181,7 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
                     continue;
                 }
 
-                Han_UnlockZombie(zombie);      // 解除所有僵尸的强制目标
+                Han_UnlockZombie(zombie);   // 解除所有僵尸的强制目标
             }
         }
     }
