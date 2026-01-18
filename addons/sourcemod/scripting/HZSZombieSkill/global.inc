@@ -22,10 +22,12 @@
 // 技能参数（非BOSS特殊僵尸）
 #define SMOKE_FADETIME          5.0        // 几秒后迷雾僵尸的烟开始消散（秒）
 #define SMOKE_KILLTIME          10.0       // 几秒后迷雾僵尸的烟彻底消散（秒）
+#define EXPLODE_TIME            1.5        // 延时1.5秒自爆，最好把自爆僵尸的"death_anim"改成"ragdoll:1.5"，这样才能站着自爆
 #define EXPLODE_DAMAGE         "100"       // 自爆僵尸爆炸的伤害震级，和伤害大小正相关（字符）
 #define EXPLODE_RANGE          "300"       // 自爆僵尸爆炸的伤害范围（字符）
 #define HEAL_DAMAGE             50         // 巫蛊术尸群疗时每秒恢复的血量
 #define HEAL_RANGE              5.0        // 巫蛊术尸群疗的作用范围（单位：米）
+#define HEAL_INTERVAL           1.0        // 巫蛊术尸群疗的时间间隔（秒）
 #define DEIMOS_KNOCKPOWER       500.0      // 恶魔猎手击飞玩家的力度（水平和垂直同力度）
 #define BUTCHER_STUCKTIME       3.0        // 憎恶屠夫用鬼手把人控制住的持续时间（秒）
 #define WITCH_INVERTTIME        3.0        // 嗜血女巫让人操作取反的持续时间（秒）
@@ -101,13 +103,13 @@ bool g_bIsSkillUsed[2048];                // 技能是否使用过，或者是�
 int g_iZombieCall[MAXPLAYERS+1];          // 玩家是否被集中攻击，记录的是安哥拉的实体号
 int g_iZombiePull[MAXPLAYERS+1];          // 玩家是否被安哥拉所吸，记录的是安哥拉的实体号
 int g_iBulletCount[2048];                 // 安哥拉在自愈期间所受的累计子弹数
-Handle RepeatTask[2048] = {INVALID_HANDLE,...};      // 实现治疗效果所用的timer，巫蛊术尸和安哥拉共用
-Handle RepeatTask2[2048] = {INVALID_HANDLE,...};     // 实现吸力所用的timer
+Handle g_hHeal[2048] = {INVALID_HANDLE,...};      // 实现治疗效果所用的timer，巫蛊术尸和安哥拉共用
+Handle g_hPull[2048] = {INVALID_HANDLE,...};      // 实现吸力所用的timer
 
 // 技能状态管理（BOSS安哥拉飞行逻辑 H-AN提供）
 float g_flLastFlyEnd[2048];               // 记录上一次飞行开始/结束的时间（飞行CD逻辑）
 float g_flLastFlySound[2048];             // 记录上一次扇翅膀音效的时间，用于播放音效
-Handle RepeatTask3[2048] = {INVALID_HANDLE,...};     // 实现飞行所用的timer
+Handle g_hFly[2048] = {INVALID_HANDLE,...};       // 实现飞行所用的timer
 
 enum BossState
 {
@@ -128,6 +130,6 @@ bool g_bIsGrappled[MAXPLAYERS+1];         // 玩家是否被擒抱
 int g_iUsePressCount[MAXPLAYERS+1];       // 玩家在1秒内按E的次数
 int g_iLastButtons[MAXPLAYERS+1];         // 玩家上一帧的按键（因为按下松开才算一次）
 int g_iGrappling[2048];                   // 僵尸擒抱对象，记录玩家的实体号
-Handle RepeatTask4[2048] = {INVALID_HANDLE,...};            // 实现冲锋所用的timer
-Handle RepeatTask5[MAXPLAYERS+1] = {INVALID_HANDLE, ...};   // 实现擒抱伤害所用的timer
-Handle RepeatTask6[MAXPLAYERS+1] = {INVALID_HANDLE, ...};   // 实现挣脱擒抱所用的timer
+Handle g_hCharge[2048] = {INVALID_HANDLE,...};              // 实现冲锋所用的timer
+Handle g_hGrapple[MAXPLAYERS+1] = {INVALID_HANDLE, ...};    // 实现擒抱伤害所用的timer
+Handle g_hEscape[MAXPLAYERS+1] = {INVALID_HANDLE, ...};     // 实现挣脱擒抱所用的timer

@@ -4,31 +4,44 @@
 
 public void Han_OnZombieCreated(int zombie)
 {
-    // 安哥拉使用的数组
-    g_iBulletCount[zombie] = 0;
-
-    // 巨型狂暴使用的数组
-    g_iGrappling[zombie] = -1;
-
-    // 共用数组
-    g_bIsSkillUsed[zombie] = false;
-    g_iMaxHealth[zombie] = GetEntProp(zombie, Prop_Data, "m_iHealth");
+    initZombieState(zombie);
 
     // 僵尸种类分支
-    if (IsSameName(zombie, ZOMBIE_GHOST))
+    if (IsSameName(zombie, ZOMBIE_SMOKE))
     {
-        int AnimEnt = FindAnimEntity(zombie);
-
-        if (AnimEnt != -1)
-        {
-            SetEntityRenderMode(AnimEnt, RENDER_TRANSCOLOR);
-            SetEntityRenderFx(AnimEnt, RENDERFX_STROBE_FAST);     // https://sm.alliedmods.net/api/index.php?fastload=show&id=827&
-            SetEntityRenderColor(AnimEnt, 0, 0, 0, 1);
-        }
+        // 什么都不做
+    }
+    else if (IsSameName(zombie, ZOMBIE_EXPLODE))
+    {
+        // 什么都不做
     }
     else if (IsSameName(zombie, ZOMBIE_HEAL))
     {
-        RepeatTask[zombie] = CreateTimer(1.0, Timer_ZombieHealing, zombie, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
+        g_hHeal[zombie] = CreateTimer(HEAL_INTERVAL, Timer_RepeatHealing, zombie, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
+    }
+    else if (IsSameName(zombie, ZOMBIE_DEIMOS))
+    {
+        // 什么都不做
+    }
+    else if (IsSameName(zombie, ZOMBIE_BUTCHER))
+    {
+        // 什么都不做
+    }
+    else if (IsSameName(zombie, ZOMBIE_WITCH))
+    {
+        // 什么都不做
+    }
+    else if (IsSameName(zombie, ZOMBIE_GHOST))
+    {
+        SetInvisible(zombie);
+    }
+    else if (IsSameName(zombie, BOSS_ANGELA))
+    {
+        // 什么都不做
+    }
+    else if (IsSameName(zombie, BOSS_PANGZI))
+    {
+        // 什么都不做
     }
 }
 
@@ -38,76 +51,76 @@ public void Han_OnZombieCreated(int zombie)
 
 public void Han_OnZombieDeath(int zombie, int killer)
 {
-    // 计时器关闭
-    if (RepeatTask[zombie] != INVALID_HANDLE)
-    {
-        CloseHandle(RepeatTask[zombie]);
-        RepeatTask[zombie] = INVALID_HANDLE;
-    }
-
-    if (RepeatTask2[zombie] != INVALID_HANDLE)
-    {
-        CloseHandle(RepeatTask2[zombie]);
-        RepeatTask2[zombie] = INVALID_HANDLE;
-    }
-
-    if (RepeatTask3[zombie] != INVALID_HANDLE)
-    {
-        CloseHandle(RepeatTask3[zombie]);
-        RepeatTask3[zombie] = INVALID_HANDLE;
-    }
-
-    if (RepeatTask4[zombie] != INVALID_HANDLE)
-    {
-        CloseHandle(RepeatTask4[zombie]);
-        RepeatTask4[zombie] = INVALID_HANDLE;
-    }
-
     // 僵尸种类分支
-    if (IsSameName(zombie, ZOMBIE_EXPLODE))
+    if (IsSameName(zombie, ZOMBIE_SMOKE))
     {
-        float pos[3];
-        GetEntPropVector(zombie, Prop_Send, "m_vecOrigin", pos);
-
-        DataPack pack = new DataPack();
-        pack.WriteCell(zombie);
-        pack.WriteCell(pos[0]);
-        pack.WriteCell(pos[1]);
-        pack.WriteCell(pos[2]);
-
-        // 死了1.5秒后，不见得m_vecOrigin属性值还在，所以用pack包装了下参数
-        CreateTimer(1.5, Timer_CreateExplosion, pack);
-        EmitAmbientSound(SFX_EXPLODE1, pos, _, SNDLEVEL_GUNFIRE, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
+        // 什么都不做
     }
-    else if (IsSameName(zombie, ZOMBIE_GHOST))                // 死的时候恢复渲染方式，显形
+    else if (IsSameName(zombie, ZOMBIE_EXPLODE))
     {
-        int AnimEnt = FindAnimEntity(zombie);
-
-        if (AnimEnt != -1)
+        StartExplosion(zombie);
+    }
+    else if (IsSameName(zombie, ZOMBIE_HEAL))
+    {
+        if (g_hHeal[zombie] != INVALID_HANDLE)
         {
-            SetEntityRenderMode(AnimEnt, RENDER_NORMAL);
-            SetEntityRenderFx(AnimEnt, RENDERFX_NONE);
-            SetEntityRenderColor(AnimEnt, 255, 255, 255, 255);
+            CloseHandle(g_hHeal[zombie]);
+            g_hHeal[zombie] = INVALID_HANDLE;
+        }
+    }
+    else if (IsSameName(zombie, ZOMBIE_DEIMOS))
+    {
+        // 什么都不做
+    }
+    else if (IsSameName(zombie, ZOMBIE_BUTCHER))
+    {
+        // 暂时什么都不做
+    }
+    else if (IsSameName(zombie, ZOMBIE_WITCH))
+    {
+        // 暂时什么都不做
+    }
+    else if (IsSameName(zombie, ZOMBIE_GHOST))
+    {
+        SetVisible(zombie);    // 死的时候恢复渲染方式，显形
+    }
+    else if (IsSameName(zombie, BOSS_ANGELA))
+    {
+        // 如果吸力过程不无敌
+        if (g_hPull[zombie] != INVALID_HANDLE)
+        {
+            CloseHandle(g_hPull[zombie]);
+            g_hPull[zombie] = INVALID_HANDLE;
+        }
+
+        // 如果飞行过程不无敌
+        if (g_hFly[zombie] != INVALID_HANDLE)
+        {
+            CloseHandle(g_hFly[zombie]);
+            g_hFly[zombie] = INVALID_HANDLE;
         }
     }
     else if (IsSameName(zombie, BOSS_PANGZI))
     {
-        if (g_iGrappling[zombie] != -1 && IsFakeClient(g_iGrappling[zombie]))      // 保证作用于Bot的负面效果及时清理
+        // 如果在冲锋就停止冲锋句柄
+        if (g_hCharge[zombie] != INVALID_HANDLE)
         {
-            CloseHandle(RepeatTask5[g_iGrappling[zombie]]);
-            RepeatTask5[g_iGrappling[zombie]] = INVALID_HANDLE;
+            CloseHandle(g_hCharge[zombie]);
+            g_hCharge[zombie] = INVALID_HANDLE;
+        }
 
-            EndGrapple(zombie, g_iGrappling[zombie]);
+        int victim = g_iGrappling[zombie];
+
+        // 如果有擒抱住人就停止擒抱句柄和连按句柄
+        if (victim != -1)
+        {
+            CloseHandle(g_hGrapple[victim]);
+            g_hGrapple[victim] = INVALID_HANDLE;
+
+            CloseHandle(g_hEscape[victim]);
+            g_hEscape[victim] = INVALID_HANDLE;
         }
     }
-    // else if (IsSameName(zombie, ZOMBIE_BUTCHER))
-    // {
-    //     // 死后取消影响？
-    // }
-    // else if (IsSameName(zombie, ZOMBIE_WITCH))
-    // {
-    //     // 死后取消影响？
-    // }
 }
 
 //========================================================================================
@@ -127,14 +140,33 @@ public void Han_OnZombieHurt(int zombie, int attacker)
     if (IsSameName(zombie, ZOMBIE_SMOKE) && !g_bIsSkillUsed[zombie])
     {
         g_bIsSkillUsed[zombie] = true;
-
-        CreateSmoke(pos);
+        StartSmoke(zombie);
     }
-    else if (IsSameName(zombie, "神秘胖子僵尸"))
+    else if (IsSameName(zombie, ZOMBIE_EXPLODE))
     {
-        SetEntProp(attacker, Prop_Data, "m_iHealth", GetEntProp(attacker, Prop_Data, "m_iHealth") + 1 < MAX_HEALTH ? GetEntProp(attacker, Prop_Data, "m_iHealth") + 1 : MAX_HEALTH);
-        SetEntProp(attacker, Prop_Send, "m_iAccount", GetEntProp(attacker, Prop_Send, "m_iAccount") + 100 < MAX_MONEY ? GetEntProp(attacker, Prop_Send, "m_iAccount") + 100 : MAX_MONEY);
+        // 什么都不做
     }
+    else if (IsSameName(zombie, ZOMBIE_HEAL))
+    {
+        // 什么都不做
+    }
+    else if (IsSameName(zombie, ZOMBIE_DEIMOS))
+    {
+        // 什么都不做
+    }
+    else if (IsSameName(zombie, ZOMBIE_BUTCHER))
+    {
+        // 什么都不做
+    }
+    else if (IsSameName(zombie, ZOMBIE_WITCH))
+    {
+        // 什么都不做
+    }
+    else if (IsSameName(zombie, ZOMBIE_GHOST))
+    {
+        // 什么都不做
+    }
+    // 这里还没改
     else if (IsSameName(zombie, BOSS_ANGELA))
     {
         if (RepeatTask[zombie] != INVALID_HANDLE)
@@ -194,6 +226,13 @@ public void Han_OnZombieHurt(int zombie, int attacker)
             CPrintToChat(attacker, "{green}[华仔] {red}小心，%s向你冲过来了！", ZombieName);
         }
     }
+    // 这里还没改
+    else if (IsSameName(zombie, "神秘胖子僵尸"))
+    {
+        GiveHealth(attacker, 1);
+        GiveArmor(attacker, 1);
+        GiveMoney(attacker, 100);
+    }
 }
 
 //========================================================================================
@@ -210,37 +249,47 @@ public void Han_OnZombieAttack(int zombie, int victim)
     GetEntPropVector(zombie, Prop_Send, "m_vecOrigin", pos);
     
     // 僵尸种类分支
-    if (IsSameName(zombie, ZOMBIE_DEIMOS))
+    if (IsSameName(zombie, ZOMBIE_SMOKE))
     {
-        g_bIsStuck[victim] = false;   // 解除憎恶屠夫的控制
-
-        Shake(victim, 30.0, 10.0, 3.0);
-        CreateKnockback(pos, victim, view_as<float>({KnockBackPower, KnockBackPower, KnockBackPower}));
-
-        EmitSoundToClient(victim, SFX_KNOCKBACK, _, SNDCHAN_STATIC, SNDLEVEL_NORMAL, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
-        CPrintToChat(victim, "{green}[华仔] {red}你被%s击飞了！", ZombieName);
+        // 什么都不做
     }
-    else if (IsSameName(zombie, ZOMBIE_BUTCHER) && !g_bIsSkillUsed[zombie] && !g_bIsStuck[victim] && g_iZombiePull[victim] == -1)
+    else if (IsSameName(zombie, ZOMBIE_EXPLODE))
+    {
+        // 什么都不做
+    }
+    else if (IsSameName(zombie, ZOMBIE_HEAL))
+    {
+        // 什么都不做
+    }
+    else if (IsSameName(zombie, ZOMBIE_DEIMOS))
+    {
+        g_bIsStuck[victim] = false;        // 解除憎恶屠夫的控制
+        g_bIsInvert[victim] = false;       // 解除嗜血女巫的干扰
+        StartKnockback(zombie, victim);
+    }
+    else if (IsSameName(zombie, ZOMBIE_BUTCHER) 
+        && !g_bIsSkillUsed[zombie]         // 一次性技能
+        && !g_bIsStuck[victim]             // 一个人不会同时中多个陷阱
+    )
     {
         g_bIsSkillUsed[zombie] = true;
         g_bIsStuck[victim] = true;
-
-        CreateTrap(victim);
-        CreateTimer(StuckTime, Timer_DeStuck, victim);
-
-        EmitSoundToClient(victim, SFX_STUCK, _, SNDCHAN_STATIC, SNDLEVEL_NORMAL, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
-        CPrintToChat(victim, "{green}[华仔] {red}你被%s的鬼手控制住了！", ZombieName);
+        StartTrap(zombie, victim);
     }
-    else if (IsSameName(zombie, ZOMBIE_WITCH) && !g_bIsSkillUsed[zombie] && !g_bIsDisorder[victim])
+    else if (IsSameName(zombie, ZOMBIE_WITCH) 
+        && !g_bIsSkillUsed[zombie] 
+        && !g_bIsInvert[victim]
+    )
     {
         g_bIsSkillUsed[zombie] = true;
-        g_bIsDisorder[victim] = true;
-
-        CreateTimer(DisorderTime, Timer_DeDisorder, victim);
-
-        EmitSoundToClient(victim, SFX_DISORDER, _, SNDCHAN_STATIC, SNDLEVEL_NORMAL, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
-        CPrintToChat(victim, "{green}[华仔] {red}你中了%s的幻术！", ZombieName);
+        g_bIsInvert[victim] = true;
+        StartInvert(zombie, victim);
     }
+    else if (IsSameName(zombie, ZOMBIE_GHOST))
+    {
+        // 什么都不做
+    }
+    // 这里还没改
     else if (IsSameName(zombie, BOSS_ANGELA) && !g_bIsSkillUsed[zombie])
     {
         int rand = GetRandomInt(1, 3);
@@ -286,29 +335,45 @@ public void Han_OnZombieAttack(int zombie, int victim)
             CreateTimer(3.0, Timer_SkillEnd, zombie);
         }
     }
+    else if (IsSameName(zombie, BOSS_PANGZI))
+    {
+        // 什么都不做
+    }
+    // 这里还没改
 }
 
 //========================================================================================
 // TIMER
 //========================================================================================
 
-public Action Timer_SkillEnd(Handle timer, int entity)
+public Action Timer_SkillEnd(Handle timer, int zombie)
 {
-    g_bIsSkillUsed[entity] = false;
+    g_bIsSkillUsed[zombie] = false;
 
     return Plugin_Continue;
 }
 
-public Action Timer_DeStuck(Handle timer, int client)
+public Action Timer_DeInvert(Handle timer, int client)
 {
-    g_bIsStuck[client] = false;
+    g_bIsInvert[client] = false;
 
     return Plugin_Continue;
 }
 
-public Action Timer_DeDisorder(Handle timer, int client)
-{
-    g_bIsDisorder[client] = false;
+//========================================================================================
+//========================================================================================
 
-    return Plugin_Continue;
+void initZombieState(zombie)
+{
+    // 共用数组
+    g_bIsSkillUsed[zombie] = false;
+    g_iMaxHealth[zombie] = GetEntProp(zombie, Prop_Data, "m_iHealth");
+
+    // 安哥拉使用的数组
+    g_iBulletCount[zombie] = 0;
+    g_flLastFlyEnd[zombie] = 0.0;
+    g_flLastFlySound[zombie] = 0.0;
+
+    // 巨型狂暴使用的数组
+    g_iGrappling[zombie] = -1;
 }

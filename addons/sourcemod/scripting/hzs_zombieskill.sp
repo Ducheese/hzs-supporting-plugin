@@ -155,16 +155,16 @@ void initHumanState()
         g_iUsePressCount[i] = 0;
         g_iLastButtons[i] = -1;
 
-        if (RepeatTask5[i] != INVALID_HANDLE)
+        if (g_hGrapple[i] != INVALID_HANDLE)
         {
-            CloseHandle(RepeatTask5[i]);
-            RepeatTask5[i] = INVALID_HANDLE;
+            CloseHandle(g_hGrapple[i]);
+            g_hGrapple[i] = INVALID_HANDLE;
         }
 
-        if (RepeatTask6[i] != INVALID_HANDLE)
+        if (g_hEscape[i] != INVALID_HANDLE)
         {
-            CloseHandle(RepeatTask6[i]);
-            RepeatTask6[i] = INVALID_HANDLE;
+            CloseHandle(g_hEscape[i]);
+            g_hEscape[i] = INVALID_HANDLE;
         }
     }
 }
