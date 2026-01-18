@@ -35,58 +35,9 @@ public void OnPluginStart()
     // 获取NPC在追随什么目标
     g_iLeaderOffset = FindSendPropInfo("CHostage", "m_leader");
 
-    // 玩家相关数组初始化（不爽的位置）
-    for (int i = 1; i <= MaxClients; i++)
-    {
-        g_iZombieCall[i] = g_iZombiePull[i] = -1;
-        g_bIsStuck[i] = g_bIsInvert[i] = false;
-
-        g_bIsGrappled[i] = false;
-        g_iUsePressCount[i] = 0;
-        g_iLastButtons[i] = -1;
-
-        if (RepeatTask5[i] != INVALID_HANDLE)
-        {
-            CloseHandle(RepeatTask5[i]);
-            RepeatTask5[i] = INVALID_HANDLE;
-        }
-
-        if (RepeatTask6[i] != INVALID_HANDLE)
-        {
-            CloseHandle(RepeatTask6[i]);
-            RepeatTask6[i] = INVALID_HANDLE;
-        }
-    }
-
-    // 模型预缓存
-    g_iBeamSprite = PrecacheModel("materials/sprites/physbeam.vmt", true);	       // 辅助线
-    g_iZombieTrap = PrecacheModel("models/heavyzombietrap/zombitrap.mdl", true);   // 鬼手陷阱
-
-    // 音频预缓存
-    PrecacheSound(SFX_SMOKE1, true);
-    PrecacheSound(SFX_SMOKE2, true);
-    PrecacheSound(SFX_EXPLODE1, true);
-    PrecacheSound(SFX_EXPLODE2, true);
-    PrecacheSound(SFX_KNOCKBACK, true);
-    PrecacheSound(SFX_BUTCHER, true);
-    PrecacheSound(SFX_WITCH, true);
-
-    // 音频预缓存（BOSS安哥拉）
-    PrecacheSound(SFX_PULL1, true);
-    PrecacheSound(SFX_PULL2, true);
-    PrecacheSound(SFX_SMASH, true);
-    PrecacheSound(SFX_SWING, true);
-    PrecacheSound(SFX_CALL, true);
-    PrecacheSound(SFX_HEAL1, true);
-    PrecacheSound(SFX_HEAL2, true);
-    PrecacheSound(SFX_HEAL3, true);
-    PrecacheSound(SFX_FLY, true);
-    PrecacheSound(SFX_POISON, true);
-
-    // 音频预缓存（BOSS巨型狂暴形态僵尸）
-    PrecacheSound(SFX_CHARGE1, true);
-    PrecacheSound(SFX_CHARGE2, true);
-    PrecacheSound(SFX_GRAPPLE, true);
+    initHumanState();
+    initModelCache();
+    initSoundCache();
 }
 
 public void OnMapStart()
@@ -187,4 +138,69 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
     }
 
     return Plugin_Continue;
+}
+
+//========================================================================================
+//========================================================================================
+
+void initHumanState()
+{
+    // 玩家相关数组初始化（不爽的位置）
+    for (int i = 1; i <= MaxClients; i++)
+    {
+        g_iZombieCall[i] = g_iZombiePull[i] = -1;
+        g_bIsStuck[i] = g_bIsInvert[i] = false;
+
+        g_bIsGrappled[i] = false;
+        g_iUsePressCount[i] = 0;
+        g_iLastButtons[i] = -1;
+
+        if (RepeatTask5[i] != INVALID_HANDLE)
+        {
+            CloseHandle(RepeatTask5[i]);
+            RepeatTask5[i] = INVALID_HANDLE;
+        }
+
+        if (RepeatTask6[i] != INVALID_HANDLE)
+        {
+            CloseHandle(RepeatTask6[i]);
+            RepeatTask6[i] = INVALID_HANDLE;
+        }
+    }
+}
+
+void initModelCache()
+{
+    // 模型预缓存
+    g_iBeamSprite = PrecacheModel("materials/sprites/physbeam.vmt", true);	       // 辅助线
+    g_iZombieTrap = PrecacheModel("models/heavyzombietrap/zombitrap.mdl", true);   // 鬼手陷阱
+}
+
+void initSoundCache()
+{
+    // 音频预缓存
+    PrecacheSound(SFX_SMOKE1, true);
+    PrecacheSound(SFX_SMOKE2, true);
+    PrecacheSound(SFX_EXPLODE1, true);
+    PrecacheSound(SFX_EXPLODE2, true);
+    PrecacheSound(SFX_KNOCKBACK, true);
+    PrecacheSound(SFX_BUTCHER, true);
+    PrecacheSound(SFX_WITCH, true);
+
+    // 音频预缓存（BOSS安哥拉）
+    PrecacheSound(SFX_PULL1, true);
+    PrecacheSound(SFX_PULL2, true);
+    PrecacheSound(SFX_SMASH, true);
+    PrecacheSound(SFX_SWING, true);
+    PrecacheSound(SFX_CALL, true);
+    PrecacheSound(SFX_HEAL1, true);
+    PrecacheSound(SFX_HEAL2, true);
+    PrecacheSound(SFX_HEAL3, true);
+    PrecacheSound(SFX_FLY, true);
+    PrecacheSound(SFX_POISON, true);
+
+    // 音频预缓存（BOSS巨型狂暴形态僵尸）
+    PrecacheSound(SFX_CHARGE1, true);
+    PrecacheSound(SFX_CHARGE2, true);
+    PrecacheSound(SFX_GRAPPLE, true);
 }
