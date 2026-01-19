@@ -35,9 +35,9 @@ public void OnPluginStart()
     // 获取NPC在追随什么目标
     g_iLeaderOffset = FindSendPropInfo("CHostage", "m_leader");
 
-    initHumanState();
-    initModelCache();
-    initSoundCache();
+    InitHumanState();
+    InitModelCache();
+    InitSoundCache();
 }
 
 public void OnMapStart()
@@ -146,40 +146,32 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 //========================================================================================
 //========================================================================================
 
-void initHumanState()
+void InitHumanState()
 {
     // 玩家相关数组初始化（不爽的位置）
     for (int i = 1; i <= MaxClients; i++)
     {
         g_iZombieCall[i] = g_iZombiePull[i] = -1;
+        
         g_bIsStuck[i] = g_bIsInvert[i] = false;
 
         g_bIsGrappled[i] = false;
+
         g_iUsePressCount[i] = 0;
         g_iLastButtons[i] = -1;
 
-        if (g_hGrapple[i] != INVALID_HANDLE)
-        {
-            CloseHandle(g_hGrapple[i]);
-            g_hGrapple[i] = INVALID_HANDLE;
-        }
-
-        if (g_hEscape[i] != INVALID_HANDLE)
-        {
-            CloseHandle(g_hEscape[i]);
-            g_hEscape[i] = INVALID_HANDLE;
-        }
+        ClearGrappleHandles(i);
     }
 }
 
-void initModelCache()
+void InitModelCache()
 {
     // 模型预缓存
     g_iBeamSprite = PrecacheModel("materials/sprites/physbeam.vmt", true);	       // 辅助线
     g_iZombieTrap = PrecacheModel("models/heavyzombietrap/zombitrap.mdl", true);   // 鬼手陷阱
 }
 
-void initSoundCache()
+void InitSoundCache()
 {
     // 音频预缓存
     PrecacheSound(SFX_SMOKE1, true);
@@ -191,11 +183,11 @@ void initSoundCache()
     PrecacheSound(SFX_WITCH, true);
 
     // 音频预缓存（BOSS安哥拉）
+    PrecacheSound(SFX_CALL, true);
     PrecacheSound(SFX_PULL1, true);
     PrecacheSound(SFX_PULL2, true);
     PrecacheSound(SFX_SMASH, true);
     PrecacheSound(SFX_SWING, true);
-    PrecacheSound(SFX_CALL, true);
     PrecacheSound(SFX_HEAL1, true);
     PrecacheSound(SFX_HEAL2, true);
     PrecacheSound(SFX_HEAL3, true);

@@ -41,12 +41,12 @@ public Action Timer_RemoveProtect(Handle timer, int zombie)
     if (!IsValidEntity(zombie) || GetEntProp(zombie, Prop_Data, "m_iHealth") <= 0)
     {
         KillTimer(timer);
-        return Plugin_Continue;
+        return Plugin_Stop;
     }
 
     SetEntProp(zombie, Prop_Data, "m_takedamage", 2, 1);
 
-    return Plugin_Continue;
+    return Plugin_Stop;
 }
 
 //========================================================================================
@@ -116,7 +116,32 @@ public Action Timer_DeleteParticle(Handle timer, int entity)
         }
     }
 
-    return Plugin_Continue;
+    return Plugin_Stop;
+}
+
+//========================================================================================
+// 粒子生成和消灭 来自CSS Blood.sp
+//========================================================================================
+
+void GetDistanceToGround(int entity, float &dist, float fRayEndPoint[3])
+{
+    float fRayStartPoint[3];
+    GetEntPropVector(entity, Prop_Send, "m_vecOrigin", fRayStartPoint);
+
+    Handle trace = TR_TraceRayFilterEx(fRayStartPoint, {90.0, 0.0, 0.0}, MASK_PLAYERSOLID, RayType_Infinite, TraceEntityFilter_NotClient, entity);      // 方向向下
+    TR_GetEndPosition(fRayEndPoint, trace);
+
+    dist = fRayStartPoint[2] - fRayEndPoint[2];
+}
+
+public bool TraceEntityFilter_NotClient(int entity, int mask, any data)
+{
+    if (entity == data || (entity >= 1 && entity <= MaxClients))     // 忽略自身，以及人类client实体
+    {
+        return false;
+    }
+
+    return true;
 }
 
 //========================================================================================

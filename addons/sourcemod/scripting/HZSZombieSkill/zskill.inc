@@ -4,9 +4,10 @@
 
 void StartSmoke(int zombie)
 {
+    // 普通体型僵尸参考身高（来自[H-AN-CSS]ZombieScenario.sp）
     float pos[3];
     GetEntPropVector(zombie, Prop_Send, "m_vecOrigin", pos);
-    pos[2] += 55.0;     // 普通体型僵尸参考身高（来自[H-AN-CSS]ZombieScenario.sp）
+    pos[2] += 55.0;
 
     // 生成黑烟
     CreateSmoke(pos);
@@ -54,7 +55,7 @@ public Action Timer_StopSmoke(Handle timer, int entity)
         AcceptEntityInput(entity, "TurnOff");        // 烟开始消散
     }
 
-    return Plugin_Continue;
+    return Plugin_Stop;
 }
 
 public Action Timer_KillSmoke(Handle timer, int entity)
@@ -64,7 +65,7 @@ public Action Timer_KillSmoke(Handle timer, int entity)
         AcceptEntityInput(entity, "Kill");           // 烟彻底消散
     }
 
-    return Plugin_Continue;
+    return Plugin_Stop;
 }
 
 //========================================================================================
@@ -125,7 +126,7 @@ public Action Timer_CreateExplosion(Handle timer, DataPack pack)
     // 爆炸音效
     EmitAmbientSound(SFX_EXPLODE2, pos, _, SNDLEVEL_GUNFIRE, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
 
-    return Plugin_Continue;
+    return Plugin_Stop;
 }
 
 //========================================================================================
@@ -262,7 +263,7 @@ public Action Timer_DeStuck(Handle timer, int client)
 {
     g_bIsStuck[client] = false;
 
-    return Plugin_Continue;
+    return Plugin_Stop;
 }
 
 public Action Timer_KillTrap(Handle timer, int entity)
@@ -272,7 +273,7 @@ public Action Timer_KillTrap(Handle timer, int entity)
         AcceptEntityInput(entity, "Kill");
     }
 
-    return Plugin_Continue;
+    return Plugin_Stop;
 }
 
 //========================================================================================
@@ -281,6 +282,7 @@ public Action Timer_KillTrap(Handle timer, int entity)
 
 void StartInvert(int zombie, int victim)
 {
+    // 基础信息
     char ZombieName[32];
     Han_GetZombieName(zombie, ZombieName, sizeof(ZombieName));
 
@@ -298,7 +300,7 @@ public Action Timer_DeInvert(Handle timer, int client)
 {
     g_bIsInvert[client] = false;
 
-    return Plugin_Continue;
+    return Plugin_Stop;
 }
 
 //========================================================================================

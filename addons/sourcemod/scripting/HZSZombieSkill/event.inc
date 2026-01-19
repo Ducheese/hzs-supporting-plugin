@@ -4,7 +4,7 @@
 
 public void Han_OnZombieCreated(int zombie)
 {
-    initZombieState(zombie);
+    InitZombieState(zombie);
 
     // 僵尸种类分支
     if (IsSameName(zombie, ZOMBIE_SMOKE))
@@ -89,14 +89,14 @@ public void Han_OnZombieDeath(int zombie, int killer)
         // 如果吸力过程不无敌
         if (g_hPull[zombie] != INVALID_HANDLE)
         {
-            CloseHandle(g_hPull[zombie]);
+            KillTimer(g_hPull[zombie]);
             g_hPull[zombie] = INVALID_HANDLE;
         }
 
         // 如果飞行过程不无敌
         if (g_hFly[zombie] != INVALID_HANDLE)
         {
-            CloseHandle(g_hFly[zombie]);
+            KillTimer(g_hFly[zombie]);
             g_hFly[zombie] = INVALID_HANDLE;
         }
     }
@@ -162,12 +162,12 @@ public void Han_OnZombieHurt(int zombie, int attacker)
     // 这里还没改
     else if (IsSameName(zombie, BOSS_ANGELA))
     {
-        if (RepeatTask[zombie] != INVALID_HANDLE)
+        if (g_hHeal[zombie] != INVALID_HANDLE)
         {
             g_iBulletCount[zombie]++;
         }
         
-        if (RepeatTask[zombie] == INVALID_HANDLE && !g_bIsSkillUsed[zombie])
+        if (g_hHeal[zombie] == INVALID_HANDLE && !g_bIsSkillUsed[zombie])
         {
             // 30发子弹，至少触发一次技能的概率是45.45%，目前测下来是很合适的值
             int rand = GetRandomInt(1, 50);
@@ -175,17 +175,19 @@ public void Han_OnZombieHurt(int zombie, int attacker)
             // 一半生命值以下会尝试自愈
             if (rand == 1 && GetEntProp(zombie, Prop_Data, "m_iHealth") < g_iMaxHealth[zombie] / 2)
             {
+                // 改成start
                 g_bIsSkillUsed[zombie] = true;
                 g_iBulletCount[zombie] = 0;                                                                                        // 安哥拉在场上可能自愈多次，所以要初始化
 
                 Han_SetZombieTarget(zombie, zombie, 0.0);                                                                          // 安哥拉自愈时杵着不动
-                RepeatTask[zombie] = CreateTimer(1.0, Timer_ZombieSelfHealing, zombie, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);    // 每秒回一定量血，直到被打断或者满血为止
+                g_hHeal[zombie] = CreateTimer(1.0, Timer_ZombieSelfHealing, zombie, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);    // 每秒回一定量血，直到被打断或者满血为止
 
                 CPrintToChatAll("{green}[华仔] {red}%s正在尝试自愈，快集中火力！", ZombieName);
             }
             // 吸力黑洞，BOSS容易被集火而死
             else if (rand == 2 && GetEntProp(zombie, Prop_Data, "m_iHealth") > g_iMaxHealth[zombie] / 2)
             {
+                // 改成start
                 g_bIsSkillUsed[zombie] = true;
 
                 Han_SetCustomAnimation(zombie, "run_upper_knife", 5.0);   // 飞起来的动作
@@ -196,12 +198,12 @@ public void Han_OnZombieHurt(int zombie, int attacker)
                 CPrintToChatAll("{green}[华仔] {red}小心，%s使用了吸力！", ZombieName);
             }
             // 没有概率要求，半血以下开始飞行think避险
-            else if (RepeatTask3[zombie] == INVALID_HANDLE && GetEntProp(zombie, Prop_Data, "m_iHealth") < g_iMaxHealth[zombie] / 2)
+            else if (g_hFly[zombie] == INVALID_HANDLE 
+                && GetEntProp(zombie, Prop_Data, "m_iHealth") < g_iMaxHealth[zombie] / 2
+            )
             {
-                // g_bIsSkillUsed[zombie] = true;
-
                 InitFlyingState(zombie);
-                RepeatTask3[zombie] = CreateTimer(0.0, Timer_ZombieFlyingThink, zombie, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
+                g_hFly[zombie] = CreateTimer(0.0, Timer_FlyThink, zombie, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
             }
         }
     }
@@ -287,7 +289,7 @@ public void Han_OnZombieAttack(int zombie, int victim)
             g_bIsSkillUsed[zombie] = true;
             g_iZombieCall[victim] = zombie;                    // 如果死了要提前unlock
 
-            CreateZombieCall(victim, 9999.0, CallDuration);            // 如果victim在这期间死了，还需要再处理
+            CreateZombieCall(victim, 9999.0, ANGELA_CALL_TIME);            // 如果victim在这期间死了，还需要再处理
             CreateTimer(5.0, Timer_SkillEnd, zombie);
 
             CPrintToChatAll("{green}[华仔] {red}%s正在呼唤所有僵尸攻击%s，快去帮忙掩护！", ZombieName, g_ClientName[victim]);
@@ -337,22 +339,19 @@ public Action Timer_SkillEnd(Handle timer, int zombie)
 {
     g_bIsSkillUsed[zombie] = false;
 
-    return Plugin_Continue;
+    return Plugin_Stop;
 }
 
 //========================================================================================
 //========================================================================================
 
-void initZombieState(zombie)
+void InitZombieState(zombie)
 {
     // 共用数组
     g_bIsSkillUsed[zombie] = false;
     g_iMaxHealth[zombie] = GetEntProp(zombie, Prop_Data, "m_iHealth");
 
-    // 安哥拉使用的数组
-    g_iBulletCount[zombie] = 0;
-    g_flLastFlyEnd[zombie] = 0.0;
-    g_flLastFlySound[zombie] = 0.0;
+    // 安哥拉使用的数组在自己的if分支初始化
 
     // 巨型狂暴使用的数组
     g_iGrappling[zombie] = -1;

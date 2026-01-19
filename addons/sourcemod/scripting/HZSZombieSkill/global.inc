@@ -99,14 +99,18 @@ bool g_bIsStuck[MAXPLAYERS+1];            // 玩家是否中了憎恶屠夫的�
 bool g_bIsInvert[MAXPLAYERS+1];           // 玩家是否中了嗜血女巫的操作取反
 bool g_bIsSkillUsed[2048];                // 技能是否使用过，或者是否正在使用某个技能（有些是一次性技能，有些可以重复使用）
 
+//========================================================================================
 // 技能状态管理（BOSS安哥拉）
+//========================================================================================
+
+// 飞行以外的逻辑
+int g_iBulletCount[2048];                 // 安哥拉在自愈期间所受的累计子弹数
 int g_iZombieCall[MAXPLAYERS+1];          // 玩家是否被集中攻击，记录的是安哥拉的实体号
 int g_iZombiePull[MAXPLAYERS+1];          // 玩家是否被安哥拉所吸，记录的是安哥拉的实体号
-int g_iBulletCount[2048];                 // 安哥拉在自愈期间所受的累计子弹数
 Handle g_hHeal[2048] = {INVALID_HANDLE,...};      // 实现治疗效果所用的timer，巫蛊术尸和安哥拉共用
 Handle g_hPull[2048] = {INVALID_HANDLE,...};      // 实现吸力所用的timer
 
-// 技能状态管理（BOSS安哥拉飞行逻辑 H-AN提供）
+// 飞行逻辑（H-AN提供）
 float g_flLastFlyEnd[2048];               // 记录上一次飞行开始/结束的时间（飞行CD逻辑）
 float g_flLastFlySound[2048];             // 记录上一次扇翅膀音效的时间，用于播放音效
 Handle g_hFly[2048] = {INVALID_HANDLE,...};       // 实现飞行所用的timer
@@ -125,11 +129,16 @@ enum FlySubState
 }
 FlySubState g_Mode[2048];
 
+//========================================================================================
 // 技能状态管理（BOSS巨型狂暴形态僵尸 Gemini提供）
+//========================================================================================
+
+int g_iGrappling[2048];                   // 僵尸擒抱对象，记录玩家的实体号
 bool g_bIsGrappled[MAXPLAYERS+1];         // 玩家是否被擒抱
+
 int g_iUsePressCount[MAXPLAYERS+1];       // 玩家在1秒内按E的次数
 int g_iLastButtons[MAXPLAYERS+1];         // 玩家上一帧的按键（因为按下松开才算一次）
-int g_iGrappling[2048];                   // 僵尸擒抱对象，记录玩家的实体号
+
 Handle g_hCharge[2048] = {INVALID_HANDLE,...};               // 实现冲锋逻辑所用的timer
 Handle g_hChargePack[2048] = {INVALID_HANDLE,...};           // 专门用来存冲锋关联的 DataPack
 Handle g_hGrapple[MAXPLAYERS+1] = {INVALID_HANDLE, ...};     // 实现擒抱和挣脱逻辑所用的timer
