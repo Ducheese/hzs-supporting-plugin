@@ -109,6 +109,9 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
             {
                 g_iUsePressCount[client]++;
             }
+
+            SetHudTextParams(0.50, 0.45, 0.1, 255, 0, 0, 255);
+            ShowHudText(client, -1, "  快连按E键挣脱!!!");
         }
 
         g_iLastButtons[client] = buttons;   // 虽然多了个数组，但这样写确实简洁

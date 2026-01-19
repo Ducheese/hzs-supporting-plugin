@@ -500,42 +500,44 @@ void GetFlyingMode(int zombie, int target, float hitPos[3])
 } */
 
 //========================================================================================
-// 巨型狂暴形态僵尸技能：冲刺擒抱
+// 巨型狂暴形态僵尸技能：冲锋
 //========================================================================================
+
+void StartCharge(int zombie, int victim)
+{
+    // 基础信息
+    char ZombieName[32];
+    Han_GetZombieName(zombie, ZombieName, sizeof(ZombieName));
+
+    float pos[3];
+    GetEntPropVector(zombie, Prop_Send, "m_vecOrigin", pos);
+
+    // 冲锋（应该擒抱完后再计CD）
+    Han_SetCustomAnimation(zombie, "run_upper_knife", PANGZI_CHARGE_TIME);
+    CreateCharge(zombie, victim);
+
+    // 吼叫音效
+    EmitAmbientSound(SFX_CHARGE1, pos, _, SNDLEVEL_GUNFIRE, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
+
+    // 文字提示
+    CPrintToChat(victim, "{green}[华仔] {red}小心，%s向你冲过来了！", ZombieName);
+}
 
 void CreateCharge(int zombie, int victim)
 {
-    // npc僵尸能能冲刺的关键
-    SetEntityMoveType(zombie, MOVETYPE_FLYGRAVITY);
+    // 以下两个句柄的关系比较复杂
 
-    // 冲刺方向实时调节，脚步声同步 (每0.5秒执行一次)
+    // 冲锋句柄，方向实时调节，震地声同步
     DataPack pack = new DataPack();
+    g_hChargePack[zombie] = pack;    // 全局管理，方便清理
+
     pack.WriteCell(zombie);
     pack.WriteCell(victim);
-    RepeatTask4[zombie] = CreateTimer(0.5, Timer_ChargeThink, pack, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
+    pack.WriteCell(0);    // 新增：初始状态位 (0: STEP, 1: FLYGRAVITY)
+    g_hCharge[zombie] = CreateTimer(0.5, Timer_ChargeThink, pack, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
     
-    // 时间到了且未擒抱到人，自动结束冲刺
-    CreateTimer(ChargeDuration, Timer_EndCharge, zombie);
-
-    // 吼叫音效
-    float pos[3];
-    GetEntPropVector(zombie, Prop_Send, "m_vecOrigin", pos);
-    EmitAmbientSound(SFX_CHARGE_HOWL, pos, _, SNDLEVEL_GUNFIRE, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
-}
-
-public Action Timer_EndCharge(Handle timer, int zombie)
-{
-    if (RepeatTask4[zombie] != INVALID_HANDLE)    // 没有抱到人，关闭冲刺句柄，进入CD冷却
-    {
-        CreateTimer(ChargeCDTime, Timer_SkillEnd, zombie);   // 擒抱完后再进CD
-
-        CloseHandle(RepeatTask4[zombie]);
-        RepeatTask4[zombie] = INVALID_HANDLE;
-
-        SetEntityMoveType(zombie, MOVETYPE_STEP);
-    }
-
-    return Plugin_Continue;
+    // 时间到了且未擒抱到人，自动结束冲锋
+    CreateTimer(PANGZI_CHARGE_TIME, Timer_EndCharge, zombie);
 }
 
 public Action Timer_ChargeThink(Handle timer, DataPack pack)
@@ -543,170 +545,192 @@ public Action Timer_ChargeThink(Handle timer, DataPack pack)
     pack.Reset();
     int zombie = pack.ReadCell();
     int victim = pack.ReadCell();
+    int movetype = pack.ReadCell();   // 读取当前movetype
 
-    // 验证合法性
-    if (!IsValidEntity(zombie) || GetEntProp(zombie, Prop_Data, "m_iHealth") <= 0 || !IsValidClient(victim, true))     // 没抱到人，关闭冲刺句柄即可
+    // 人没了，关闭冲锋句柄即可（僵尸死亡的处理移到event）
+    if (IsZeroPostion(victim) || !IsPlayerAlive(victim))
     {
-        CloseHandle(pack);            // repeat timer不能提前closehandle
-
-        KillTimer(timer);
-        RepeatTask4[zombie] = INVALID_HANDLE;
+        ClearChargeHandles(zombie);
 
         SetEntityMoveType(zombie, MOVETYPE_STEP);
-        return Plugin_Continue;
+        return Plugin_Stop;
     }
 
+    // 人和僵尸的位置都是时刻在变的
     float pos[3], fTargetOrigin[3];
     GetEntPropVector(zombie, Prop_Send, "m_vecOrigin", pos);
     GetEntPropVector(victim, Prop_Send, "m_vecOrigin", fTargetOrigin);
     float fTargetDistance = GetVectorDistance(pos, fTargetOrigin);
 
-    // 触发擒抱
-    if (fTargetDistance*GAMEUNITS_TO_METERS <= GrappleRange)     // 关闭冲刺，开始擒抱逻辑
+    // 距离够近，则关闭冲锋，开始擒抱逻辑
+    if (fTargetDistance*GAMEUNITS_TO_METERS <= PANGZI_GRAPPLE_RANGE)
     {
-        StartGrapple(zombie, victim);
-
-        CloseHandle(pack);            // repeat timer不能提前closehandle
-
-        KillTimer(timer);
-        RepeatTask4[zombie] = INVALID_HANDLE;
-
+        ClearChargeHandles(zombie);
+        
         SetEntityMoveType(zombie, MOVETYPE_STEP);
-        return Plugin_Continue;
+        StartGrapple(zombie, victim);
+        return Plugin_Stop;
     }
 
-    // 如果不是，持续施加向目标的推力
-    float dir[3], force[3];
-    MakeVectorFromPoints(pos, fTargetOrigin, dir);
-    NormalizeVector(dir, force);
-    ScaleVector(force, ChargeForce);
+    // NPC僵尸能冲锋的关键，交替变换movetype防止升天
+    if (movetype == 0)
+    {
+        SetEntityMoveType(zombie, MOVETYPE_FLYGRAVITY);
+        movetype = 1;
+    }
+    else
+    {
+        SetEntityMoveType(zombie, MOVETYPE_STEP);
+        movetype = 0;
+    }
 
-    TeleportEntity(zombie, NULL_VECTOR, NULL_VECTOR, force);
+    // 将更新后的状态写回 DataPack 的第三个位置
+    pack.Reset();
+    pack.ReadCell();           // 跳过 zombie
+    pack.ReadCell();           // 跳过 victim
+    pack.WriteCell(movetype);  // 覆盖写入新的movetype
+
+    // 如果不是以上情况，则持续施加向目标的推力
+    CreateKnockback(fTargetOrigin, zombie, view_as<float>({PANGZI_CHARGE_FORCE, PANGZI_CHARGE_FORCE, PANGZI_CHARGE_FORCE}));
+
+    // 辅助线（记得删）
+    TE_SetupBeamPoints(pos, fTargetOrigin, g_iBeamSprite, 0, 0, 0, 5.0, 2.0, 2.0, 1, 0.0, {255, 0, 0, 255}, 15);
+    TE_SendToAll();
 
     // 震地音效
-    EmitAmbientSound(SFX_CHARGE_SHAKE, pos, _, SNDLEVEL_GUNFIRE, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
+    EmitAmbientSound(SFX_CHARGE2, pos, _, SNDLEVEL_GUNFIRE, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
     
     return Plugin_Continue;
 }
 
+public Action Timer_EndCharge(Handle timer, int zombie)
+{
+    // 没有抱到人，关闭冲锋句柄，进入CD冷却
+    if (g_hCharge[zombie] != INVALID_HANDLE) 
+    {
+        ClearChargeHandles(zombie);    // 清理计时器和 DataPack
+        CreateTimer(PANGZI_CHARGE_CD, Timer_SkillEnd, zombie);
+    }
+
+    return Plugin_Stop;
+}
+
+void ClearChargeHandles(int zombie)
+{
+    if (g_hCharge[zombie] != INVALID_HANDLE)
+    {
+        KillTimer(g_hCharge[zombie]);
+        g_hCharge[zombie] = INVALID_HANDLE; 
+    }
+
+    if (g_hChargePack[zombie] != INVALID_HANDLE)
+    {
+        delete g_hChargePack[zombie];   // 'delete' 比 'CloseHandle' 更现代安全
+        g_hChargePack[zombie] = INVALID_HANDLE;
+    }
+}
+
+//========================================================================================
+// 巨型狂暴形态僵尸技能：擒抱
+//========================================================================================
+
 void StartGrapple(int zombie, int victim)
 {
-    // 数组更新
+    // 基础信息
+    char ZombieName[32];
+    Han_GetZombieName(zombie, ZombieName, sizeof(ZombieName));
+
+    // 更新数组
     g_iGrappling[zombie] = victim;
     g_bIsGrappled[victim] = true;
 
-    // 更换受害者视角
+    // 更换受害者视角（如果要把人物模型也已经举起来，就要考虑怎么安全的放下来）
+    GrappleView(zombie, victim);
+
+    // 擒抱伤害和挣脱共用句柄（目前Bot无法自己挣脱）
+    g_iUsePressCount[victim] = 0;    // 初始化按键计数
+
+    DataPack pack = new DataPack();
+    g_hGrapplePack[victim] = pack;    // 全局管理，方便清理
+
+    pack.WriteCell(zombie);
+    pack.WriteCell(victim);
+    
+    g_hGrapple[victim] = CreateTimer(1.0, Timer_GrappleThink, pack, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
+
+    // 文字提示
+    CPrintToChat(victim, "{green}[华仔] {red}你被擒抱住了！快连按E键挣脱！");
+    CPrintToChatAll("{green}[华仔] {red}%s擒抱住了%s，快去帮忙掩护！", ZombieName, g_ClientName[victim]);
+}
+
+void GrappleView(int zombie, int victim)
+{
     int viewControl = CreateEntityByName("point_viewcontrol");
     SetVariantString("!activator");
     AcceptEntityInput(viewControl, "SetParent", zombie);
     float viewOffset[3] = {150.0, 0.0, 250.0};    // 这个位置决定了“眼睛”在哪里，可以放在僵尸的肩膀或头顶
-    float viewAngles[3] = {15.0, 180.0, 0.0};    // 这个角度决定了“眼睛”朝哪里看，{0, 180, 0} 大致是朝向后方，即僵尸的脸
+    float viewAngles[3] = {15.0, 180.0, 0.0};     // 这个角度决定了“眼睛”朝哪里看，{0, 180, 0} 大致是朝向后方，即僵尸的脸
     TeleportEntity(viewControl, viewOffset, viewAngles, NULL_VECTOR);
     DispatchSpawn(viewControl);
     ActivateEntity(viewControl);
     AcceptEntityInput(viewControl, "Enable");
     SetClientViewEntity(victim, viewControl);
 
-    // 启动伤害计时器（无需管挣脱，只看生死）
-    DataPack pack = new DataPack();
-    pack.WriteCell(zombie);
-    pack.WriteCell(victim);
-    RepeatTask5[victim] = CreateTimer(1.0, Timer_GrappleDamage, pack, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
-
-    // 处理挣脱逻辑
-    if (IsFakeClient(victim))
-    {
-        CreateTimer(GetRandomFloat(1.0, 5.0), Timer_BotEscape, pack);      // 这里重用pack逻辑需谨慎，建议重新打包
-    }
-    else
-    {
-        g_iUsePressCount[victim] = 0;   // 初始化
-        RepeatTask6[victim] = CreateTimer(1.0, Timer_CheckPlayerEscape, pack, TIMER_REPEAT);
-
-        CPrintToChat(victim, "{green}[华仔] {red}你被擒抱住了！快连按E键挣脱！");
-    }
-
-    char ZombieName[32];
-    Han_GetZombieName(zombie, ZombieName, sizeof(ZombieName));
-    CPrintToChatAll("{green}[华仔] {red}%s擒抱住了%s，快去帮忙掩护！", ZombieName, g_ClientName[victim]);
+    // SetVariantString("!activator");
+    // AcceptEntityInput(victim, "SetParent", zombie);
+    // TeleportEntity(victim, viewOffset, viewAngles, NULL_VECTOR);
 }
 
-public Action Timer_GrappleDamage(Handle timer, DataPack pack)
+public Action Timer_GrappleThink(Handle timer, DataPack pack)
 {
     pack.Reset();
     int zombie = pack.ReadCell();
     int victim = pack.ReadCell();
-
-    // 不负责验证合法性，交给Timer_CheckPlayerEscape处理
-
-    // 伤害和音效
-    SDKHooks_TakeDamage(victim, zombie, zombie, GrappleDamage, DMG_SLASH, _, _, _, false);
-    EmitSoundToClient(victim, SFX_GRAPPLE_HURT, _, SNDCHAN_STATIC, SNDLEVEL_NORMAL, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
-
-    return Plugin_Continue;
-}
-
-public Action Timer_CheckPlayerEscape(Handle timer, DataPack pack)
-{
-    pack.Reset();
-    int zombie = pack.ReadCell();
-    int victim = pack.ReadCell();
-
-    // 验证合法性
-    if (!IsValidEntity(zombie) || GetEntProp(zombie, Prop_Data, "m_iHealth") <= 0 || !IsValidClient(victim, true))
+    
+    if (IsZeroPostion(victim) || !IsPlayerAlive(victim)      // 人没了，关闭擒抱句柄即可（僵尸死亡的处理移到event）
+    || g_iUsePressCount[victim] >= PANGZI_GRAPPLE_KEYRATE)   // 或者连按速率达标
     {
+        ClearGrappleHandles(victim);
         EndGrapple(zombie, victim);
-
-        CloseHandle(pack);            // repeat timer不能提前closehandle
-
-        CloseHandle(RepeatTask5[victim]);
-        RepeatTask5[victim] = INVALID_HANDLE;
-
-        KillTimer(timer);
-        RepeatTask6[victim] = INVALID_HANDLE;
-        return Plugin_Continue;
+        return Plugin_Stop;
     }
 
-    // 连按速率达标
-    if (g_iUsePressCount[victim] >= EscapeKeyPressRate)
-    {
-        EndGrapple(zombie, victim);
+    // 每秒重置计数，意味着必须在1秒内按够次数
+    g_iUsePressCount[victim] = 0;
 
-        CloseHandle(pack);            // repeat timer不能提前closehandle
+    // 生成擒抱伤害
+    SDKHooks_TakeDamage(victim, zombie, zombie, PANGZI_GRAPPLE_DAMAGE, DMG_SLASH, _, _, _, false);
 
-        CloseHandle(RepeatTask5[victim]);
-        RepeatTask5[victim] = INVALID_HANDLE;
-
-        KillTimer(timer);
-        RepeatTask6[victim] = INVALID_HANDLE;
-        return Plugin_Continue;
-    }
-
-    g_iUsePressCount[victim] = 0;     // 每秒重置计数，意味着必须在1秒内按够次数
+    // 音效
+    EmitSoundToClient(victim, SFX_GRAPPLE, _, SNDCHAN_STATIC, SNDLEVEL_NORMAL, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
 
     return Plugin_Continue;
 }
 
-public Action Timer_BotEscape(Handle timer, DataPack pack)
+void ClearGrappleHandles(int victim)
 {
-    pack.Reset();
-    int zombie = pack.ReadCell();
-    int victim = pack.ReadCell();
+    if (g_hGrapple[victim] != INVALID_HANDLE)
+    {
+        KillTimer(g_hGrapple[victim]);
+        g_hGrapple[victim] = INVALID_HANDLE; 
+    }
 
-    CloseHandle(pack);            // repeat timer不能提前closehandle
-
-    CloseHandle(RepeatTask5[victim]);
-    RepeatTask5[victim] = INVALID_HANDLE;
-
-    EndGrapple(zombie, victim);
-
-    return Plugin_Continue;
+    if (g_hGrapplePack[victim] != INVALID_HANDLE)
+    {
+        delete g_hGrapplePack[victim];   // 'delete' 比 'CloseHandle' 更现代安全
+        g_hGrapplePack[victim] = INVALID_HANDLE;
+    }
 }
 
 void EndGrapple(int zombie, int victim)
 {
+    // 数组重置（要在句柄清理之后）
     g_iGrappling[zombie] = -1;
     g_bIsGrappled[victim] = false;
-    SetClientViewEntity(victim, victim);  // 恢复视角
-    CreateTimer(ChargeCDTime, Timer_SkillEnd, zombie);
+
+    // 恢复视角
+    SetClientViewEntity(victim, victim);
+
+    // 冷却时间
+    CreateTimer(PANGZI_GRAPPLE_CD, Timer_SkillEnd, zombie);
 }

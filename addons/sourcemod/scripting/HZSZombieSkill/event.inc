@@ -103,22 +103,15 @@ public void Han_OnZombieDeath(int zombie, int killer)
     else if (IsSameName(zombie, BOSS_PANGZI))
     {
         // 如果在冲锋就停止冲锋句柄
-        if (g_hCharge[zombie] != INVALID_HANDLE)
-        {
-            CloseHandle(g_hCharge[zombie]);
-            g_hCharge[zombie] = INVALID_HANDLE;
-        }
+        ClearChargeHandles(zombie);
 
         int victim = g_iGrappling[zombie];
 
-        // 如果有擒抱住人就停止擒抱句柄和连按句柄
+        // 如果有擒抱住人就停止擒抱和连按句柄
         if (victim != -1)
         {
-            CloseHandle(g_hGrapple[victim]);
-            g_hGrapple[victim] = INVALID_HANDLE;
-
-            CloseHandle(g_hEscape[victim]);
-            g_hEscape[victim] = INVALID_HANDLE;
+            ClearGrappleHandles(victim);
+            EndGrapple(zombie, victim);
         }
     }
 }
@@ -217,13 +210,7 @@ public void Han_OnZombieHurt(int zombie, int attacker)
         if (GetRandomInt(1, 3) == 1)   // 33% 概率
         {
             g_bIsSkillUsed[zombie] = true;
-
-            Han_SetCustomAnimation(zombie, "run_upper_knife", ChargeDuration);
-            ProtectZombie(zombie, ChargeDuration);
-            CreateCharge(zombie, attacker);      // 冲刺+擒抱的逻辑
-            // CreateTimer(ChargeDuration + ChargeCDTime, Timer_SkillEnd, zombie);   // 应该擒抱完后再计CD
-
-            CPrintToChat(attacker, "{green}[华仔] {red}小心，%s向你冲过来了！", ZombieName);
+            StartCharge(zombie, attacker);
         }
     }
     // 这里还没改
@@ -349,13 +336,6 @@ public void Han_OnZombieAttack(int zombie, int victim)
 public Action Timer_SkillEnd(Handle timer, int zombie)
 {
     g_bIsSkillUsed[zombie] = false;
-
-    return Plugin_Continue;
-}
-
-public Action Timer_DeInvert(Handle timer, int client)
-{
-    g_bIsInvert[client] = false;
 
     return Plugin_Continue;
 }

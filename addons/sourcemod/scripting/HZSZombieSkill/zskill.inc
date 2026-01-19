@@ -200,12 +200,12 @@ void StartKnockback(int zombie, int victim)
 
 void CreateKnockback(float pos[3], int target, float strength[3])
 {
-    float fTargetPosition[3], fTempAngles[3], fTempPoints[3];
+    float fTargetOrigin[3], fTempAngles[3], fTempPoints[3];
     float vReturn[3];
     
-    GetEntPropVector(target, Prop_Send, "m_vecOrigin", fTargetPosition);     // target指的是人类
+    GetEntPropVector(target, Prop_Send, "m_vecOrigin", fTargetOrigin);     // target指的是人类
 
-    MakeVectorFromPoints(pos, fTargetPosition, fTempPoints);
+    MakeVectorFromPoints(pos, fTargetOrigin, fTempPoints);
     GetVectorAngles(fTempPoints, fTempAngles);
 
     vReturn[0] = Cosine(DegToRad(fTempAngles[1])) * strength[0];
@@ -225,11 +225,11 @@ void StartTrap(int zombie, int victim)
     char ZombieName[32];
     Han_GetZombieName(zombie, ZombieName, sizeof(ZombieName));
 
-    float pos[3];
-    GetEntPropVector(victim, Prop_Send, "m_vecOrigin", pos);   // 是人的位置
+    float fTargetOrigin[3];
+    GetEntPropVector(victim, Prop_Send, "m_vecOrigin", fTargetOrigin);   // 是人的位置
 
     // 生成陷阱
-    CreateTrap(pos);
+    CreateTrap(fTargetOrigin);
     CreateTimer(BUTCHER_STUCKTIME, Timer_DeStuck, victim);
 
     // 音效
@@ -292,6 +292,13 @@ void StartInvert(int zombie, int victim)
 
     // 文字提示
     CPrintToChat(victim, "{green}[华仔] {red}你中了%s的幻术！", ZombieName);
+}
+
+public Action Timer_DeInvert(Handle timer, int client)
+{
+    g_bIsInvert[client] = false;
+
+    return Plugin_Continue;
 }
 
 //========================================================================================
