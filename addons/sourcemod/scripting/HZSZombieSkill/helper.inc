@@ -120,7 +120,7 @@ public Action Timer_DeleteParticle(Handle timer, int entity)
 }
 
 //========================================================================================
-// 粒子生成和消灭 来自CSS Blood.sp
+// 计算到地面距离 飞行和冲锋逻辑都会用到
 //========================================================================================
 
 void GetDistanceToGround(int entity, float &dist, float fRayEndPoint[3])

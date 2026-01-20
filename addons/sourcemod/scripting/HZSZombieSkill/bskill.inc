@@ -236,7 +236,7 @@ public Action Timer_ZombieSelfHealing(Handle timer, int zombie)
     {
         KillTimer(timer);
         g_hHeal[zombie] = INVALID_HANDLE;
-        return Plugin_Continue;
+        return Plugin_Stop;
     }
 
     // 基础信息，结束repeat时要用到
@@ -494,19 +494,45 @@ void StartCharge(int zombie, int victim)
 
 void CreateCharge(int zombie, int victim)
 {
-    // 以下两个句柄的关系比较复杂
-
     // 冲锋句柄，方向实时调节，震地声同步
     DataPack pack = new DataPack();
     g_hChargePack[zombie] = pack;    // 全局管理，方便清理
 
     pack.WriteCell(zombie);
     pack.WriteCell(victim);
-    pack.WriteCell(0);    // 新增：初始状态位 (0: STEP, 1: FLYGRAVITY)
     g_hCharge[zombie] = CreateTimer(0.5, Timer_ChargeThink, pack, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
-    
+    g_hMovetype[zombie] = CreateTimer(0.0, Timer_MovetypeThink, zombie, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
+
     // 时间到了且未擒抱到人，自动结束冲锋
     CreateTimer(PANGZI_CHARGE_TIME, Timer_EndCharge, zombie);
+}
+
+public Action Timer_MovetypeThink(Handle timer, int zombie)
+{
+    if (!IsValidEntity(zombie) || GetEntProp(zombie, Prop_Data, "m_iHealth") <= 0)
+    {
+        KillTimer(timer);
+        g_hMovetype[zombie] = INVALID_HANDLE;
+        return Plugin_Stop;
+    }
+
+    float dist, hitPos[3];
+    GetDistanceToGround(zombie, dist, hitPos);
+
+    // NPC僵尸能冲锋的关键，交替变换movetype防止升天，最好用单独的高频timer来检测
+    if (dist < 1.0)
+    {
+        // PrintToChatAll("飞行模式, %f", dist);
+        SetEntityMoveType(zombie, MOVETYPE_FLYGRAVITY);
+    }
+    else if (dist > 10.0)
+    {
+        // PrintToChatAll("地面模式, %f", dist);
+        SetEntityMoveType(zombie, MOVETYPE_STEP);
+        TeleportEntity(zombie, NULL_VECTOR, NULL_VECTOR, view_as<float>({0.0, 0.0, -100.0}));   // 迅速拉回地面
+    }
+
+    return Plugin_Continue;
 }
 
 public Action Timer_ChargeThink(Handle timer, DataPack pack)
@@ -514,7 +540,13 @@ public Action Timer_ChargeThink(Handle timer, DataPack pack)
     pack.Reset();
     int zombie = pack.ReadCell();
     int victim = pack.ReadCell();
-    int movetype = pack.ReadCell();   // 读取当前movetype
+
+    if (!IsValidEntity(zombie) || GetEntProp(zombie, Prop_Data, "m_iHealth") <= 0)
+    {
+        KillTimer(timer);
+        g_hCharge[zombie] = INVALID_HANDLE;
+        return Plugin_Stop;
+    }
 
     // 人没了，关闭冲锋句柄即可（僵尸死亡的处理移到event）
     if (IsZeroPostion(victim) || !IsPlayerAlive(victim))
@@ -540,24 +572,6 @@ public Action Timer_ChargeThink(Handle timer, DataPack pack)
         StartGrapple(zombie, victim);
         return Plugin_Stop;
     }
-
-    // NPC僵尸能冲锋的关键，交替变换movetype防止升天
-    if (movetype == 0)
-    {
-        SetEntityMoveType(zombie, MOVETYPE_FLYGRAVITY);
-        movetype = 1;
-    }
-    else
-    {
-        SetEntityMoveType(zombie, MOVETYPE_STEP);
-        movetype = 0;
-    }
-
-    // 将更新后的状态写回 DataPack 的第三个位置
-    pack.Reset();
-    pack.ReadCell();           // 跳过 zombie
-    pack.ReadCell();           // 跳过 victim
-    pack.WriteCell(movetype);  // 覆盖写入新的movetype
 
     // 如果不是以上情况，则持续施加向目标的推力
     CreateKnockback(fTargetOrigin, zombie, view_as<float>({PANGZI_CHARGE_FORCE, PANGZI_CHARGE_FORCE, 0.0}));
@@ -590,6 +604,9 @@ void ClearChargeHandles(int zombie)
     {
         KillTimer(g_hCharge[zombie]);
         g_hCharge[zombie] = INVALID_HANDLE; 
+
+        KillTimer(g_hMovetype[zombie]);
+        g_hMovetype[zombie] = INVALID_HANDLE; 
     }
 
     if (g_hChargePack[zombie] != INVALID_HANDLE)
@@ -609,12 +626,20 @@ void StartGrapple(int zombie, int victim)
     char ZombieName[32];
     Han_GetZombieName(zombie, ZombieName, sizeof(ZombieName));
 
+    float pos[3];
+    GetEntPropVector(zombie, Prop_Send, "m_vecOrigin", pos);
+
+    GetEntPropVector(victim, Prop_Send, "m_vecOrigin", g_flEscapePos[victim]);
+
     // 更新数组
     g_iGrappling[zombie] = victim;
     g_bIsGrappled[victim] = true;
 
-    // 更换受害者视角（如果要把人物模型也已经举起来，就要考虑怎么安全的放下来）
-    GrappleView(zombie, victim);
+    // 更换第一视角
+    GrappleFirstView(zombie, victim);
+
+    // 第三人称看到的效果
+    GrappleThirdView(zombie, victim);
 
     // 擒抱伤害和挣脱共用句柄（目前Bot无法自己挣脱）
     g_iUsePressCount[victim] = 0;    // 初始化按键计数
@@ -628,26 +653,71 @@ void StartGrapple(int zombie, int victim)
     g_hGrapple[victim] = CreateTimer(1.0, Timer_GrappleThink, pack, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
 
     // 文字提示
-    CPrintToChat(victim, "{green}[华仔] {red}你被擒抱住了！快连按E键挣脱！");
-    CPrintToChatAll("{green}[华仔] {red}%s擒抱住了%s，快去帮忙掩护！", ZombieName, g_ClientName[victim]);
+    if (!IsFakeClient(victim))
+    {
+        CPrintToChat(victim, "{green}[华仔] {red}你被擒抱住了！快连按E键挣脱！");
+    }
+    else
+    {
+        CPrintToChatAll("{green}[华仔] {red}%s擒抱住了%s，快去帮忙掩护！", ZombieName, g_ClientName[victim]);   
+    }
+
+    // 吼叫音效
+    EmitAmbientSound(SFX_GRAPPLE2, pos, _, SNDLEVEL_GUNFIRE, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
 }
 
-void GrappleView(int zombie, int victim)
+void GrappleFirstView(int zombie, int victim)
 {
-    int viewControl = CreateEntityByName("point_viewcontrol");
-    SetVariantString("!activator");
-    AcceptEntityInput(viewControl, "SetParent", zombie);
     float viewOffset[3] = {150.0, 0.0, 250.0};    // 这个位置决定了“眼睛”在哪里，可以放在僵尸的肩膀或头顶
     float viewAngles[3] = {15.0, 180.0, 0.0};     // 这个角度决定了“眼睛”朝哪里看，{0, 180, 0} 大致是朝向后方，即僵尸的脸
-    TeleportEntity(viewControl, viewOffset, viewAngles, NULL_VECTOR);
-    DispatchSpawn(viewControl);
-    ActivateEntity(viewControl);
-    AcceptEntityInput(viewControl, "Enable");
-    SetClientViewEntity(victim, viewControl);
+    
+    int viewControl = CreateEntityByName("point_viewcontrol");
 
-    // SetVariantString("!activator");
-    // AcceptEntityInput(victim, "SetParent", zombie);
-    // TeleportEntity(victim, viewOffset, viewAngles, NULL_VECTOR);
+    if (viewControl != -1)
+    {
+        DispatchSpawn(viewControl);
+
+        SetVariantString("!activator");
+        AcceptEntityInput(viewControl, "SetParent", zombie);
+
+        TeleportEntity(viewControl, viewOffset, viewAngles, NULL_VECTOR);
+
+        AcceptEntityInput(viewControl, "Enable");
+        SetClientViewEntity(victim, viewControl);
+    }
+
+    g_iViewControl[victim] = viewControl;
+}
+
+void GrappleThirdView(int zombie, int victim)
+{
+    float viewOffset[3] = {100.0, 0.0, 150.0};    // 这个位置决定了“眼睛”在哪里，可以放在僵尸的肩膀或头顶
+    float viewAngles[3] = {15.0, 180.0, 0.0};     // 这个角度决定了“眼睛”朝哪里看，{0, 180, 0} 大致是朝向后方，即僵尸的脸
+
+    SetVariantString("!activator");
+    AcceptEntityInput(victim, "SetParent", zombie);
+
+    TeleportEntity(victim, viewOffset, viewAngles, NULL_VECTOR);
+
+    SetEntityMoveType(victim, MOVETYPE_NONE);   // 必须要有，不然就闪退
+}
+
+void ClearViewControl(int victim)
+{
+    int entity = g_iViewControl[victim];
+
+    if (IsValidEntity(entity))
+    {
+        char classname[64];
+        GetEdictClassname(entity, classname, sizeof(classname));
+
+        if (StrEqual(classname, "point_viewcontrol", false))
+        {
+            RemoveEdict(entity);
+        }
+    }
+
+    g_iViewControl[victim] = -1;
 }
 
 public Action Timer_GrappleThink(Handle timer, DataPack pack)
@@ -656,6 +726,13 @@ public Action Timer_GrappleThink(Handle timer, DataPack pack)
     int zombie = pack.ReadCell();
     int victim = pack.ReadCell();
     
+    if (!IsValidEntity(zombie) || GetEntProp(zombie, Prop_Data, "m_iHealth") <= 0)
+    {
+        KillTimer(timer);
+        g_hGrapple[zombie] = INVALID_HANDLE;
+        return Plugin_Stop;
+    }
+
     if (IsZeroPostion(victim) || !IsPlayerAlive(victim)      // 人没了，关闭擒抱句柄即可（僵尸死亡的处理移到event）
     || g_iUsePressCount[victim] >= PANGZI_GRAPPLE_KEYRATE)   // 或者连按速率达标
     {
@@ -698,8 +775,14 @@ void EndGrapple(int zombie, int victim)
     g_iGrappling[zombie] = -1;
     g_bIsGrappled[victim] = false;
 
-    // 恢复视角
+    // 恢复原样
     SetClientViewEntity(victim, victim);
+    SetEntityMoveType(victim, MOVETYPE_WALK);
+    AcceptEntityInput(victim, "ClearParent");
 
-    // 还要解除父子关系，清理实体
+    // 清理实体
+    ClearViewControl(victim);
+
+    // 传送新位置
+    TeleportEntity(victim, g_flEscapePos[victim], NULL_VECTOR, NULL_VECTOR);
 }

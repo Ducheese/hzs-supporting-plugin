@@ -105,13 +105,24 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
             buttons &= ~IN_JUMP;
 
             // 检测E键连打
-            if ((buttons & IN_USE) && !(g_iLastButtons[client] & IN_USE))   // 毕竟有松开键位才算按一次
+            if (!IsFakeClient(client))
             {
-                g_iUsePressCount[client]++;
-            }
+                if ((buttons & IN_USE) && !(g_iLastButtons[client] & IN_USE))   // 毕竟有松开键位才算按一次
+                {
+                    g_iUsePressCount[client]++;
+                }
 
-            SetHudTextParams(0.50, 0.45, 0.1, 255, 0, 0, 255);
-            ShowHudText(client, -1, "  快连按E键挣脱!!!");
+                SetHudTextParams(0.50, 0.45, 0.1, 255, 0, 0, 255);
+                ShowHudText(client, -1, "  快连按E键挣脱!!!");
+            }
+            else
+            {
+                if (GetRandomInt(1, 20) == 1)   // 大概率会被抱上两秒，这概率还可以
+                {
+                    g_iUsePressCount[client]++;
+                    // PrintToChatAll("按键计数：%d", g_iUsePressCount[client]);
+                }
+            }
         }
 
         g_iLastButtons[client] = buttons;   // 虽然多了个数组，但这样写确实简洁
@@ -198,4 +209,5 @@ void InitSoundCache()
     PrecacheSound(SFX_CHARGE1, true);
     PrecacheSound(SFX_CHARGE2, true);
     PrecacheSound(SFX_GRAPPLE, true);
+    PrecacheSound(SFX_GRAPPLE2, true);
 }

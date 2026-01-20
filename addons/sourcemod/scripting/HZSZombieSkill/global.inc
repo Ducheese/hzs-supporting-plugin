@@ -46,11 +46,11 @@
 
 // 技能参数（BOSS巨型狂暴形态僵尸）
 #define PANGZI_CHARGE_TIME      3.0        // 巨型狂暴形态僵尸冲锋的持续时间（秒）
-#define PANGZI_CHARGE_CD        5.0        // 巨型狂暴形态僵尸冲锋但未触发擒抱后的冷却时间（秒）
+#define PANGZI_CHARGE_CD        15.0       // 巨型狂暴形态僵尸冲锋但未触发擒抱后的冷却时间（秒）
 #define PANGZI_CHARGE_FORCE     500.0      // 巨型狂暴形态僵尸冲锋的速度或者力度
 #define PANGZI_GRAPPLE_RANGE    3.0        // 巨型狂暴形态僵尸触发擒抱的范围（单位：米）
 #define PANGZI_GRAPPLE_DAMAGE   10.0       // 巨型狂暴形态僵尸擒抱每秒造成的伤害
-#define PANGZI_GRAPPLE_CD       5.0        // 巨型狂暴形态僵尸冲锋且成功擒抱后的冷却时间（秒）
+#define PANGZI_GRAPPLE_CD       30.0       // 巨型狂暴形态僵尸冲锋且成功擒抱后的冷却时间（秒）
 #define PANGZI_GRAPPLE_KEYRATE  4          // 真人玩家挣脱擒抱所需的每秒按E键次数
 
 // 音效路径（非BOSS特殊僵尸）
@@ -78,6 +78,7 @@
 #define SFX_CHARGE1            "custom/charger_charge_02.wav"               // 巨型狂暴形态僵尸冲锋嚎叫声
 #define SFX_CHARGE2            "custom/tank_walk06.wav"                     // 巨型狂暴形态僵尸冲锋震地声
 #define SFX_GRAPPLE            "custom/charger_smash_01.wav"                // 巨型狂暴形态僵尸造成擒抱伤害的音效
+#define SFX_GRAPPLE2           "custom/charger_pummel02.wav"                // 巨型狂暴形态僵尸擒抱成功那一下的叫声
 
 //========================================================================================
 // HANDLES & VARIABLES
@@ -139,7 +140,12 @@ bool g_bIsGrappled[MAXPLAYERS+1];         // 玩家是否被擒抱
 int g_iUsePressCount[MAXPLAYERS+1];       // 玩家在1秒内按E的次数
 int g_iLastButtons[MAXPLAYERS+1];         // 玩家上一帧的按键（因为按下松开才算一次）
 
+int g_iViewControl[MAXPLAYERS+1];         // 相机实体，全局管理，方便清理
+float g_flEscapePos[MAXPLAYERS+1][3];     // 挣脱擒抱后传送回原处，防止卡墙
+
 Handle g_hCharge[2048] = {INVALID_HANDLE,...};               // 实现冲锋逻辑所用的timer
 Handle g_hChargePack[2048] = {INVALID_HANDLE,...};           // 专门用来存冲锋关联的 DataPack
 Handle g_hGrapple[MAXPLAYERS+1] = {INVALID_HANDLE, ...};     // 实现擒抱和挣脱逻辑所用的timer
 Handle g_hGrapplePack[MAXPLAYERS+1] = {INVALID_HANDLE,...};  // 专门用来存擒抱关联的 DataPack
+
+Handle g_hMovetype[2048] = {INVALID_HANDLE,...};             // 帮助NPC僵尸应用速度的句柄

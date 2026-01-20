@@ -135,6 +135,13 @@ public Action Timer_CreateExplosion(Handle timer, DataPack pack)
 
 public Action Timer_RepeatHealing(Handle timer, int entity)
 {
+    if (!IsValidEntity(entity) || GetEntProp(entity, Prop_Data, "m_iHealth") <= 0)
+    {
+        KillTimer(timer);
+        g_hHeal[entity] = INVALID_HANDLE;
+        return Plugin_Stop;
+    }
+
     float pos[3];
     GetEntPropVector(entity, Prop_Send, "m_vecOrigin", pos);
 

@@ -64,7 +64,7 @@ public void Han_OnZombieDeath(int zombie, int killer)
     {
         if (g_hHeal[zombie] != INVALID_HANDLE)
         {
-            CloseHandle(g_hHeal[zombie]);
+            KillTimer(g_hHeal[zombie]);
             g_hHeal[zombie] = INVALID_HANDLE;
         }
     }
@@ -209,7 +209,9 @@ public void Han_OnZombieHurt(int zombie, int attacker)
     }
     else if (IsSameName(zombie, BOSS_PANGZI) && !g_bIsSkillUsed[zombie])
     {
-        if (GetRandomInt(1, 3) == 1)   // 33% 概率
+        int target = GetEntDataEnt2(zombie, g_iLeaderOffset);
+
+        if (target == attacker)    // 如果目标和攻击者是同一个，才触发冲锋擒抱
         {
             g_bIsSkillUsed[zombie] = true;
             StartCharge(zombie, attacker);
