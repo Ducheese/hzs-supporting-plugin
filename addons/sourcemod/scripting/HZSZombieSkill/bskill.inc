@@ -2,26 +2,48 @@
 // 安哥拉技能：全场吸力，半血以上受击有概率使用
 //========================================================================================
 
+void StartPull(int zombie)
+{
+    // 常规信息
+    char ZombieName[32];
+    Han_GetZombieName(zombie, ZombieName, sizeof(ZombieName));
+
+    float pos[3];
+    GetEntPropVector(zombie, Prop_Send, "m_vecOrigin", pos);
+
+    // 吸力效果
+    Han_SetCustomAnimation(zombie, "run_upper_knife", ANGELA_PULL_TIME);   // 飞起来的动作
+    ProtectZombie(zombie, ANGELA_PULL_TIME);
+    CreatePull(zombie, pos);
+
+    // 延时开放技能占位
+    CreateTimer(ANGELA_PULL_TIME, Timer_SkillEnd, zombie);
+
+    // 文字提示
+    CPrintToChatAll("{green}[华仔] {red}小心，%s使用了吸力！", ZombieName);
+}
+
 void CreatePull(int zombie, float pos[3])
 {
+    // 状态管理
     for (int i = 1; i <= MaxClients; i++)
     {
         if (IsValidClient(i, true) && !IsZeroPostion(i))    // 如果刚复活就不会被吸，毕竟还要买武器，降低难度吧
         {
-            g_bIsStuck[i] = false;                // 解除憎恶屠夫的控制
-            g_iZombiePull[i] = zombie;            // 记录安哥拉实体号
-
-            CreateTimer(5.0, Timer_DePull, i);
+            g_iZombiePull[i] = zombie;                      // 记录安哥拉实体号
+            CreateTimer(ANGELA_PULL_TIME, Timer_DePull, i);
         }
     }
 
+    // 特效
     DataPack pack = new DataPack();
     pack.WriteCell(zombie);
     pack.WriteCell(pos[0]);
     pack.WriteCell(pos[1]);
     pack.WriteCell(pos[2]);
-
     g_hPull[zombie] = CreateTimer(1.0, Timer_PullParticle, pack, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
+
+    // 音效
     EmitAmbientSound(SFX_PULL2, pos, _, SNDLEVEL_GUNFIRE, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
 }
 
@@ -42,7 +64,7 @@ public Action Timer_PullParticle(Handle timer, DataPack pack)
 
         KillTimer(timer);
         g_hPull[zombie] = INVALID_HANDLE;
-        return Plugin_Continue;
+        return Plugin_Stop;
     }
 
     WriteParticle("z_shield_buff", pos, 1.0);
@@ -54,22 +76,56 @@ public Action Timer_DePull(Handle timer, int client)
 {
     g_iZombiePull[client] = -1;
 
-    return Plugin_Continue;
+    return Plugin_Stop;
 }
 
 //========================================================================================
 // 安哥拉技能：群体击飞，一个砸地飞高，一个挥臂飞远
 //========================================================================================
 
-public Action Timer_CreateGroupKnockback(Handle timer, int zombie)
+void StartSmash(int zombie)
+{
+    // 砸地
+    Han_SetCustomAnimation(zombie, "Walk_shoot_knife3", 4.5);
+    CreateTimer(2.0, Timer_CreateSmashKnock, zombie);       // 这里不能1.5，太短
+    
+    // 延时开放技能占位
+    CreateTimer(5.0, Timer_SkillEnd, zombie);
+}
+
+void StartSwing(int zombie, int victim)
+{
+    // 计算角度，试过m_angRotation完全不准确
+    float pos[3], fTargetPosition[3], fTempPoints[3], ang[3];
+    GetEntPropVector(zombie, Prop_Send, "m_vecOrigin", pos);
+    GetEntPropVector(victim, Prop_Send, "m_vecOrigin", fTargetPosition);
+    MakeVectorFromPoints(pos, fTargetPosition, fTempPoints);
+    GetVectorAngles(fTempPoints, ang);
+
+    DataPack pack = new DataPack();
+    pack.WriteCell(zombie);
+    pack.WriteCell(ang[0]);
+    pack.WriteCell(ang[1]);
+    pack.WriteCell(ang[2]);
+
+    // 挥臂
+    Han_SetCustomAnimation(zombie, "Walk_shoot_knife2", 3.0);
+    CreateTimer(1.3, Timer_CreateSwingKnock, pack);       // 只有boss朝向才会被击飞，而且水平力度大，垂直力度小，和群体击飞1正好相反
+
+    // 延时开放技能占位
+    CreateTimer(3.0, Timer_SkillEnd, zombie);
+}
+
+public Action Timer_CreateSmashKnock(Handle timer, int zombie)
 {
     // 僵尸状态验证
     if (!IsValidEntity(zombie) || GetEntProp(zombie, Prop_Data, "m_iHealth") <= 0)
     {
         KillTimer(timer);
-        return Plugin_Continue;
+        return Plugin_Stop;
     }
 
+    // 基础信息
     float pos[3];
     GetEntPropVector(zombie, Prop_Send, "m_vecOrigin", pos);
 
@@ -88,22 +144,28 @@ public Action Timer_CreateGroupKnockback(Handle timer, int zombie)
                 continue;
             }
 
-            if (IsZeroPostion(i))
+            if (IsZeroPostion(i) || !IsPlayerAlive(i))
             {
                 continue;
             }
 
+            // 状态管理
             g_bIsStuck[i] = false;
+            g_bIsInvert[i] = false;
 
+            // 生成击退
+            Shake(i, 30.0, 10.0, 3.0);
             CreateKnockback(pos, i, view_as<float>({400.0, 400.0, 800.0}));
+            
+            // 生成伤害
             SDKHooks_TakeDamage(i, zombie, zombie, ANGELA_KNOCK_DAMAGE, DMG_SLASH, _, _, _, false);
 
-            // 补上音效和shake
-            Shake(i, 30.0, 10.0, 3.0);
+            // 音效
             EmitSoundToClient(i, SFX_KNOCKBACK, _, SNDCHAN_STATIC, SNDLEVEL_NORMAL, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
         }            
     }
 
+    // 环境音效
     EmitAmbientSound(SFX_SMASH, pos, _, SNDLEVEL_GUNFIRE, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
 
     // 特效？试试看————卧槽好帅
@@ -114,7 +176,7 @@ public Action Timer_CreateGroupKnockback(Handle timer, int zombie)
     return Plugin_Continue;
 }
 
-public Action Timer_CreateGroupKnockback2(Handle timer, DataPack pack)
+public Action Timer_CreateSwingKnock(Handle timer, DataPack pack)
 {
     float ang[3];
 
@@ -129,9 +191,10 @@ public Action Timer_CreateGroupKnockback2(Handle timer, DataPack pack)
     if (!IsValidEntity(zombie) || GetEntProp(zombie, Prop_Data, "m_iHealth") <= 0)
     {
         KillTimer(timer);
-        return Plugin_Continue;
+        return Plugin_Stop;
     }
 
+    // 基础信息
     float pos[3];
     GetEntPropVector(zombie, Prop_Send, "m_vecOrigin", pos);
 
@@ -155,22 +218,28 @@ public Action Timer_CreateGroupKnockback2(Handle timer, DataPack pack)
                 continue;
             }
 
-            if (IsZeroPostion(i))
+            if (IsZeroPostion(i) || !IsPlayerAlive(i))
             {
                 continue;
             }
             
+            // 状态管理
             g_bIsStuck[i] = false;
+            g_bIsInvert[i] = false;
 
+            // 生成击退
+            Shake(i, 30.0, 10.0, 3.0);
             CreateKnockback(pos, i, view_as<float>({800.0, 800.0, 400.0}));
+
+            // 生成伤害
             SDKHooks_TakeDamage(i, zombie, zombie, ANGELA_KNOCK_DAMAGE, DMG_SLASH, _, _, _, false);
 
-            // 补上音效和shake
-            Shake(i, 30.0, 10.0, 3.0);
+            // 音效
             EmitSoundToClient(i, SFX_KNOCKBACK, _, SNDCHAN_STATIC, SNDLEVEL_NORMAL, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
         }            
     }
 
+    // 环境音效
     EmitAmbientSound(SFX_SWING, pos, _, SNDLEVEL_GUNFIRE, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
 
     return Plugin_Continue;
@@ -180,7 +249,30 @@ public Action Timer_CreateGroupKnockback2(Handle timer, DataPack pack)
 // 安哥拉技能：呼唤僵尸集中攻击一个人类
 //========================================================================================
 
-void CreateZombieCall(int victim, float dist, float duration)
+void StartCall(int zombie, int victim)
+{
+    // 基础信息
+    char ZombieName[32];
+    Han_GetZombieName(zombie, ZombieName, sizeof(ZombieName));
+
+    // 僵尸集中攻击
+    CreateCall(victim, 9999.0, ANGELA_CALL_TIME);      // 如果victim在这期间死了，还需要再处理
+
+    // 状态管理
+    g_iZombieCall[victim] = zombie;                    // 如果死了要提前unlock
+    CreateTimer(ANGELA_CALL_TIME, Timer_DeCall, victim);
+
+    // 延时开放技能占位    
+    CreateTimer(5.0, Timer_SkillEnd, zombie);
+
+    // 发出声音的实体填了1，如果写横线，大灾变插件里的soundhook会报错
+    EmitSoundToAll(SFX_CALL, 1, SNDCHAN_STATIC, SNDLEVEL_NORMAL, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
+
+    // 文字提示
+    CPrintToChatAll("{green}[华仔] {red}%s正在呼唤所有僵尸攻击%s，快去帮忙掩护！", ZombieName, g_ClientName[victim]);
+}
+
+void CreateCall(int victim, float dist, float duration)
 {
     float fTargetOrigin[3], fZombieOrigin[3];
     GetEntPropVector(victim, Prop_Send, "m_vecOrigin", fTargetOrigin);
@@ -211,25 +303,37 @@ void CreateZombieCall(int victim, float dist, float duration)
             Han_SetZombieTarget(zombie, victim, duration);   // 不需要特别Han_UnlockZombie
         }
     }
-
-    CreateTimer(duration, Timer_DeZombieCall, victim);
-
-    // 发出声音的实体填了1，如果写横线，大灾变插件里的soundhook会报错
-    EmitSoundToAll(SFX_CALL, 1, SNDCHAN_STATIC, SNDLEVEL_NORMAL, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
 }
 
-public Action Timer_DeZombieCall(Handle timer, int client)
+public Action Timer_DeCall(Handle timer, int client)
 {
     g_iZombieCall[client] = -1;
 
-    return Plugin_Continue;
+    return Plugin_Stop;
 }
 
 //========================================================================================
 // 安哥拉技能：可以被打断的自愈，半血以下受击有概率使用
 //========================================================================================
 
-public Action Timer_ZombieSelfHealing(Handle timer, int zombie)
+void StartSelfHealing(int zombie)
+{
+    // 常规信息
+    char ZombieName[32];
+    Han_GetZombieName(zombie, ZombieName, sizeof(ZombieName));
+
+    // 安哥拉在场上可能自愈多次，所以要初始化数组
+    g_iBulletCount[zombie] = 0;
+
+    // 自愈句柄                                                                   
+    Han_SetZombieTarget(zombie, zombie, 0.0);                                                                          // 安哥拉自愈时杵着不动
+    g_hHeal[zombie] = CreateTimer(1.0, Timer_RepeatSelfHealing, zombie, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);    // 每秒回一定量血，直到被打断或者满血为止
+
+    // 文字提示
+    CPrintToChatAll("{green}[华仔] {red}%s正在尝试自愈，快集中火力！", ZombieName);
+}
+
+public Action Timer_RepeatSelfHealing(Handle timer, int zombie)
 {
     // 僵尸状态验证
     if (!IsValidEntity(zombie) || GetEntProp(zombie, Prop_Data, "m_iHealth") <= 0)
@@ -239,41 +343,24 @@ public Action Timer_ZombieSelfHealing(Handle timer, int zombie)
         return Plugin_Stop;
     }
 
-    // 基础信息，结束repeat时要用到
-    char ZombieName[32];
-    Han_GetZombieName(zombie, ZombieName, sizeof(ZombieName));
-
-    float pos[3];
-    GetEntPropVector(zombie, Prop_Send, "m_vecOrigin", pos);
-
     // 自愈过程被打断
     if (g_iBulletCount[zombie] >= ANGELA_HEAL_BULLET)
     {
-        g_bIsSkillUsed[zombie] = false;
-
-        Han_UnlockZombie(zombie);
-
-        EmitAmbientSound(SFX_HEAL3, pos, _, SNDLEVEL_GUNFIRE, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
-        CPrintToChatAll("{green}[华仔] {red}%s的自愈被打断，快乘胜追击！", ZombieName);
+        EndSelfHealingFail(zombie);
 
         KillTimer(timer);
         g_hHeal[zombie] = INVALID_HANDLE;
-        return Plugin_Continue;
+        return Plugin_Stop;
     }
 
     // 自愈以至于回满血了
     if (GetEntProp(zombie, Prop_Data, "m_iHealth") == g_iMaxHealth[zombie])
     {
-        g_bIsSkillUsed[zombie] = false;
-
-        Han_UnlockZombie(zombie);
-
-        EmitAmbientSound(SFX_HEAL2, pos, _, SNDLEVEL_GUNFIRE, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
-        CPrintToChatAll("{green}[华仔] {red}%s完全自愈了，小心！", ZombieName);
+        EndSelfHealingSuccess(zombie);
 
         KillTimer(timer);
         g_hHeal[zombie] = INVALID_HANDLE;
-        return Plugin_Continue;
+        return Plugin_Stop;
     }
 
     // 自愈过程中
@@ -283,11 +370,54 @@ public Action Timer_ZombieSelfHealing(Handle timer, int zombie)
         g_iMaxHealth[zombie]
     );
 
+    // 基础信息
+    float pos[3];
+    GetEntPropVector(zombie, Prop_Send, "m_vecOrigin", pos);
+
+    // 特效
     pos[2] += 100.0;
     WriteParticle("z_group_healer_zombie_buff", pos, 1.0);
+
+    // 音效
     EmitAmbientSound(SFX_HEAL1, pos, _, SNDLEVEL_GUNFIRE, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
 
     return Plugin_Continue;
+}
+
+void EndSelfHealingFail(int zombie)
+{
+    // 基础信息，结束repeat时要用到
+    char ZombieName[32];
+    Han_GetZombieName(zombie, ZombieName, sizeof(ZombieName));
+
+    float pos[3];
+    GetEntPropVector(zombie, Prop_Send, "m_vecOrigin", pos);
+
+    // 还原状态
+    g_bIsSkillUsed[zombie] = false;
+    Han_UnlockZombie(zombie);
+
+    // 文字音效反馈
+    EmitAmbientSound(SFX_HEAL3, pos, _, SNDLEVEL_GUNFIRE, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
+    CPrintToChatAll("{green}[华仔] {red}%s的自愈被打断，快乘胜追击！", ZombieName);
+}
+
+void EndSelfHealingSuccess(int zombie)
+{
+    // 基础信息，结束repeat时要用到
+    char ZombieName[32];
+    Han_GetZombieName(zombie, ZombieName, sizeof(ZombieName));
+
+    float pos[3];
+    GetEntPropVector(zombie, Prop_Send, "m_vecOrigin", pos);
+
+    // 还原状态
+    g_bIsSkillUsed[zombie] = false;
+    Han_UnlockZombie(zombie);
+
+    // 文字音效反馈
+    EmitAmbientSound(SFX_HEAL2, pos, _, SNDLEVEL_GUNFIRE, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
+    CPrintToChatAll("{green}[华仔] {red}%s完全自愈了，小心！", ZombieName);
 }
 
 //========================================================================================
@@ -346,7 +476,7 @@ public Action Timer_FlyThink(Handle timer, int zombie)
             EnterGroundMode(zombie);
 
             Han_SetCustomAnimationEx(zombie, "Walk_shoot_knife3", 4.5);        // 新api，强制播放，无视旧动画是否播完
-            CreateTimer(1.5, Timer_CreateGroupKnockback, zombie);              // 2.0秒太长了
+            CreateTimer(1.5, Timer_CreateSmashKnock, zombie);                  // 2.0秒太长了
             CreateTimer(5.0, Timer_SkillEnd, zombie);
         }
         else
@@ -436,37 +566,6 @@ void PlayWingSound(int zombie)
         EmitAmbientSound(SFX_FLY, pos, _, SNDLEVEL_GUNFIRE, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL)
     }
 }
-
-/* void CreatePoison(float pos[3])
-{
-    int ent = CreateEntityByName("env_smokestack");        // 参考https://forums.alliedmods.net/showthread.php?p=1280363
-
-    if (ent != -1)
-    {
-        char Origin[32];
-        Format(Origin, sizeof(Origin), "%f %f %f", pos[0], pos[1], pos[2]);
-
-        DispatchKeyValue(ent, "SmokeMaterial", "particle/particle_smokegrenade.vmt");
-        DispatchKeyValue(ent, "Origin", Origin);
-        DispatchKeyValue(ent, "BaseSpread", "100");        // Amount of random spread in the origins of the smoke particles when they're spawned.
-        DispatchKeyValue(ent, "SpreadSpeed", "70");        // Amount of random spread in the velocity of the smoke particles after they're spawned.
-        DispatchKeyValue(ent, "Speed", "80");              // The speed at which the smoke particles move after they're spawned.
-        DispatchKeyValue(ent, "StartSize", "200");         // Size of the smoke particles when they're first emitted.
-        DispatchKeyValue(ent, "EndSize", "2");             // Size of the smoke particles at the point they fade out completely.
-        DispatchKeyValue(ent, "Rate", "30");               // Rate at which to emit smoke particles (i.e. particles to emit per second).
-        DispatchKeyValue(ent, "JetLength", "400");         // Length of the smokestack. Lifetime of the smoke particles is derived from this & particle speed.
-        DispatchKeyValue(ent, "Twist", "20");              // The amount, in degrees per second, that the smoke particles twist around the origin.
-        DispatchKeyValue(ent, "RenderColor", "0 255 0");   // 颜色
-        DispatchKeyValue(ent, "RenderAmt", "128");         // 透明度
-
-        DispatchKeyValue(ent, "WindAngle", Origin);
-
-        DispatchSpawn(ent);
-        AcceptEntityInput(ent, "TurnOn");
-    }
-
-    EmitAmbientSound(SFX_POISON, pos, _, SNDLEVEL_GUNFIRE, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
-} */
 
 //========================================================================================
 // 巨型狂暴形态僵尸技能：冲锋
@@ -576,9 +675,9 @@ public Action Timer_ChargeThink(Handle timer, DataPack pack)
     // 如果不是以上情况，则持续施加向目标的推力
     CreateKnockback(fTargetOrigin, zombie, view_as<float>({PANGZI_CHARGE_FORCE, PANGZI_CHARGE_FORCE, 0.0}));
 
-    // 辅助线（记得删）
-    TE_SetupBeamPoints(pos, fTargetOrigin, g_iBeamSprite, 0, 0, 0, 5.0, 2.0, 2.0, 1, 0.0, {255, 0, 0, 255}, 15);
-    TE_SendToAll();
+    // // 辅助线（记得删）
+    // TE_SetupBeamPoints(pos, fTargetOrigin, g_iBeamSprite, 0, 0, 0, 5.0, 2.0, 2.0, 1, 0.0, {255, 0, 0, 255}, 15);
+    // TE_SendToAll();
 
     // 震地音效
     EmitAmbientSound(SFX_CHARGE2, pos, _, SNDLEVEL_GUNFIRE, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
@@ -746,6 +845,7 @@ public Action Timer_GrappleThink(Handle timer, DataPack pack)
     g_iUsePressCount[victim] = 0;
 
     // 生成擒抱伤害
+    Shake(victim, 10.0, 10.0, 1.0);
     SDKHooks_TakeDamage(victim, zombie, zombie, PANGZI_GRAPPLE_DAMAGE, DMG_SLASH, _, _, _, false);
 
     // 音效

@@ -122,13 +122,6 @@ public void Han_OnZombieDeath(int zombie, int killer)
 
 public void Han_OnZombieHurt(int zombie, int attacker)
 {
-    // 基础信息
-    char ZombieName[32];
-    Han_GetZombieName(zombie, ZombieName, sizeof(ZombieName));
-
-    float pos[3];
-    GetEntPropVector(zombie, Prop_Send, "m_vecOrigin", pos);
-
     // 僵尸种类分支
     if (IsSameName(zombie, ZOMBIE_SMOKE) && !g_bIsSkillUsed[zombie])
     {
@@ -172,30 +165,28 @@ public void Han_OnZombieHurt(int zombie, int attacker)
             // 30发子弹，至少触发一次技能的概率是45.45%，目前测下来是很合适的值
             int rand = GetRandomInt(1, 50);
 
-            // 一半生命值以下会尝试自愈
-            if (rand == 1 && GetEntProp(zombie, Prop_Data, "m_iHealth") < g_iMaxHealth[zombie] / 2)
-            {
-                // 改成start
-                g_bIsSkillUsed[zombie] = true;
-                g_iBulletCount[zombie] = 0;                                                                                        // 安哥拉在场上可能自愈多次，所以要初始化
-
-                Han_SetZombieTarget(zombie, zombie, 0.0);                                                                          // 安哥拉自愈时杵着不动
-                g_hHeal[zombie] = CreateTimer(1.0, Timer_ZombieSelfHealing, zombie, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);    // 每秒回一定量血，直到被打断或者满血为止
-
-                CPrintToChatAll("{green}[华仔] {red}%s正在尝试自愈，快集中火力！", ZombieName);
-            }
             // 吸力黑洞，BOSS容易被集火而死
-            else if (rand == 2 && GetEntProp(zombie, Prop_Data, "m_iHealth") > g_iMaxHealth[zombie] / 2)
+            if (rand == 1 
+            && GetEntProp(zombie, Prop_Data, "m_iHealth") > g_iMaxHealth[zombie] / 2
+            )
             {
-                // 改成start
                 g_bIsSkillUsed[zombie] = true;
-
-                Han_SetCustomAnimation(zombie, "run_upper_knife", 5.0);   // 飞起来的动作
-                ProtectZombie(zombie, 5.0);
-                CreatePull(zombie, pos);
-                CreateTimer(5.0, Timer_SkillEnd, zombie);
-
-                CPrintToChatAll("{green}[华仔] {red}小心，%s使用了吸力！", ZombieName);
+                StartPull(zombie);
+            }
+            // 感觉还差个技能
+            else if (rand == 2 
+                && GetEntProp(zombie, Prop_Data, "m_iHealth") > g_iMaxHealth[zombie] / 2
+            )
+            {
+                // 
+            }
+            // 一半生命值以下会尝试自愈
+            else if (rand == 3
+                && GetEntProp(zombie, Prop_Data, "m_iHealth") < g_iMaxHealth[zombie] / 2
+            )
+            {
+                g_bIsSkillUsed[zombie] = true;
+                StartSelfHealing(zombie);
             }
             // 没有概率要求，半血以下开始飞行think避险
             else if (g_hFly[zombie] == INVALID_HANDLE 
@@ -209,13 +200,13 @@ public void Han_OnZombieHurt(int zombie, int attacker)
     }
     else if (IsSameName(zombie, BOSS_PANGZI) && !g_bIsSkillUsed[zombie])
     {
-        int target = GetEntDataEnt2(zombie, g_iLeaderOffset);
-
-        if (target == attacker)    // 如果目标和攻击者是同一个，才触发冲锋擒抱
+        if (attacker == GetEntDataEnt2(zombie, g_iLeaderOffset)    // 如果目标和攻击者是同一个，才触发冲锋擒抱
+        && GetEntProp(zombie, Prop_Data, "m_iHealth") < g_iMaxHealth[zombie] / 2)     // 要求半血以下
         {
             g_bIsSkillUsed[zombie] = true;
             StartCharge(zombie, attacker);
         }
+        // 还差个半血以上的技能
     }
     // 这里还没改
     else if (IsSameName(zombie, "神秘胖子僵尸"))
@@ -232,13 +223,6 @@ public void Han_OnZombieHurt(int zombie, int attacker)
 
 public void Han_OnZombieAttack(int zombie, int victim)
 {
-    // 基础信息
-    char ZombieName[32];
-    Han_GetZombieName(zombie, ZombieName, sizeof(ZombieName));
-
-    float pos[3];
-    GetEntPropVector(zombie, Prop_Send, "m_vecOrigin", pos);
-    
     // 僵尸种类分支
     if (IsSameName(zombie, ZOMBIE_SMOKE))
     {
@@ -289,41 +273,19 @@ public void Han_OnZombieAttack(int zombie, int victim)
         if (rand == 1)
         {
             g_bIsSkillUsed[zombie] = true;
-            g_iZombieCall[victim] = zombie;                    // 如果死了要提前unlock
-
-            CreateZombieCall(victim, 9999.0, ANGELA_CALL_TIME);            // 如果victim在这期间死了，还需要再处理
-            CreateTimer(5.0, Timer_SkillEnd, zombie);
-
-            CPrintToChatAll("{green}[华仔] {red}%s正在呼唤所有僵尸攻击%s，快去帮忙掩护！", ZombieName, g_ClientName[victim]);
+            StartCall(zombie, victim);
         }
         // 群体击飞1 - 砸地动作
         else if (rand == 2)
         {
             g_bIsSkillUsed[zombie] = true;
-
-            Han_SetCustomAnimation(zombie, "Walk_shoot_knife3", 4.5);
-            CreateTimer(2.0, Timer_CreateGroupKnockback, zombie);       // 这里不能1.5，太短
-            CreateTimer(5.0, Timer_SkillEnd, zombie);
+            StartSmash(zombie);
         }
         // 群体击飞2 - 挥臂动作
         else if (rand == 3)
         {
             g_bIsSkillUsed[zombie] = true;
-
-            float fTargetPosition[3], fTempPoints[3], fTempAngles[3];
-            GetEntPropVector(victim, Prop_Send, "m_vecOrigin", fTargetPosition);        // 试过m_angRotation完全不准确
-            MakeVectorFromPoints(pos, fTargetPosition, fTempPoints);
-            GetVectorAngles(fTempPoints, fTempAngles);
-
-            DataPack pack = new DataPack();
-            pack.WriteCell(zombie);
-            pack.WriteCell(fTempAngles[0]);
-            pack.WriteCell(fTempAngles[1]);
-            pack.WriteCell(fTempAngles[2]);
-
-            Han_SetCustomAnimation(zombie, "Walk_shoot_knife2", 3.0);
-            CreateTimer(1.3, Timer_CreateGroupKnockback2, pack);       // 只有boss朝向才会被击飞，而且水平力度大，垂直力度小，和群体击飞1正好相反
-            CreateTimer(3.0, Timer_SkillEnd, zombie);
+            StartSwing(zombie, victim);
         }
     }
     else if (IsSameName(zombie, BOSS_PANGZI))

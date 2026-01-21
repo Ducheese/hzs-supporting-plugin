@@ -353,7 +353,7 @@ void GiveHealth(int client, int value)
 
 void GiveArmor(int client, int value)
 {
-    SetEntProp(client, Prop_Send, "m_iAccount", 
+    SetEntProp(client, Prop_Send, "m_ArmorValue", 
         GetEntProp(client, Prop_Send, "m_ArmorValue") + value < 100 ? 
         GetEntProp(client, Prop_Send, "m_ArmorValue") + value : 
         100

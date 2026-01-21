@@ -52,6 +52,7 @@
 #define PANGZI_GRAPPLE_DAMAGE   10.0       // 巨型狂暴形态僵尸擒抱每秒造成的伤害
 #define PANGZI_GRAPPLE_CD       30.0       // 巨型狂暴形态僵尸冲锋且成功擒抱后的冷却时间（秒）
 #define PANGZI_GRAPPLE_KEYRATE  4          // 真人玩家挣脱擒抱所需的每秒按E键次数
+// 擒抱视角是按照 "hitbox_size" "3.2", "anime_size" "1.5" 做的
 
 // 音效路径（非BOSS特殊僵尸）
 #define SFX_SMOKE1             "custom/gas_cough_gasp_1.wav"                // 迷雾僵尸吐烟时的音效1（咳嗽声）
