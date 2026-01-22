@@ -99,7 +99,7 @@ public Action Timer_CreateExplosion(Handle timer, DataPack pack)
     pos[0] = pack.ReadCell();
     pos[1] = pack.ReadCell();
     pos[2] = pack.ReadCell();
-    CloseHandle(pack);
+    delete pack;
 
     // 生成爆炸实体
     int ent = CreateEntityByName("env_explosion");
