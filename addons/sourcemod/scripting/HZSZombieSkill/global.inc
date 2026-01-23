@@ -53,6 +53,14 @@
 #define PANGZI_GRAPPLE_CD       30.0       // 巨型狂暴形态僵尸冲锋且成功擒抱后的冷却时间（秒）
 #define PANGZI_GRAPPLE_KEYRATE  4          // 真人玩家挣脱擒抱所需的每秒按E键次数
 // 擒抱视角是按照 "hitbox_size" "3.2", "anime_size" "1.5" 做的
+#define PANGZI_THROW_MAX        5          // 巨型狂暴形态僵尸获取子弹僵尸的最大数量
+#define PANGZI_THROW_MIN        3          // 巨型狂暴形态僵尸获取子弹僵尸的最小数量
+#define PANGZI_THROW_RADIUS     5.0        // 巨型狂暴形态僵尸获取子弹僵尸的搜索范围（单位：米）
+#define PANGZI_THROW_RANGE      10.0       // 当目标距离大于该值时，巨型狂暴形态僵尸才会投掷子弹僵尸（单位：米）
+#define PANGZI_THROW_HOLD       3.0        // 巨型狂暴形态僵尸举起子弹僵尸的持续时间（秒）
+#define PANGZI_THROW_FLYTIME    1.0        // 巨型狂暴形态僵尸投掷子弹僵尸的固定飞行时间（秒）
+#define PANGZI_THROW_SPREAD     100.0      // 巨型狂暴形态僵尸投掷子弹僵尸的误差摆动（单位：米）
+#define PANGZI_THROW_CD         10.0       // 巨型狂暴形态僵尸投掷子弹僵尸的冷却时间（秒）
 
 // 音效路径（非BOSS特殊僵尸）
 #define SFX_SMOKE1             "custom/gas_cough_gasp_1.wav"                // 迷雾僵尸吐烟时的音效1（咳嗽声）
@@ -144,21 +152,11 @@ int g_iLastButtons[MAXPLAYERS+1];         // 玩家上一帧的按键（因为�
 int g_iViewControl[MAXPLAYERS+1];         // 相机实体，全局管理，方便清理
 float g_flEscapePos[MAXPLAYERS+1][3];     // 挣脱擒抱后传送回原处，防止卡墙
 
+bool g_bIsPickup[2048];                   // 是否是子弹僵尸
+
 Handle g_hCharge[2048] = {INVALID_HANDLE,...};               // 实现冲锋逻辑所用的timer
 Handle g_hChargePack[2048] = {INVALID_HANDLE,...};           // 专门用来存冲锋关联的 DataPack
 Handle g_hGrapple[MAXPLAYERS+1] = {INVALID_HANDLE, ...};     // 实现擒抱和挣脱逻辑所用的timer
 Handle g_hGrapplePack[MAXPLAYERS+1] = {INVALID_HANDLE,...};  // 专门用来存擒抱关联的 DataPack
 
 Handle g_hMovetype[2048] = {INVALID_HANDLE,...};             // 帮助NPC僵尸应用速度的句柄
-
-//========================================================================================
-//========================================================================================
-
-#define PANGZI_THROW_MAX      5           // 巨型狂暴形态僵尸获取子弹僵尸的最大数量
-#define PANGZI_THROW_RANGE    5.0         // 巨型狂暴形态僵尸获取子弹僵尸的搜索范围（单位：米）
-#define PANGZI_THROW_HOLD     3.0         // 巨型狂暴形态僵尸举起子弹僵尸的持续时间（秒）
-#define PANGZI_THROW_FLYTIME  1.0         // 巨型狂暴形态僵尸投掷子弹僵尸的固定飞行时间（秒）
-#define PANGZI_THROW_SPREAD   100.0       // 巨型狂暴形态僵尸投掷子弹僵尸的误差摆动（单位：米）
-#define PANGZI_THROW_CD       15.0        // 巨型狂暴形态僵尸投掷子弹僵尸的冷却时间（秒）
-
-bool g_bIsPickup[2048];                   // 是否是子弹僵尸

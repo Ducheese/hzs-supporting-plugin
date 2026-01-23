@@ -20,10 +20,10 @@ stock int FindAnimEntity(int zombie)                   // 根据僵尸实体号�
 
 stock bool IsZeroPostion(int client)                   // 和hzs_botfakerespawn插件相关，如果人类出现在0 0 0点附近，判断为已死亡
 {
-    float fClientOrigin[3];
-    GetEntPropVector(client, Prop_Send, "m_vecOrigin", fClientOrigin);
+    float pos[3];
+    GetEntPropVector(client, Prop_Send, "m_vecOrigin", pos);
 
-    return GetVectorDistance(fClientOrigin, view_as<float>({0.0, 0.0, 0.0})) < 10.0;    // 足够小就行
+    return GetVectorDistance(pos, view_as<float>({0.0, 0.0, 0.0})) < 10.0;    // 足够小就行
 }
 
 //========================================================================================
@@ -117,6 +117,20 @@ public Action Timer_DeleteParticle(Handle timer, int entity)
     }
 
     return Plugin_Stop;
+}
+
+//========================================================================================
+// 计算实体间米制距离
+//========================================================================================
+
+float GetMeterDistance(int entity1, int entity2)
+{
+    float pos1[3];
+    float pos2[3];
+
+    GetEntPropVector(entity1, Prop_Send, "m_vecOrigin", pos1);
+    GetEntPropVector(entity2, Prop_Send, "m_vecOrigin", pos2);
+    return GetVectorDistance(pos1, pos2) * GAMEUNITS_TO_METERS;
 }
 
 //========================================================================================

@@ -207,8 +207,10 @@ public void Han_OnZombieHurt(int zombie, int attacker)
             StartCharge(zombie, attacker);
         }
         // 还差个半血以上的技能
-        else if (GetEntProp(zombie, Prop_Data, "m_iHealth") > g_iMaxHealth[zombie] / 2)
+        else if (GetMeterDistance(zombie, attacker) > PANGZI_THROW_RANGE
+        && GetEntProp(zombie, Prop_Data, "m_iHealth") > g_iMaxHealth[zombie] / 2)
         {
+            g_bIsSkillUsed[zombie] = true;
             StartPickupAndThrow(zombie, attacker);
         }
     }
@@ -323,4 +325,5 @@ void InitZombieState(zombie)
 
     // 巨型狂暴使用的数组
     g_iGrappling[zombie] = -1;
+    g_bIsPickup[zombie] = false;
 }

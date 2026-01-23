@@ -142,9 +142,6 @@ public Action Timer_RepeatHealing(Handle timer, int entity)
         return Plugin_Stop;
     }
 
-    float pos[3];
-    GetEntPropVector(entity, Prop_Send, "m_vecOrigin", pos);
-
     int count = Han_GetZombieCount();
 
     for (int i = 0; i < count; i++)
@@ -158,12 +155,7 @@ public Action Timer_RepeatHealing(Handle timer, int entity)
                 continue;
             }
 
-            float fTargetOrigin[3];
-            GetEntPropVector(zombie, Prop_Send, "m_vecOrigin", fTargetOrigin);
-
-            float fTargetDistance = GetVectorDistance(pos, fTargetOrigin);
-
-            if (fTargetDistance*GAMEUNITS_TO_METERS > HEAL_RANGE)
+            if (GetMeterDistance(zombie, entity) > HEAL_RANGE)
             {
                 continue;
             }
@@ -176,6 +168,8 @@ public Action Timer_RepeatHealing(Handle timer, int entity)
         }
     }
 
+    float pos[3];
+    GetEntPropVector(entity, Prop_Send, "m_vecOrigin", pos);
     pos[2] += 50.0;
     WriteParticle("z_group_healer_zombie_buff", pos, 0.1);     // 即便缩短时间，依然有点太密集了
 

@@ -274,11 +274,6 @@ void StartCall(int zombie, int victim)
 
 void CreateCall(int victim, float dist, float duration)
 {
-    float fTargetOrigin[3], fZombieOrigin[3];
-    GetEntPropVector(victim, Prop_Send, "m_vecOrigin", fTargetOrigin);
-
-    float fTargetDistance;
-
     int count = Han_GetZombieCount();
 
     for (int i = 0; i < count; i++)
@@ -292,10 +287,7 @@ void CreateCall(int victim, float dist, float duration)
                 continue;
             }
 
-            GetEntPropVector(zombie, Prop_Send, "m_vecOrigin", fZombieOrigin);
-            fTargetDistance = GetVectorDistance(fTargetOrigin, fZombieOrigin);
-
-            if (fTargetDistance*GAMEUNITS_TO_METERS > dist)
+            if (GetMeterDistance(zombie, victim) > dist)
             {
                 continue;
             }
@@ -657,13 +649,9 @@ public Action Timer_ChargeThink(Handle timer, DataPack pack)
     }
 
     // 人和僵尸的位置都是时刻在变的
-    float pos[3], fTargetOrigin[3];
-    GetEntPropVector(zombie, Prop_Send, "m_vecOrigin", pos);
-    GetEntPropVector(victim, Prop_Send, "m_vecOrigin", fTargetOrigin);
-    float fTargetDistance = GetVectorDistance(pos, fTargetOrigin);
 
     // 距离够近，则关闭冲锋，开始擒抱逻辑
-    if (fTargetDistance*GAMEUNITS_TO_METERS <= PANGZI_GRAPPLE_RANGE)
+    if (GetMeterDistance(zombie, victim) <= PANGZI_GRAPPLE_RANGE)
     {
         ClearChargeHandles(zombie);
         
@@ -673,6 +661,8 @@ public Action Timer_ChargeThink(Handle timer, DataPack pack)
     }
 
     // 如果不是以上情况，则持续施加向目标的推力
+    float fTargetOrigin[3];
+    GetEntPropVector(victim, Prop_Send, "m_vecOrigin", fTargetOrigin);
     CreateKnockback(fTargetOrigin, zombie, view_as<float>({-PANGZI_CHARGE_FORCE, -PANGZI_CHARGE_FORCE, 0.0}));
 
     // // 辅助线（记得删）
@@ -680,6 +670,8 @@ public Action Timer_ChargeThink(Handle timer, DataPack pack)
     // TE_SendToAll();
 
     // 震地音效
+    float pos[3];
+    GetEntPropVector(zombie, Prop_Send, "m_vecOrigin", pos);
     EmitAmbientSound(SFX_CHARGE2, pos, _, SNDLEVEL_GUNFIRE, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
     
     return Plugin_Continue;
@@ -893,13 +885,9 @@ void EndGrapple(int zombie, int victim)
 
 void StartPickupAndThrow(int pangzi, int victim)
 {
-    // 基础信息
-    float pangziPos[3], ammoPos[3];
-    GetEntPropVector(pangzi, Prop_Send, "m_vecOrigin", pangziPos);
-
     // 变量初始化
     int thrownCount = 0;
-    int thrownMax = GetRandomInt(1, PANGZI_THROW_MAX);
+    int thrownMax = GetRandomInt(PANGZI_THROW_MIN, PANGZI_THROW_MAX);
 
     // 搜索附近的“弹药”
     int count = Han_GetZombieCount();
@@ -927,10 +915,12 @@ void StartPickupAndThrow(int pangzi, int victim)
                 continue;
             }
 
-            GetEntPropVector(zombie, Prop_Send, "m_vecOrigin", ammoPos);
-            float fTargetDistance = GetVectorDistance(pangziPos, ammoPos);
+            if (g_bIsPickup[zombie])
+            {
+                continue;
+            }
 
-            if (fTargetDistance*GAMEUNITS_TO_METERS > PANGZI_THROW_RANGE)
+            if (GetMeterDistance(zombie, pangzi) > PANGZI_THROW_RADIUS)
             {
                 continue;
             }
@@ -938,13 +928,20 @@ void StartPickupAndThrow(int pangzi, int victim)
             thrownCount++;
 
             PickupAndThrowZombie(pangzi, zombie, victim);
-
+            g_bIsPickup[zombie] = true;
+            
             if (thrownCount >= thrownMax)
             {
                 break;
             }
         }
     }
+
+    // 延时开放技能占位
+    if (thrownCount > 0)
+        CreateTimer(PANGZI_THROW_HOLD+PANGZI_THROW_FLYTIME+PANGZI_THROW_CD, Timer_SkillEnd, pangzi);
+    else
+        g_bIsSkillUsed[pangzi] = false;    // 没有投掷任何僵尸，取消技能占位
 }
 
 void PickupAndThrowZombie(int pangzi, int zombie, int victim)
@@ -980,18 +977,20 @@ public Action Timer_ThrowZombie(Handle timer, DataPack pack)
     int zombie = pack.ReadCell();
     int victim = pack.ReadCell();
     delete pack;
-    
-    // 得检查子弹僵尸和巨型狂暴的状态，人类的死活倒是无所谓
-    if (!IsValidEntity(pangzi) || GetEntProp(pangzi, Prop_Data, "m_iHealth") <= 0)
-    {
-        AcceptEntityInput(zombie, "ClearParent");
-        SetEntityMoveType(zombie, MOVETYPE_STEP);
-        Han_UnlockZombie(zombie);
-        return Plugin_Stop;
-    }
 
     if (!IsValidEntity(zombie) || GetEntProp(zombie, Prop_Data, "m_iHealth") <= 0)
     {
+        // PrintToChatAll("僵尸无效，直接返回");
+        return Plugin_Stop;
+    }
+
+    if (!IsValidEntity(pangzi) || GetEntProp(pangzi, Prop_Data, "m_iHealth") <= 0)
+    {
+        // PrintToChatAll("胖子无效，没有投掷");
+        AcceptEntityInput(zombie, "ClearParent");
+        SetEntityMoveType(zombie, MOVETYPE_STEP);
+        Han_UnlockZombie(zombie);
+        g_bIsPickup[zombie] = false;
         return Plugin_Stop;
     }
 
@@ -1044,10 +1043,10 @@ void ThrowZombie(int zombie, int victim)
         AcceptEntityInput(zombie, "SetParent", dummy);
 
         // 设置dummy实体的碰撞体积
-        SetEntProp(dummy, Prop_Send, "m_CollisionGroup", 2);    // 只和世界有碰撞
+        SetEntProp(dummy, Prop_Send, "m_CollisionGroup", 9);    // 只和世界有碰撞
         SetEntProp(dummy, Prop_Send, "m_nSolidType", 2);    // SOLID_BBOX
-        float mins[] = {-16.0, -16.0, 0.0};
-        float maxs[] = {16.0, 16.0, 72.0};
+        float mins[] = {-32.0, -32.0, 0.0};
+        float maxs[] = {32.0, 32.0, 72.0};
         SetEntPropVector(dummy, Prop_Send, "m_vecMins", mins);
         SetEntPropVector(dummy, Prop_Send, "m_vecMaxs", maxs);
 
@@ -1081,7 +1080,7 @@ public Action Timer_LandZombie(Handle timer, DataPack pack)
 
     if (!IsValidEntity(zombie) || GetEntProp(zombie, Prop_Data, "m_iHealth") <= 0)
     {
-        PrintToChatAll("僵尸无效，直接销毁dummy实体");
+        // PrintToChatAll("僵尸无效，直接销毁dummy实体");
     }
     else
     {
@@ -1089,11 +1088,12 @@ public Action Timer_LandZombie(Handle timer, DataPack pack)
         AcceptEntityInput(zombie, "ClearParent");
         SetEntityMoveType(zombie, MOVETYPE_STEP);
         Han_UnlockZombie(zombie);
+        g_bIsPickup[zombie] = false;
     }
 
     if (IsValidEntity(dummy))
     {
-        RemoveEntity(dummy);
+        AcceptEntityInput(dummy, "Kill");
     }
 
     return Plugin_Stop;
