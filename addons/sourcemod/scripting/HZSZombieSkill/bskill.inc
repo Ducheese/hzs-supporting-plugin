@@ -828,7 +828,7 @@ public Action Timer_GrappleThink(Handle timer, DataPack pack)
     if (!IsValidEntity(zombie) || GetEntProp(zombie, Prop_Data, "m_iHealth") <= 0)
     {
         KillTimer(timer);
-        g_hGrapple[zombie] = INVALID_HANDLE;
+        g_hGrapple[victim] = INVALID_HANDLE;
         return Plugin_Stop;
     }
 
@@ -894,9 +894,6 @@ void EndGrapple(int zombie, int victim)
 void StartPickupAndThrow(int pangzi, int victim)
 {
     // 基础信息
-    char ZombieName[32];
-    Han_GetZombieName(pangzi, ZombieName, sizeof(ZombieName));
-
     float pangziPos[3], ammoPos[3];
     GetEntPropVector(pangzi, Prop_Send, "m_vecOrigin", pangziPos);
 
@@ -923,6 +920,13 @@ void StartPickupAndThrow(int pangzi, int victim)
                 continue;
             }
 
+            if (IsSameName(zombie, ZOMBIE_GHOST)
+            || IsSameName(zombie, BOSS_ANGELA)
+            || IsSameName(zombie, BOSS_PANGZI))
+            {
+                continue;
+            }
+
             GetEntPropVector(zombie, Prop_Send, "m_vecOrigin", ammoPos);
             float fTargetDistance = GetVectorDistance(pangziPos, ammoPos);
 
@@ -941,9 +945,6 @@ void StartPickupAndThrow(int pangzi, int victim)
             }
         }
     }
-
-    // 文字提示
-    CPrintToChatAll("{green}[华仔] {red}%s似乎想抓些什么丢过来！", ZombieName);
 }
 
 void PickupAndThrowZombie(int pangzi, int zombie, int victim)
@@ -1015,9 +1016,25 @@ void ThrowZombie(int zombie, int victim)
     targetPos[1] += GetRandomFloat(-PANGZI_THROW_SPREAD, PANGZI_THROW_SPREAD);
 
     // 生成辅助实体
-    int dummy = CreateEntityByName("info_target");
+    int dummy = CreateEntityByName("prop_dynamic");
     if (dummy != -1)
     {
+        /**
+         * m_CollisionGroup : https://developer.valvesoftware.com/wiki/Collision_groups
+         *     SetEntProp(dummy, Prop_Send, "m_CollisionGroup", 2);
+         * m_usSolidFlags : https://wiki.facepunch.com/gmod/Enums/FSOLID
+         *     SetEntProp(dummy, Prop_Send, "m_usSolidFlags", xxxx);
+         * m_nSolidType : https://developer.valvesoftware.com/wiki/SetSolid()
+         *     SetEntProp(dummy, Prop_Send, "m_nSolidType", 2);    // SOLID_BBOX
+         *     float mins[] = {-16.0, -16.0, 0.0};
+         *     float maxs[] = {16.0, 16.0, 72.0};
+         *     SetEntPropVector(dummy, Prop_Send, "m_vecMins", mins);
+         *     SetEntPropVector(dummy, Prop_Send, "m_vecMaxs", maxs);
+         */
+        // 这里用error模型占位，反正看不见
+        SetEntityModel(dummy, "models/error.mdl");
+        SetEntityRenderMode(dummy, RENDER_NONE);
+
         // 生成dummy实体并传送初始位置
         DispatchSpawn(dummy);
         TeleportEntity(dummy, startPos, NULL_VECTOR, NULL_VECTOR);
@@ -1025,6 +1042,14 @@ void ThrowZombie(int zombie, int victim)
         // 绑定僵尸到dummy实体上
         SetVariantString("!activator");
         AcceptEntityInput(zombie, "SetParent", dummy);
+
+        // 设置dummy实体的碰撞体积
+        SetEntProp(dummy, Prop_Send, "m_CollisionGroup", 2);    // 只和世界有碰撞
+        SetEntProp(dummy, Prop_Send, "m_nSolidType", 2);    // SOLID_BBOX
+        float mins[] = {-16.0, -16.0, 0.0};
+        float maxs[] = {16.0, 16.0, 72.0};
+        SetEntPropVector(dummy, Prop_Send, "m_vecMins", mins);
+        SetEntPropVector(dummy, Prop_Send, "m_vecMaxs", maxs);
 
         // 计算初始速度（抛物线核心），假设我们希望 1.0 秒飞到
         SetEntityMoveType(dummy, MOVETYPE_FLYGRAVITY);
@@ -1043,7 +1068,7 @@ void ThrowZombie(int zombie, int victim)
         DataPack pack = new DataPack();
         pack.WriteCell(zombie);
         pack.WriteCell(dummy);
-        CreateTimer(PANGZI_THROW_FLYTIME+2.0, Timer_LandZombie, pack);
+        CreateTimer(PANGZI_THROW_FLYTIME+0.1, Timer_LandZombie, pack);
     }
 }
 

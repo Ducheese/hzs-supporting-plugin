@@ -154,8 +154,11 @@ Handle g_hMovetype[2048] = {INVALID_HANDLE,...};             // 帮助NPC僵尸�
 //========================================================================================
 //========================================================================================
 
-#define PANGZI_THROW_MAX      3           // 巨型狂暴形态僵尸获取子弹僵尸的最大数量
+#define PANGZI_THROW_MAX      5           // 巨型狂暴形态僵尸获取子弹僵尸的最大数量
 #define PANGZI_THROW_RANGE    5.0         // 巨型狂暴形态僵尸获取子弹僵尸的搜索范围（单位：米）
 #define PANGZI_THROW_HOLD     3.0         // 巨型狂暴形态僵尸举起子弹僵尸的持续时间（秒）
 #define PANGZI_THROW_FLYTIME  1.0         // 巨型狂暴形态僵尸投掷子弹僵尸的固定飞行时间（秒）
 #define PANGZI_THROW_SPREAD   100.0       // 巨型狂暴形态僵尸投掷子弹僵尸的误差摆动（单位：米）
+#define PANGZI_THROW_CD       15.0        // 巨型狂暴形态僵尸投掷子弹僵尸的冷却时间（秒）
+
+bool g_bIsPickup[2048];                   // 是否是子弹僵尸
