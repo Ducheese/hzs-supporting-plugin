@@ -891,7 +891,7 @@ void EndGrapple(int zombie, int victim)
 // 巨型狂暴形态僵尸技能：投掷僵尸
 //========================================================================================
 
-void StartThrow(int pangzi, int victim)
+void StartPickupAndThrow(int pangzi, int victim)
 {
     // 基础信息
     char ZombieName[32];
@@ -902,7 +902,7 @@ void StartThrow(int pangzi, int victim)
 
     // 变量初始化
     int thrownCount = 0;
-    int thrownMax = GetRandomInt(1, 3);
+    int thrownMax = GetRandomInt(1, PANGZI_THROW_MAX);
 
     // 搜索附近的“弹药”
     int count = Han_GetZombieCount();
@@ -918,7 +918,7 @@ void StartThrow(int pangzi, int victim)
                 continue;
             }
 
-            if (zombie == pangzi)   // 不能投掷自己
+            if (zombie == pangzi)   // 不能投掷自己（还得过滤掉Boss级别的大型僵尸）
             {
                 continue;
             }
@@ -926,14 +926,14 @@ void StartThrow(int pangzi, int victim)
             GetEntPropVector(zombie, Prop_Send, "m_vecOrigin", ammoPos);
             float fTargetDistance = GetVectorDistance(pangziPos, ammoPos);
 
-            if (fTargetDistance*GAMEUNITS_TO_METERS > 8.0)
+            if (fTargetDistance*GAMEUNITS_TO_METERS > PANGZI_THROW_RANGE)
             {
                 continue;
             }
 
             thrownCount++;
 
-            ThrowZombieWithDummy(victim, zombie);
+            PickupAndThrowZombie(pangzi, zombie, victim);
 
             if (thrownCount >= thrownMax)
             {
@@ -946,50 +946,105 @@ void StartThrow(int pangzi, int victim)
     CPrintToChatAll("{green}[华仔] {red}%s似乎想抓些什么丢过来！", ZombieName);
 }
 
-void ThrowZombieWithDummy(int victim, int zombie)
+void PickupAndThrowZombie(int pangzi, int zombie, int victim)
 {
-    if (!IsValidEntity(zombie) || !IsValidEntity(victim)) return;
+    // 设置父子关系，把子弹僵尸举到空中（尚未解除父子关系）
+    PickupZombie(pangzi, zombie);
 
-    // 1. 创建隐形载具
-    int dummy = CreateEntityByName("info_target");
-    if (dummy == -1) return;
+    // 延时投掷僵尸
+    DataPack pack = new DataPack();
+    pack.WriteCell(pangzi);
+    pack.WriteCell(zombie);
+    pack.WriteCell(victim);
+    CreateTimer(PANGZI_THROW_HOLD, Timer_ThrowZombie, pack);
+}
 
-    // 获取起始位置和目标位置
-    float startPos[3], targetPos[3];
-    GetEntPropVector(zombie, Prop_Send, "m_vecOrigin", startPos);
-    GetEntPropVector(victim, Prop_Send, "m_vecOrigin", targetPos);
-
-    // 2. 预设下载具属性
-    DispatchSpawn(dummy);
-    TeleportEntity(dummy, startPos, NULL_VECTOR, NULL_VECTOR);
-    SetEntityMoveType(dummy, MOVETYPE_FLYGRAVITY);
-
-    // 3. 计算初始速度（抛物线核心）
-    // 假设我们希望 1.0 秒飞到
-    float time = 1.0; 
-    float gravity = GetConVarFloat(FindConVar("sv_gravity"));
-    
-    float vel[3];
-    vel[0] = (targetPos[0] - startPos[0]) / time;
-    vel[1] = (targetPos[1] - startPos[1]) / time;
-    vel[2] = (targetPos[2] - startPos[2]) / time + (0.5 * gravity * time);
-
-    // 4. 发射载具
-    TeleportEntity(dummy, NULL_VECTOR, NULL_VECTOR, vel);
-
-    // 5. 绑定僵尸到载具上
-    // 记得先解除僵尸之前的父子关系和物理限制
-    AcceptEntityInput(zombie, "ClearParent"); 
-    SetEntityMoveType(zombie, MOVETYPE_NONE); 
+void PickupZombie(int pangzi, int zombie)
+{
+    float viewOffset[3] = {100.0, 0.0, 150.0};
     
     SetVariantString("!activator");
-    AcceptEntityInput(zombie, "SetParent", dummy);
+    AcceptEntityInput(zombie, "SetParent", pangzi);
 
-    // 6. 延时清理：1.0 秒后载具落地，把僵尸放下来
-    DataPack pack = new DataPack();
-    pack.WriteCell(zombie);
-    pack.WriteCell(dummy);
-    CreateTimer(time, Timer_LandZombie, pack);
+    TeleportEntity(zombie, viewOffset, NULL_VECTOR, NULL_VECTOR);
+    SetEntityMoveType(zombie, MOVETYPE_NONE);
+    
+    Han_SetZombieTarget(zombie, zombie, 0.0);
+}
+
+public Action Timer_ThrowZombie(Handle timer, DataPack pack)
+{
+    pack.Reset();
+    int pangzi = pack.ReadCell();
+    int zombie = pack.ReadCell();
+    int victim = pack.ReadCell();
+    delete pack;
+    
+    // 得检查子弹僵尸和巨型狂暴的状态，人类的死活倒是无所谓
+    if (!IsValidEntity(pangzi) || GetEntProp(pangzi, Prop_Data, "m_iHealth") <= 0)
+    {
+        AcceptEntityInput(zombie, "ClearParent");
+        SetEntityMoveType(zombie, MOVETYPE_STEP);
+        Han_UnlockZombie(zombie);
+        return Plugin_Stop;
+    }
+
+    if (!IsValidEntity(zombie) || GetEntProp(zombie, Prop_Data, "m_iHealth") <= 0)
+    {
+        return Plugin_Stop;
+    }
+
+    // 发射僵尸
+    ThrowZombie(zombie, victim);
+
+    return Plugin_Stop;
+}
+
+void ThrowZombie(int zombie, int victim)
+{
+    // 子弹僵尸解除父子关系，等待dummy实体带飞
+    AcceptEntityInput(zombie, "ClearParent");
+
+    // 获取子弹僵尸起始位置和目标位置
+    float startPos[3], targetPos[3];
+    GetEntPropVector(zombie, Prop_Send, "m_vecOrigin", startPos);      // 已经解除父子关系了，理论上是绝对坐标
+    GetEntPropVector(victim, Prop_Send, "m_vecOrigin", targetPos);
+
+    // 随即摆动
+    targetPos[0] += GetRandomFloat(-PANGZI_THROW_SPREAD, PANGZI_THROW_SPREAD);
+    targetPos[1] += GetRandomFloat(-PANGZI_THROW_SPREAD, PANGZI_THROW_SPREAD);
+
+    // 生成辅助实体
+    int dummy = CreateEntityByName("info_target");
+    if (dummy != -1)
+    {
+        // 生成dummy实体并传送初始位置
+        DispatchSpawn(dummy);
+        TeleportEntity(dummy, startPos, NULL_VECTOR, NULL_VECTOR);
+
+        // 绑定僵尸到dummy实体上
+        SetVariantString("!activator");
+        AcceptEntityInput(zombie, "SetParent", dummy);
+
+        // 计算初始速度（抛物线核心），假设我们希望 1.0 秒飞到
+        SetEntityMoveType(dummy, MOVETYPE_FLYGRAVITY);
+
+        float time = PANGZI_THROW_FLYTIME; 
+        float gravity = GetConVarFloat(FindConVar("sv_gravity"));
+        float vel[3];
+        vel[0] = (targetPos[0] - startPos[0]) / time;
+        vel[1] = (targetPos[1] - startPos[1]) / time;
+        vel[2] = (targetPos[2] - startPos[2]) / time + (0.5 * gravity * time);
+
+        // 发射dummy实体
+        TeleportEntity(dummy, NULL_VECTOR, NULL_VECTOR, vel);
+
+        // 延时清理
+        DataPack pack = new DataPack();
+        pack.WriteCell(zombie);
+        pack.WriteCell(dummy);
+        CreateTimer(PANGZI_THROW_FLYTIME+2.0, Timer_LandZombie, pack);
+    }
 }
 
 public Action Timer_LandZombie(Handle timer, DataPack pack)
@@ -999,19 +1054,21 @@ public Action Timer_LandZombie(Handle timer, DataPack pack)
     int dummy = pack.ReadCell();
     delete pack;
 
-    if (IsValidEntity(zombie))
+    if (!IsValidEntity(zombie) || GetEntProp(zombie, Prop_Data, "m_iHealth") <= 0)
     {
+        PrintToChatAll("僵尸无效，直接销毁dummy实体");
+    }
+    else
+    {
+        // 子弹僵尸解除父子关系，恢复movetype，重置目标
         AcceptEntityInput(zombie, "ClearParent");
-        SetEntityMoveType(zombie, MOVETYPE_FLYGRAVITY); // 恢复僵尸自身重力
-        
-        // 给它一个微小的推力防止卡进地里
-        float stopVel[3] = {0.0, 0.0, 1.0};
-        TeleportEntity(zombie, NULL_VECTOR, NULL_VECTOR, stopVel);
+        SetEntityMoveType(zombie, MOVETYPE_STEP);
+        Han_UnlockZombie(zombie);
     }
 
     if (IsValidEntity(dummy))
     {
-        RemoveEntity(dummy); // 销毁载具
+        RemoveEntity(dummy);
     }
 
     return Plugin_Stop;

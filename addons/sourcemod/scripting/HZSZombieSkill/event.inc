@@ -209,7 +209,7 @@ public void Han_OnZombieHurt(int zombie, int attacker)
         // 还差个半血以上的技能
         else if (GetEntProp(zombie, Prop_Data, "m_iHealth") > g_iMaxHealth[zombie] / 2)
         {
-            StartThrow(zombie, attacker);
+            StartPickupAndThrow(zombie, attacker);
         }
     }
     // 这里还没改
