@@ -939,7 +939,15 @@ void StartPickupAndThrow(int pangzi, int victim)
 
     // 延时开放技能占位
     if (thrownCount > 0)
+    {
+        // 基础信息
+        char ZombieName[32];
+        Han_GetZombieName(pangzi, ZombieName, sizeof(ZombieName));
+
+        // 文字提示
+        CPrintToChat(victim, "{green}[华仔] {red}%s想抓些什么丢过来！", ZombieName);
         CreateTimer(PANGZI_THROW_HOLD+PANGZI_THROW_FLYTIME+PANGZI_THROW_CD, Timer_SkillEnd, pangzi);
+    }
     else
         g_bIsSkillUsed[pangzi] = false;    // 没有投掷任何僵尸，取消技能占位
 }
@@ -1084,8 +1092,14 @@ public Action Timer_LandZombie(Handle timer, DataPack pack)
     }
     else
     {
+        float landPos[3];
+        GetEntPropVector(dummy, Prop_Send, "m_vecOrigin", landPos);
+
         // 子弹僵尸解除父子关系，恢复movetype，重置目标
         AcceptEntityInput(zombie, "ClearParent");
+
+        TeleportEntity(zombie, landPos, NULL_VECTOR, NULL_VECTOR);
+
         SetEntityMoveType(zombie, MOVETYPE_STEP);
         Han_UnlockZombie(zombie);
         g_bIsPickup[zombie] = false;
