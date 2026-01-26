@@ -167,31 +167,27 @@ public void Han_OnZombieHurt(int zombie, int attacker)
 
             // 吸力黑洞，BOSS容易被集火而死
             if (rand == 1 
-            && GetEntProp(zombie, Prop_Data, "m_iHealth") > g_iMaxHealth[zombie] / 2
-            )
+            && GetEntProp(zombie, Prop_Data, "m_iHealth") > g_iMaxHealth[zombie] / 2)
             {
                 g_bIsSkillUsed[zombie] = true;
                 StartPull(zombie);
             }
             // 感觉还差个技能
             else if (rand == 2 
-                && GetEntProp(zombie, Prop_Data, "m_iHealth") > g_iMaxHealth[zombie] / 2
-            )
+            && GetEntProp(zombie, Prop_Data, "m_iHealth") > g_iMaxHealth[zombie] / 2)
             {
                 // 
             }
             // 一半生命值以下会尝试自愈
             else if (rand == 3
-                && GetEntProp(zombie, Prop_Data, "m_iHealth") < g_iMaxHealth[zombie] / 2
-            )
+            && GetEntProp(zombie, Prop_Data, "m_iHealth") < g_iMaxHealth[zombie] / 2)
             {
                 g_bIsSkillUsed[zombie] = true;
                 StartSelfHealing(zombie);
             }
             // 没有概率要求，半血以下开始飞行think避险
             else if (g_hFly[zombie] == INVALID_HANDLE 
-                && GetEntProp(zombie, Prop_Data, "m_iHealth") < g_iMaxHealth[zombie] / 2
-            )
+            && GetEntProp(zombie, Prop_Data, "m_iHealth") < g_iMaxHealth[zombie] / 2)
             {
                 InitFlyingState(zombie);
                 g_hFly[zombie] = CreateTimer(0.0, Timer_FlyThink, zombie, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
@@ -200,21 +196,21 @@ public void Han_OnZombieHurt(int zombie, int attacker)
     }
     else if (IsSameName(zombie, BOSS_PANGZI) && !g_bIsSkillUsed[zombie])
     {
-        if (attacker == GetEntDataEnt2(zombie, g_iLeaderOffset)    // 如果目标和攻击者是同一个，才触发冲锋擒抱
-        && GetEntProp(zombie, Prop_Data, "m_iHealth") < g_iMaxHealth[zombie] / 2)     // 要求半血以下
-        {
-            g_bIsSkillUsed[zombie] = true;
-            StartCharge(zombie, attacker);
-        }
-        // 还差个半血以上的技能
-        else if (GetMeterDistance(zombie, attacker) > PANGZI_THROW_RANGE
+        // 半血以上投掷僵尸
+        if (GetMeterDistance(zombie, attacker) > PANGZI_THROW_RANGE
         && GetEntProp(zombie, Prop_Data, "m_iHealth") > g_iMaxHealth[zombie] / 2)
         {
             g_bIsSkillUsed[zombie] = true;
             StartPickupAndThrow(zombie, attacker);
         }
+        // 半血以下冲锋擒抱
+        else if (attacker == GetEntDataEnt2(zombie, g_iLeaderOffset)    // 如果目标和攻击者是同一个，才触发冲锋擒抱
+        && GetEntProp(zombie, Prop_Data, "m_iHealth") < g_iMaxHealth[zombie] / 2)
+        {
+            g_bIsSkillUsed[zombie] = true;
+            StartCharge(zombie, attacker);
+        }
     }
-    // 这里还没改
     else if (IsSameName(zombie, "神秘胖子僵尸"))
     {
         GiveHealth(attacker, 1);

@@ -16,7 +16,9 @@
 #include "HZSZombieSkill/event"        // 僵尸事件
 #include "HZSZombieSkill/helper"       // 功能函数
 #include "HZSZombieSkill/zskill"       // 特殊僵尸技能函数
-#include "HZSZombieSkill/bskill"       // BOSS技能函数
+#include "HZSZombieSkill/angela"       // BOSS技能函数（安哥拉）
+#include "HZSZombieSkill/pangzi"       // BOSS技能函数（巨型狂暴形态僵尸）
+#include "HZSZombieSkill/yixing"       // BOSS技能函数（异形斗兽）
 
 //========================================================================================
 //========================================================================================
