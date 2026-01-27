@@ -64,7 +64,7 @@ public void OnClientDisconnect_Post(int client)
 public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3], float angles[3], int &weapon, int &subtype, int &cmdnum, int &tickcount, int &seed, int mouse[2])
 {
     // 干扰人类移动的僵尸技能
-    if (IsValidClient(client, true))
+    if (IsHumanAlive(client))
     {
         if (g_bIsStuck[client])
         {
@@ -81,7 +81,7 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
             SetHudTextParams(0.50, 0.45, 0.1, 255, 0, 0, 255);
             ShowHudText(client, -1, "  方向键取反了!!!");
         }
-        else if (g_iZombiePull[client] != -1 && !IsZeroPostion(client))     // 在0 0 0点等待复活的人类不会被吸
+        else if (g_iZombiePull[client] != -1)     // 在0 0 0点等待复活的人类不会被吸
         {
             int zombie = g_iZombiePull[client];
 
@@ -131,7 +131,7 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
     }
 
     // 呼唤僵尸攻击人类，死后处理（草，忘了真死的情况）
-    if (g_iZombieCall[client] != -1 && (IsZeroPostion(client) || !IsPlayerAlive(client)))
+    if (g_iZombieCall[client] != -1 && !IsHumanAlive(client))
     {
         g_iZombieCall[client] = -1;         // 防止这里重复执行
 
@@ -212,4 +212,9 @@ void InitSoundCache()
     PrecacheSound(SFX_CHARGE2, true);
     PrecacheSound(SFX_GRAPPLE, true);
     PrecacheSound(SFX_GRAPPLE2, true);
+
+    // 音频预缓存（BOSS异形斗兽）
+    PrecacheSound(SFX_DASH1, true);
+    PrecacheSound(SFX_DASH2, true);
+    PrecacheSound(SFX_DASH3, true);
 }

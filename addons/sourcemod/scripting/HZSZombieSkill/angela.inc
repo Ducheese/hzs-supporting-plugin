@@ -28,9 +28,9 @@ void CreatePull(int zombie, float pos[3])
     // 状态管理
     for (int i = 1; i <= MaxClients; i++)
     {
-        if (IsValidClient(i, true) && !IsZeroPostion(i))    // 如果刚复活就不会被吸，毕竟还要买武器，降低难度吧
+        if (IsHumanAlive(i))    // 如果刚复活就不会被吸，毕竟还要买武器，降低难度吧
         {
-            g_iZombiePull[i] = zombie;                      // 记录安哥拉实体号
+            g_iZombiePull[i] = zombie;                 // 记录安哥拉实体号
             CreateTimer(ANGELA_PULL_TIME, Timer_DePull, i);
         }
     }
@@ -132,7 +132,7 @@ public Action Timer_CreateSmashKnock(Handle timer, int zombie)
     // 挨个击飞
     for (int i = 1; i <= MaxClients; i++)
     {
-        if (IsValidClient(i, true))
+        if (IsHumanAlive(i))
         {
             float fTargetOrigin[3];
             GetEntPropVector(i, Prop_Send, "m_vecOrigin", fTargetOrigin);
@@ -140,11 +140,6 @@ public Action Timer_CreateSmashKnock(Handle timer, int zombie)
             float fTargetDistance = GetVectorDistance(pos, fTargetOrigin);
 
             if (fTargetDistance*GAMEUNITS_TO_METERS > ANGELA_KNOCK_RANGE)
-            {
-                continue;
-            }
-
-            if (IsZeroPostion(i) || !IsPlayerAlive(i))
             {
                 continue;
             }
@@ -201,7 +196,7 @@ public Action Timer_CreateSwingKnock(Handle timer, DataPack pack)
     // 挨个击飞
     for (int i = 1; i <= MaxClients; i++)
     {
-        if (IsValidClient(i, true))
+        if (IsHumanAlive(i))
         {
             float fTargetOrigin[3];
             GetEntPropVector(i, Prop_Send, "m_vecOrigin", fTargetOrigin);
@@ -214,11 +209,6 @@ public Action Timer_CreateSwingKnock(Handle timer, DataPack pack)
             }
 
             if (!IsTargetForward(pos, fTargetOrigin, ang))
-            {
-                continue;
-            }
-
-            if (IsZeroPostion(i) || !IsPlayerAlive(i))
             {
                 continue;
             }

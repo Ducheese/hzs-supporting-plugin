@@ -18,6 +18,7 @@
 #define ZOMBIE_GHOST           "幽灵僵尸"
 #define BOSS_ANGELA            "安哥拉"
 #define BOSS_PANGZI            "巨型狂暴形态僵尸"
+#define BOSS_YIXING            "异形斗兽"
 
 // 技能参数（非BOSS特殊僵尸）
 #define SMOKE_FADETIME          5.0        // 几秒后迷雾僵尸的烟开始消散（秒）
@@ -88,6 +89,11 @@
 #define SFX_CHARGE2            "custom/tank_walk06.wav"                     // 巨型狂暴形态僵尸冲锋震地声
 #define SFX_GRAPPLE            "custom/charger_smash_01.wav"                // 巨型狂暴形态僵尸造成擒抱伤害的音效
 #define SFX_GRAPPLE2           "custom/charger_pummel02.wav"                // 巨型狂暴形态僵尸擒抱成功那一下的叫声
+
+// 音效路径（BOSS异形斗兽）
+#define SFX_DASH1              "custom/zombiedog_attack1.wav"
+#define SFX_DASH2              "custom/zombiedog_attack3.wav"
+#define SFX_DASH3              "custom/concrete_break3.wav"
 
 //========================================================================================
 // HANDLES & VARIABLES
@@ -160,3 +166,12 @@ Handle g_hGrapple[MAXPLAYERS+1] = {INVALID_HANDLE, ...};     // 实现擒抱和�
 Handle g_hGrapplePack[MAXPLAYERS+1] = {INVALID_HANDLE,...};  // 专门用来存擒抱关联的 DataPack
 
 Handle g_hMovetype[2048] = {INVALID_HANDLE,...};             // 帮助NPC僵尸应用速度的句柄
+
+//========================================================================================
+// 技能状态管理（BOSS异形斗兽 Gemini提供）
+//========================================================================================
+
+#define YIXING_DASH_FORCE     4000.0     // 异形斗兽冲撞的推力，要比胖子强
+#define YIXING_DASH_DAMAGE    10.0       // 异形斗兽冲撞造成的伤害（如果位置不好可能造成叠伤）
+#define YIXING_DASH_RADIUS    3.0        // 异形斗兽冲撞的碰撞半径（单位：米）
+#define YIXING_DASH_CD        5.0        // 异形斗兽冲撞的冷却时间（秒）

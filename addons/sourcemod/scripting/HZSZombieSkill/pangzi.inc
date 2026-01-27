@@ -79,7 +79,7 @@ public Action Timer_ChargeThink(Handle timer, DataPack pack)
     }
 
     // 人没了，关闭冲锋句柄即可（僵尸死亡的处理移到event）
-    if (IsZeroPostion(victim) || !IsPlayerAlive(victim))
+    if (!IsHumanAlive(victim))
     {
         ClearChargeHandles(zombie);
 
@@ -265,7 +265,7 @@ public Action Timer_GrappleThink(Handle timer, DataPack pack)
         return Plugin_Stop;
     }
 
-    if (IsZeroPostion(victim) || !IsPlayerAlive(victim)      // 人没了，关闭擒抱句柄即可（僵尸死亡的处理移到event）
+    if (!IsHumanAlive(victim)      // 人没了，关闭擒抱句柄即可（僵尸死亡的处理移到event）
     || g_iUsePressCount[victim] >= PANGZI_GRAPPLE_KEYRATE)   // 或者连按速率达标
     {
         ClearGrappleHandles(victim);

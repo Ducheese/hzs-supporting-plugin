@@ -26,6 +26,21 @@ stock bool IsZeroPostion(int client)                   // 和hzs_botfakerespawn�
     return GetVectorDistance(pos, view_as<float>({0.0, 0.0, 0.0})) < 10.0;    // 足够小就行
 }
 
+stock bool IsHumanAlive(int client)                    // 判断人类是否活着（包括假死）
+{
+    if (!IsValidClient(client, true))
+    {
+        return false;
+    }
+
+    if (IsZeroPostion(client))
+    {
+        return false;
+    }
+
+    return true;
+}
+
 //========================================================================================
 // 僵尸无敌时间 修改自sm_dmlite.sp 更适合NPC的合法性验证
 //========================================================================================
@@ -123,7 +138,7 @@ public Action Timer_DeleteParticle(Handle timer, int entity)
 // 计算实体间米制距离
 //========================================================================================
 
-float GetMeterDistance(int entity1, int entity2)
+stock float GetMeterDistance(int entity1, int entity2)
 {
     float pos1[3];
     float pos2[3];
@@ -179,4 +194,18 @@ stock void Shake(int client, float flAmplitude, float flFrequency, float flDurat
         BfWriteFloat(hBf, flDuration);
         EndMessage();
     }
+}
+
+stock void Fade(int client, int duration, int holdtime, int flags, int color[4])    // 对已经死了的玩家也有效
+{
+	Handle hFadeClient = StartMessageOne("Fade", client, 0);
+
+	BfWriteShort(hFadeClient, duration);
+	BfWriteShort(hFadeClient, holdtime);
+	BfWriteShort(hFadeClient, flags);
+	BfWriteByte(hFadeClient, color[0]);
+	BfWriteByte(hFadeClient, color[1]);
+	BfWriteByte(hFadeClient, color[2]);
+	BfWriteByte(hFadeClient, color[3]);
+	EndMessage();
 }

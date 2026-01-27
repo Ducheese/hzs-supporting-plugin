@@ -43,6 +43,10 @@ public void Han_OnZombieCreated(int zombie)
     {
         // 什么都不做
     }
+    else if (IsSameName(zombie, BOSS_YIXING))
+    {
+        // 什么都不做
+    }
 }
 
 //========================================================================================
@@ -113,6 +117,10 @@ public void Han_OnZombieDeath(int zombie, int killer)
             ClearGrappleHandles(victim);
             EndGrapple(zombie, victim);
         }
+    }
+    else if (IsSameName(zombie, BOSS_YIXING))
+    {
+        ClearChargeHandles(zombie);
     }
 }
 
@@ -211,6 +219,15 @@ public void Han_OnZombieHurt(int zombie, int attacker)
             StartCharge(zombie, attacker);
         }
     }
+    else if (IsSameName(zombie, BOSS_YIXING) && !g_bIsSkillUsed[zombie])
+    {
+        // 冲撞
+        if (attacker == GetEntDataEnt2(zombie, g_iLeaderOffset))
+        {
+            g_bIsSkillUsed[zombie] = true;
+            StartDash(zombie, attacker);    // 很巧也是lovelive的歌
+        }
+    }
     else if (IsSameName(zombie, "神秘胖子僵尸"))
     {
         GiveHealth(attacker, 1);
@@ -294,7 +311,10 @@ public void Han_OnZombieAttack(int zombie, int victim)
     {
         // 什么都不做
     }
-    // 这里还没改
+    else if (IsSameName(zombie, BOSS_YIXING))
+    {
+        // 什么都不做
+    }
 }
 
 //========================================================================================
