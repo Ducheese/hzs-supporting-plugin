@@ -100,9 +100,7 @@ public Action Timer_ChargeThink(Handle timer, DataPack pack)
     }
 
     // 如果不是以上情况，则持续施加向目标的推力
-    float fTargetOrigin[3];
-    GetEntPropVector(victim, Prop_Send, "m_vecOrigin", fTargetOrigin);
-    CreateKnockback(fTargetOrigin, zombie, view_as<float>({-PANGZI_CHARGE_FORCE, -PANGZI_CHARGE_FORCE, 0.0}));
+    CreateKnockback(victim, zombie, view_as<float>({-PANGZI_CHARGE_FORCE, -PANGZI_CHARGE_FORCE, 0.0}));
 
     // // 辅助线（记得删）
     // TE_SetupBeamPoints(pos, fTargetOrigin, g_iBeamSprite, 0, 0, 0, 5.0, 2.0, 2.0, 1, 0.0, {255, 0, 0, 255}, 15);
@@ -282,7 +280,7 @@ public Action Timer_GrappleThink(Handle timer, DataPack pack)
     SDKHooks_TakeDamage(victim, zombie, zombie, PANGZI_GRAPPLE_DAMAGE, DMG_SLASH, _, _, _, false);
 
     // 音效
-    EmitSoundToClient(victim, SFX_GRAPPLE, _, SNDCHAN_STATIC, SNDLEVEL_NORMAL, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
+    EmitSoundToClient(victim, SFX_GRAPPLE1, _, SNDCHAN_STATIC, SNDLEVEL_NORMAL, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
 
     return Plugin_Continue;
 }
@@ -351,7 +349,8 @@ void StartPickupAndThrow(int pangzi, int victim)
 
             if (IsSameName(zombie, ZOMBIE_GHOST)
             || IsSameName(zombie, BOSS_ANGELA)
-            || IsSameName(zombie, BOSS_PANGZI))
+            || IsSameName(zombie, BOSS_PANGZI)
+            || IsSameName(zombie, BOSS_YIXING))
             {
                 continue;
             }

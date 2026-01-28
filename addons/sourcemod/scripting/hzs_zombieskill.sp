@@ -221,4 +221,5 @@ void InitSoundCache()
     PrecacheSound(SFX_DASH1, true);
     PrecacheSound(SFX_DASH2, true);
     PrecacheSound(SFX_DASH3, true);
+    PrecacheSound(SFX_DASH4, true);
 }

@@ -77,7 +77,7 @@ public Action Timer_DashThink(Handle timer, int zombie)
     dir[1] = -1.0 * vel[1];
     dir[2] = 0.1;
     GetEntPropVector(zombie, Prop_Send, "m_vecOrigin", pos);
-    TE_SetupSparks(pos, dir, 600, 1);
+    TE_SetupSparks(pos, dir, 600, 16);
     TE_SendToAll();
 
     // 生成推力
@@ -108,32 +108,40 @@ public Action Timer_EndDash(Handle timer, int zombie)
 
 void DashKnockback(int zombie)
 {
-    float pos[3];
-    GetEntPropVector(zombie, Prop_Send, "m_vecOrigin", pos);
-
     for (int i = 1; i <= MaxClients; i++)
     {
         if (IsHumanAlive(i))
         {
             if (GetMeterDistance(zombie, i) < YIXING_DASH_RADIUS)
             {
+                // 状态管理
+                g_bIsStuck[i] = false;
+                g_bIsInvert[i] = false;
+                
                 // 造成伤害
                 SDKHooks_TakeDamage(i, zombie, zombie, YIXING_DASH_DAMAGE, DMG_SLASH, _, _, _, false);
 
                 // 生成击退
-                CreateKnockback(pos, i, view_as<float>({800.0, 800.0, 400.0}));
+                CreateKnockback(zombie, i, view_as<float>({800.0, 800.0, 400.0}));
 
                 // 屏幕震动+渐隐
                 Shake(i, 30.0, 10.0, 3.0);
-                Fade(i, 512, 128, 17, {0, 0, 0, 255});
+                Fade(i, 103, 0, 16, {255, 0, 0, 200});
+
+                // 音效
+                EmitSoundToClient(i, SFX_DASH4, _, SNDCHAN_STATIC, SNDLEVEL_NORMAL, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
 
                 // 耳鸣
-                ClientCommand(i, "dsp_player 37");
-
-                // 状态管理
-                g_bIsStuck[i] = false;
-                g_bIsInvert[i] = false;
+                CreateTimer(0.2, Timer_Deafness, i);
             }
         }
     }
+}
+
+public Action Timer_Deafness(Handle timer, int client)
+{
+    ClientCommand(client, "dsp_player 37");
+    Fade(client, 512, 128, 17, {0, 0, 0, 255});
+
+    return Plugin_Stop;
 }

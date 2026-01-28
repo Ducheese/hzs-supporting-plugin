@@ -66,7 +66,7 @@
 // 技能参数（BOSS异形斗兽）
 #define YIXING_DASH_FORCE       4000.0     // 异形斗兽冲撞的推力，要比胖子强
 #define YIXING_DASH_DAMAGE      10.0       // 异形斗兽冲撞造成的伤害（如果位置不好可能造成叠伤）
-#define YIXING_DASH_RADIUS      3.0        // 异形斗兽冲撞的碰撞半径（单位：米）
+#define YIXING_DASH_RADIUS      4.0        // 异形斗兽冲撞的碰撞半径（单位：米）
 #define YIXING_DASH_CD          10.0        // 异形斗兽冲撞的冷却时间（秒）
 
 // 音效路径（非BOSS特殊僵尸）
@@ -100,6 +100,7 @@
 #define SFX_DASH1              "custom/zombiedog_attack1.wav"
 #define SFX_DASH2              "custom/zombiedog_attack3.wav"
 #define SFX_DASH3              "custom/concrete_break3.wav"
+#define SFX_DASH4              "custom/body_medium_break2.wav"
 
 //========================================================================================
 // HANDLES & VARIABLES

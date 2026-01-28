@@ -93,7 +93,7 @@ void StartSmash(int zombie)
     CreateTimer(5.0, Timer_SkillEnd, zombie);
 }
 
-void StartSwing(int zombie, int victim)
+void StartSwing(int zombie)
 {
     // 再试一次m_angRotation
 

@@ -304,7 +304,7 @@ public void Han_OnZombieAttack(int zombie, int victim)
         else if (rand == 3)
         {
             g_bIsSkillUsed[zombie] = true;
-            StartSwing(zombie, victim);
+            StartSwing(zombie);
         }
     }
     else if (IsSameName(zombie, BOSS_PANGZI))
