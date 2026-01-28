@@ -29,7 +29,7 @@
 #define HEAL_DAMAGE             50         // 巫蛊术尸群疗时每秒恢复的血量
 #define HEAL_RANGE              5.0        // 巫蛊术尸群疗的作用范围（单位：米）
 #define HEAL_INTERVAL           1.0        // 巫蛊术尸群疗的时间间隔（秒）
-#define DEIMOS_KNOCKPOWER       500.0      // 恶魔猎手击飞玩家的力度（水平和垂直同力度）
+#define DEIMOS_KNOCKPOWER       300.0      // 恶魔猎手击飞玩家的力度（水平和垂直同力度）
 #define BUTCHER_STUCKTIME       3.0        // 憎恶屠夫用鬼手把人控制住的持续时间（秒）
 #define WITCH_INVERTTIME        3.0        // 嗜血女巫让人操作取反的持续时间（秒）
 
@@ -63,6 +63,12 @@
 #define PANGZI_THROW_SPREAD     100.0      // 巨型狂暴形态僵尸投掷子弹僵尸的误差摆动（单位：米）
 #define PANGZI_THROW_CD         10.0       // 巨型狂暴形态僵尸投掷子弹僵尸的冷却时间（秒）
 
+// 技能参数（BOSS异形斗兽）
+#define YIXING_DASH_FORCE       4000.0     // 异形斗兽冲撞的推力，要比胖子强
+#define YIXING_DASH_DAMAGE      10.0       // 异形斗兽冲撞造成的伤害（如果位置不好可能造成叠伤）
+#define YIXING_DASH_RADIUS      3.0        // 异形斗兽冲撞的碰撞半径（单位：米）
+#define YIXING_DASH_CD          10.0        // 异形斗兽冲撞的冷却时间（秒）
+
 // 音效路径（非BOSS特殊僵尸）
 #define SFX_SMOKE1             "custom/gas_cough_gasp_1.wav"                // 迷雾僵尸吐烟时的音效1（咳嗽声）
 #define SFX_SMOKE2             "custom/explosivegasleak.wav"                // 迷雾僵尸吐烟时的音效2（吐烟声）
@@ -87,7 +93,7 @@
 // 音效路径（BOSS巨型狂暴形态僵尸）
 #define SFX_CHARGE1            "custom/charger_charge_02.wav"               // 巨型狂暴形态僵尸冲锋嚎叫声
 #define SFX_CHARGE2            "custom/tank_walk06.wav"                     // 巨型狂暴形态僵尸冲锋震地声
-#define SFX_GRAPPLE            "custom/charger_smash_01.wav"                // 巨型狂暴形态僵尸造成擒抱伤害的音效
+#define SFX_GRAPPLE1           "custom/charger_smash_01.wav"                // 巨型狂暴形态僵尸造成擒抱伤害的音效
 #define SFX_GRAPPLE2           "custom/charger_pummel02.wav"                // 巨型狂暴形态僵尸擒抱成功那一下的叫声
 
 // 音效路径（BOSS异形斗兽）
@@ -160,18 +166,9 @@ float g_flEscapePos[MAXPLAYERS+1][3];     // 挣脱擒抱后传送回原处，�
 
 bool g_bIsPickup[2048];                   // 是否是子弹僵尸
 
-Handle g_hCharge[2048] = {INVALID_HANDLE,...};               // 实现冲锋逻辑所用的timer
+Handle g_hCharge[2048] = {INVALID_HANDLE,...};               // 实现冲锋逻辑所用的timer（和异形斗兽共用）
 Handle g_hChargePack[2048] = {INVALID_HANDLE,...};           // 专门用来存冲锋关联的 DataPack
 Handle g_hGrapple[MAXPLAYERS+1] = {INVALID_HANDLE, ...};     // 实现擒抱和挣脱逻辑所用的timer
 Handle g_hGrapplePack[MAXPLAYERS+1] = {INVALID_HANDLE,...};  // 专门用来存擒抱关联的 DataPack
 
 Handle g_hMovetype[2048] = {INVALID_HANDLE,...};             // 帮助NPC僵尸应用速度的句柄
-
-//========================================================================================
-// 技能状态管理（BOSS异形斗兽 Gemini提供）
-//========================================================================================
-
-#define YIXING_DASH_FORCE     4000.0     // 异形斗兽冲撞的推力，要比胖子强
-#define YIXING_DASH_DAMAGE    10.0       // 异形斗兽冲撞造成的伤害（如果位置不好可能造成叠伤）
-#define YIXING_DASH_RADIUS    3.0        // 异形斗兽冲撞的碰撞半径（单位：米）
-#define YIXING_DASH_CD        5.0        // 异形斗兽冲撞的冷却时间（秒）

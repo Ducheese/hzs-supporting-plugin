@@ -127,8 +127,12 @@ void DashKnockback(int zombie)
                 Shake(i, 30.0, 10.0, 3.0);
                 Fade(i, 512, 128, 17, {0, 0, 0, 255});
 
-                // 音效
-                EmitSoundToClient(i, SFX_KNOCKBACK, _, SNDCHAN_STATIC, SNDLEVEL_NORMAL, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
+                // 耳鸣
+                ClientCommand(i, "dsp_player 37");
+
+                // 状态管理
+                g_bIsStuck[i] = false;
+                g_bIsInvert[i] = false;
             }
         }
     }

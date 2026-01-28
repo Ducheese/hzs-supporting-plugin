@@ -78,7 +78,7 @@ public void Han_OnZombieDeath(int zombie, int killer)
     }
     else if (IsSameName(zombie, ZOMBIE_BUTCHER))
     {
-        // 暂时什么都不做
+        // 什么都不做
     }
     else if (IsSameName(zombie, ZOMBIE_WITCH))
     {
@@ -220,7 +220,7 @@ public void Han_OnZombieHurt(int zombie, int attacker)
         }
     }
     else if (IsSameName(zombie, BOSS_YIXING) && !g_bIsSkillUsed[zombie])
-    {
+    {        
         // 冲撞
         if (attacker == GetEntDataEnt2(zombie, g_iLeaderOffset))
         {
@@ -311,7 +311,7 @@ public void Han_OnZombieAttack(int zombie, int victim)
     {
         // 什么都不做
     }
-    else if (IsSameName(zombie, BOSS_YIXING))
+    else if (IsSameName(zombie, BOSS_YIXING) && !g_bIsSkillUsed[zombie])
     {
         // 什么都不做
     }
@@ -334,12 +334,14 @@ public Action Timer_SkillEnd(Handle timer, int zombie)
 void InitZombieState(zombie)
 {
     // 共用数组
-    g_bIsSkillUsed[zombie] = false;
     g_iMaxHealth[zombie] = GetEntProp(zombie, Prop_Data, "m_iHealth");
+    g_bIsSkillUsed[zombie] = false;
 
     // 安哥拉使用的数组在自己的if分支初始化
 
     // 巨型狂暴使用的数组
     g_iGrappling[zombie] = -1;
     g_bIsPickup[zombie] = false;
+
+    // 异形斗兽暂无数组需要提前初始化
 }

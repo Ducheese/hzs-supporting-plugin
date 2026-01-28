@@ -65,13 +65,18 @@ public Action Timer_RemoveProtect(Handle timer, int zombie)
 }
 
 //========================================================================================
-// 朝向判断 修改自botstayhere.sp 只输入浮点数组 都用脚底坐标
+// 朝向判断 修改自botstayhere.sp
 //========================================================================================
 
-bool IsTargetForward(float ZombiePos[3], float HumanPos[3], float ZombieAng[3])
+bool IsTargetForward(int zombie, int human)
 {
-    float fTempPoints[3];
-    float fTempAngles[3];
+    float ZombiePos[3], HumanPos[3], ZombieAng[3];
+
+    GetEntPropVector(zombie, Prop_Send, "m_vecOrigin", ZombiePos);
+    GetEntPropVector(human, Prop_Send, "m_vecOrigin", HumanPos);
+    GetEntPropVector(zombie, Prop_Send, "m_angRotation", ZombieAng);
+
+    float fTempPoints[3], fTempAngles[3];
 
     MakeVectorFromPoints(ZombiePos, HumanPos, fTempPoints);
     GetVectorAngles(fTempPoints, fTempAngles);

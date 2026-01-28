@@ -95,22 +95,11 @@ void StartSmash(int zombie)
 
 void StartSwing(int zombie, int victim)
 {
-    // 计算角度，试过m_angRotation完全不准确
-    float pos[3], fTargetPosition[3], fTempPoints[3], ang[3];
-    GetEntPropVector(zombie, Prop_Send, "m_vecOrigin", pos);
-    GetEntPropVector(victim, Prop_Send, "m_vecOrigin", fTargetPosition);
-    MakeVectorFromPoints(pos, fTargetPosition, fTempPoints);
-    GetVectorAngles(fTempPoints, ang);
-
-    DataPack pack = new DataPack();
-    pack.WriteCell(zombie);
-    pack.WriteCell(ang[0]);
-    pack.WriteCell(ang[1]);
-    pack.WriteCell(ang[2]);
+    // 再试一次m_angRotation
 
     // 挥臂
     Han_SetCustomAnimation(zombie, "Walk_shoot_knife2", 3.0);
-    CreateTimer(1.3, Timer_CreateSwingKnock, pack);       // 只有boss朝向才会被击飞，而且水平力度大，垂直力度小，和群体击飞1正好相反
+    CreateTimer(1.3, Timer_CreateSwingKnock, zombie);       // 只有boss朝向才会被击飞，而且水平力度大，垂直力度小，和群体击飞1正好相反
 
     // 延时开放技能占位
     CreateTimer(3.0, Timer_SkillEnd, zombie);
@@ -125,21 +114,12 @@ public Action Timer_CreateSmashKnock(Handle timer, int zombie)
         return Plugin_Stop;
     }
 
-    // 基础信息
-    float pos[3];
-    GetEntPropVector(zombie, Prop_Send, "m_vecOrigin", pos);
-
     // 挨个击飞
     for (int i = 1; i <= MaxClients; i++)
     {
         if (IsHumanAlive(i))
         {
-            float fTargetOrigin[3];
-            GetEntPropVector(i, Prop_Send, "m_vecOrigin", fTargetOrigin);
-
-            float fTargetDistance = GetVectorDistance(pos, fTargetOrigin);
-
-            if (fTargetDistance*GAMEUNITS_TO_METERS > ANGELA_KNOCK_RANGE)
+            if (GetMeterDistance(zombie, i) > ANGELA_KNOCK_RANGE)
             {
                 continue;
             }
@@ -150,7 +130,7 @@ public Action Timer_CreateSmashKnock(Handle timer, int zombie)
 
             // 生成击退
             Shake(i, 30.0, 10.0, 3.0);
-            CreateKnockback(pos, i, view_as<float>({400.0, 400.0, 800.0}));
+            CreateKnockback(zombie, i, view_as<float>({400.0, 400.0, 800.0}));
             
             // 生成伤害
             SDKHooks_TakeDamage(i, zombie, zombie, ANGELA_KNOCK_DAMAGE, DMG_SLASH, _, _, _, false);
@@ -161,6 +141,8 @@ public Action Timer_CreateSmashKnock(Handle timer, int zombie)
     }
 
     // 环境音效
+    float pos[3];
+    GetEntPropVector(zombie, Prop_Send, "m_vecOrigin", pos);
     EmitAmbientSound(SFX_SMASH, pos, _, SNDLEVEL_GUNFIRE, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
 
     // 特效？试试看————卧槽好帅
@@ -171,17 +153,8 @@ public Action Timer_CreateSmashKnock(Handle timer, int zombie)
     return Plugin_Continue;
 }
 
-public Action Timer_CreateSwingKnock(Handle timer, DataPack pack)
+public Action Timer_CreateSwingKnock(Handle timer, int zombie)
 {
-    float ang[3];
-
-    pack.Reset();
-    int zombie = pack.ReadCell();
-    ang[0] = pack.ReadCell();
-    ang[1] = pack.ReadCell();
-    ang[2] = pack.ReadCell();
-    delete pack;
-
     // 僵尸状态验证
     if (!IsValidEntity(zombie) || GetEntProp(zombie, Prop_Data, "m_iHealth") <= 0)
     {
@@ -189,26 +162,17 @@ public Action Timer_CreateSwingKnock(Handle timer, DataPack pack)
         return Plugin_Stop;
     }
 
-    // 基础信息
-    float pos[3];
-    GetEntPropVector(zombie, Prop_Send, "m_vecOrigin", pos);
-
     // 挨个击飞
     for (int i = 1; i <= MaxClients; i++)
     {
         if (IsHumanAlive(i))
         {
-            float fTargetOrigin[3];
-            GetEntPropVector(i, Prop_Send, "m_vecOrigin", fTargetOrigin);
-
-            float fTargetDistance = GetVectorDistance(pos, fTargetOrigin);
-
-            if (fTargetDistance*GAMEUNITS_TO_METERS > ANGELA_KNOCK_RANGE)
+            if (GetMeterDistance(zombie, i) > ANGELA_KNOCK_RANGE)
             {
                 continue;
             }
 
-            if (!IsTargetForward(pos, fTargetOrigin, ang))
+            if (!IsTargetForward(zombie, i))
             {
                 continue;
             }
@@ -219,7 +183,7 @@ public Action Timer_CreateSwingKnock(Handle timer, DataPack pack)
 
             // 生成击退
             Shake(i, 30.0, 10.0, 3.0);
-            CreateKnockback(pos, i, view_as<float>({800.0, 800.0, 400.0}));
+            CreateKnockback(zombie, i, view_as<float>({800.0, 800.0, 400.0}));
 
             // 生成伤害
             SDKHooks_TakeDamage(i, zombie, zombie, ANGELA_KNOCK_DAMAGE, DMG_SLASH, _, _, _, false);
@@ -230,6 +194,8 @@ public Action Timer_CreateSwingKnock(Handle timer, DataPack pack)
     }
 
     // 环境音效
+    float pos[3];
+    GetEntPropVector(zombie, Prop_Send, "m_vecOrigin", pos);
     EmitAmbientSound(SFX_SWING, pos, _, SNDLEVEL_GUNFIRE, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
 
     return Plugin_Continue;

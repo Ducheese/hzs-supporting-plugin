@@ -9,6 +9,7 @@
 #include <sdktools>
 #include <sdkhooks>
 #include <cstrike>
+
 #include <morecolors>
 #include <HanZombieScenarioAPI>
 
@@ -66,13 +67,13 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
     // 干扰人类移动的僵尸技能
     if (IsHumanAlive(client))
     {
-        if (g_bIsStuck[client])
+        if (g_bIsStuck[client])                 // if分支有优先级，如果被定住了，就无法被女巫和吸力影响
         {
             vel[0] = vel[1] = vel[2] = 0.0;     // 其实可以不管垂直速度，禁止跳即可
 
             buttons &= ~IN_JUMP;
         }
-        else if (g_bIsInvert[client])     // 应当增加一个视觉反馈
+        else if (g_bIsInvert[client])           // 应当增加一个视觉反馈（如果能做一些视觉扭曲就更好了）
         {
             vel[0] = -vel[0];
             vel[1] = -vel[1];
@@ -81,17 +82,14 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
             SetHudTextParams(0.50, 0.45, 0.1, 255, 0, 0, 255);
             ShowHudText(client, -1, "  方向键取反了!!!");
         }
-        else if (g_iZombiePull[client] != -1)     // 在0 0 0点等待复活的人类不会被吸
+        else if (g_iZombiePull[client] != -1)   // 在0 0 0点等待复活的人类不会被吸
         {
             int zombie = g_iZombiePull[client];
 
             if (!IsValidEntity(zombie) || GetEntProp(zombie, Prop_Data, "m_iHealth") <= 0)
                 return Plugin_Continue;
 
-            float pos[3];
-            GetEntPropVector(zombie, Prop_Send, "m_vecOrigin", pos);
-
-            CreateKnockback(pos, client, view_as<float>({-ANGELA_PULL_POWER, -ANGELA_PULL_POWER, -ANGELA_PULL_POWER}));      // 击退的反方向就是吸力
+            CreateKnockback(zombie, client, view_as<float>({-ANGELA_PULL_POWER, -ANGELA_PULL_POWER, -ANGELA_PULL_POWER}));      // 击退的反方向就是吸力
 
             EmitSoundToClient(client, SFX_PULL1, _, SNDCHAN_STATIC, SNDLEVEL_NORMAL, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);    // 这样写，音效比较有魄力
         }
@@ -127,30 +125,32 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
             }
         }
 
-        g_iLastButtons[client] = buttons;   // 虽然多了个数组，但这样写确实简洁
+        g_iLastButtons[client] = buttons;       // 虽然多了个数组，但这样写确实简洁
     }
-
-    // 呼唤僵尸攻击人类，死后处理（草，忘了真死的情况）
-    if (g_iZombieCall[client] != -1 && !IsHumanAlive(client))
+    else
     {
-        g_iZombieCall[client] = -1;         // 防止这里重复执行
-
-        int count = Han_GetZombieCount();
-
-        for (int i = 0; i < count; i++)
+        // 呼唤僵尸攻击人类，死后处理（草，忘了真死的情况）
+        if (g_iZombieCall[client] != -1)
         {
-            int zombie = Han_GetZombieByIndex(i);
+            g_iZombieCall[client] = -1;         // 防止这里重复执行
 
-            if (Han_IsZombie(zombie))
+            int count = Han_GetZombieCount();
+
+            for (int i = 0; i < count; i++)
             {
-                if (!IsValidEntity(zombie) || GetEntProp(zombie, Prop_Data, "m_iHealth") <= 0)
-                {
-                    continue;
-                }
+                int zombie = Han_GetZombieByIndex(i);
 
-                Han_UnlockZombie(zombie);   // 解除所有僵尸的强制目标
+                if (Han_IsZombie(zombie))
+                {
+                    if (!IsValidEntity(zombie) || GetEntProp(zombie, Prop_Data, "m_iHealth") <= 0)
+                    {
+                        continue;
+                    }
+
+                    Han_UnlockZombie(zombie);   // 解除所有僵尸的强制目标（这里对多个安哥拉的考虑欠佳）
+                }
             }
-        }
+        }   
     }
 
     return Plugin_Continue;
@@ -164,14 +164,18 @@ void InitHumanState()
     // 玩家相关数组初始化（不爽的位置）
     for (int i = 1; i <= MaxClients; i++)
     {
-        g_iZombieCall[i] = g_iZombiePull[i] = -1;
-        
         g_bIsStuck[i] = g_bIsInvert[i] = false;
+
+        g_iZombieCall[i] = g_iZombiePull[i] = -1;
 
         g_bIsGrappled[i] = false;
 
         g_iUsePressCount[i] = 0;
         g_iLastButtons[i] = -1;
+
+        // 这两个没有必要初始化，都是在使用前赋值的
+        // g_iViewControl
+        // g_flEscapePos[]
 
         ClearGrappleHandles(i);
     }
@@ -210,7 +214,7 @@ void InitSoundCache()
     // 音频预缓存（BOSS巨型狂暴形态僵尸）
     PrecacheSound(SFX_CHARGE1, true);
     PrecacheSound(SFX_CHARGE2, true);
-    PrecacheSound(SFX_GRAPPLE, true);
+    PrecacheSound(SFX_GRAPPLE1, true);
     PrecacheSound(SFX_GRAPPLE2, true);
 
     // 音频预缓存（BOSS异形斗兽）

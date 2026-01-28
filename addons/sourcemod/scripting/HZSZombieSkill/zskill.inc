@@ -120,7 +120,7 @@ public Action Timer_CreateExplosion(Handle timer, DataPack pack)
         TE_SendToAll();
 
         if (IsValidEntity(zombie))
-            SetEntPropEnt(ent, Prop_Send, "m_hOwnerEntity", zombie);      // 希望爆炸杀伤能返回有效的killer
+            SetEntPropEnt(ent, Prop_Send, "m_hOwnerEntity", zombie);      // 希望爆炸杀伤能返回有效的killer（实际无用）
     }
 
     // 爆炸音效
@@ -186,12 +186,9 @@ void StartKnockback(int zombie, int victim)
     char ZombieName[32];
     Han_GetZombieName(zombie, ZombieName, sizeof(ZombieName));
 
-    float pos[3];
-    GetEntPropVector(zombie, Prop_Send, "m_vecOrigin", pos);
-
     // 生成击退
     Shake(victim, 30.0, 10.0, 3.0);
-    CreateKnockback(pos, victim, view_as<float>({DEIMOS_KNOCKPOWER, DEIMOS_KNOCKPOWER, DEIMOS_KNOCKPOWER}));
+    CreateKnockback(zombie, victim, view_as<float>({DEIMOS_KNOCKPOWER, DEIMOS_KNOCKPOWER, DEIMOS_KNOCKPOWER}));
 
     // 击退音效
     EmitSoundToClient(victim, SFX_KNOCKBACK, _, SNDCHAN_STATIC, SNDLEVEL_NORMAL, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
@@ -200,11 +197,12 @@ void StartKnockback(int zombie, int victim)
     CPrintToChat(victim, "{green}[华仔] {red}你被%s击飞了！", ZombieName);
 }
 
-void CreateKnockback(float pos[3], int target, float strength[3])
+void CreateKnockback(int zombie, int target, float strength[3])
 {
-    float fTargetOrigin[3], fTempAngles[3], fTempPoints[3];
+    float pos[3], fTargetOrigin[3], fTempPoints[3], fTempAngles[3];
     float vReturn[3];
-    
+
+    GetEntPropVector(zombie, Prop_Send, "m_vecOrigin", pos);
     GetEntPropVector(target, Prop_Send, "m_vecOrigin", fTargetOrigin);     // target指的是人类
 
     MakeVectorFromPoints(pos, fTargetOrigin, fTempPoints);
