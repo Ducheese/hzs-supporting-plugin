@@ -26,12 +26,12 @@ void StartPull(int zombie)
 void CreatePull(int zombie, float pos[3])
 {
     // 状态管理
-    for (int i = 1; i <= MaxClients; i++)
+    for (int victim = 1; victim <= MaxClients; victim++)
     {
-        if (IsHumanAlive(i))    // 如果刚复活就不会被吸，毕竟还要买武器，降低难度吧
+        if (IsHumanAlive(victim))    // 如果刚复活就不会被吸，毕竟还要买武器，降低难度吧
         {
-            g_iZombiePull[i] = zombie;                 // 记录安哥拉实体号
-            CreateTimer(ANGELA_PULL_TIME, Timer_DePull, i);
+            g_iZombiePull[victim] = zombie;                 // 记录安哥拉实体号
+            CreateTimer(ANGELA_PULL_TIME, Timer_DePull, victim);
         }
     }
 
@@ -115,28 +115,28 @@ public Action Timer_CreateSmashKnock(Handle timer, int zombie)
     }
 
     // 挨个击飞
-    for (int i = 1; i <= MaxClients; i++)
+    for (int victim = 1; victim <= MaxClients; victim++)
     {
-        if (IsHumanAlive(i))
+        if (IsHumanAlive(victim))
         {
-            if (GetMeterDistance(zombie, i) > ANGELA_KNOCK_RANGE)
+            if (GetMeterDistance(zombie, victim) > ANGELA_KNOCK_RANGE)
             {
                 continue;
             }
 
             // 状态管理
-            g_bIsStuck[i] = false;
-            g_bIsInvert[i] = false;
+            g_bIsStuck[victim] = false;
+            g_bIsInvert[victim] = false;
 
             // 生成击退
-            Shake(i, 30.0, 10.0, 3.0);
-            CreateKnockback(zombie, i, view_as<float>({400.0, 400.0, 800.0}));
+            Shake(victim, 30.0, 10.0, 3.0);
+            CreateKnockback(zombie, victim, view_as<float>({400.0, 400.0, 800.0}));
             
             // 生成伤害
-            SDKHooks_TakeDamage(i, zombie, zombie, ANGELA_KNOCK_DAMAGE, DMG_SLASH, _, _, _, false);
+            SDKHooks_TakeDamage(victim, zombie, zombie, ANGELA_KNOCK_DAMAGE, DMG_SLASH, _, _, _, false);
 
             // 音效
-            EmitSoundToClient(i, SFX_KNOCKBACK, _, SNDCHAN_STATIC, SNDLEVEL_NORMAL, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
+            EmitSoundToClient(victim, SFX_KNOCKBACK, _, SNDCHAN_STATIC, SNDLEVEL_NORMAL, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
         }            
     }
 
@@ -163,33 +163,33 @@ public Action Timer_CreateSwingKnock(Handle timer, int zombie)
     }
 
     // 挨个击飞
-    for (int i = 1; i <= MaxClients; i++)
+    for (int victim = 1; victim <= MaxClients; victim++)
     {
-        if (IsHumanAlive(i))
+        if (IsHumanAlive(victim))
         {
-            if (GetMeterDistance(zombie, i) > ANGELA_KNOCK_RANGE)
+            if (GetMeterDistance(zombie, victim) > ANGELA_KNOCK_RANGE)
             {
                 continue;
             }
 
-            if (!IsTargetForward(zombie, i))
+            if (!IsTargetForward(zombie, victim))
             {
                 continue;
             }
             
             // 状态管理
-            g_bIsStuck[i] = false;
-            g_bIsInvert[i] = false;
+            g_bIsStuck[victim] = false;
+            g_bIsInvert[victim] = false;
 
             // 生成击退
-            Shake(i, 30.0, 10.0, 3.0);
-            CreateKnockback(zombie, i, view_as<float>({800.0, 800.0, 400.0}));
+            Shake(victim, 30.0, 10.0, 3.0);
+            CreateKnockback(zombie, victim, view_as<float>({800.0, 800.0, 400.0}));
 
             // 生成伤害
-            SDKHooks_TakeDamage(i, zombie, zombie, ANGELA_KNOCK_DAMAGE, DMG_SLASH, _, _, _, false);
+            SDKHooks_TakeDamage(victim, zombie, zombie, ANGELA_KNOCK_DAMAGE, DMG_SLASH, _, _, _, false);
 
             // 音效
-            EmitSoundToClient(i, SFX_KNOCKBACK, _, SNDCHAN_STATIC, SNDLEVEL_NORMAL, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
+            EmitSoundToClient(victim, SFX_KNOCKBACK, _, SNDCHAN_STATIC, SNDLEVEL_NORMAL, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
         }            
     }
 

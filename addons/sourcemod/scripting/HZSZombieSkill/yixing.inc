@@ -108,31 +108,31 @@ public Action Timer_EndDash(Handle timer, int zombie)
 
 void DashKnockback(int zombie)
 {
-    for (int i = 1; i <= MaxClients; i++)
+    for (int victim = 1; victim <= MaxClients; victim++)
     {
-        if (IsHumanAlive(i))
+        if (IsHumanAlive(victim))
         {
-            if (GetMeterDistance(zombie, i) < YIXING_DASH_RADIUS)
+            if (GetMeterDistance(zombie, victim) < YIXING_DASH_RADIUS)
             {
                 // 状态管理
-                g_bIsStuck[i] = false;
-                g_bIsInvert[i] = false;
+                g_bIsStuck[victim] = false;
+                g_bIsInvert[victim] = false;
                 
                 // 造成伤害
-                SDKHooks_TakeDamage(i, zombie, zombie, YIXING_DASH_DAMAGE, DMG_SLASH, _, _, _, false);
+                SDKHooks_TakeDamage(victim, zombie, zombie, YIXING_DASH_DAMAGE, DMG_SLASH, _, _, _, false);
 
                 // 生成击退
-                CreateKnockback(zombie, i, view_as<float>({800.0, 800.0, 400.0}));
+                CreateKnockback(zombie, victim, view_as<float>({800.0, 800.0, 400.0}));
 
                 // 屏幕震动+渐隐
-                Shake(i, 30.0, 10.0, 3.0);
-                Fade(i, 128, 0, 16, {255, 0, 0, 200});
+                Shake(victim, 30.0, 10.0, 3.0);
+                Fade(victim, 128, 0, 16, {255, 0, 0, 200});
 
                 // 音效
-                EmitSoundToClient(i, SFX_DASH4, _, SNDCHAN_STATIC, SNDLEVEL_NORMAL, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
+                EmitSoundToClient(victim, SFX_DASH4, _, SNDCHAN_STATIC, SNDLEVEL_NORMAL, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
 
                 // 耳鸣
-                CreateTimer(0.2, Timer_Deafness, i);
+                CreateTimer(0.2, Timer_Deafness, victim);
             }
         }
     }
@@ -181,21 +181,21 @@ void StartShockWave(int zombie)
 
 void ShockWaveEffect(int zombie)
 {
-    for (int client = 1; client <= MaxClients; client++)
+    for (int victim = 1; victim <= MaxClients; victim++)
     {
-        if (IsHumanAlive(client))
+        if (IsHumanAlive(victim))
         {
-            if (GetMeterDistance(zombie, client) < YIXING_SHOCK_RADIUS)
+            if (GetMeterDistance(zombie, victim) < YIXING_SHOCK_RADIUS)
             {
                 // 护甲扣减固定值
-                SetEntProp(client, Prop_Send, "m_ArmorValue", 
-                    GetEntProp(client, Prop_Send, "m_ArmorValue") - YIXING_SHOCK_ARMOR > 0 ? 
-                    GetEntProp(client, Prop_Send, "m_ArmorValue") - YIXING_SHOCK_ARMOR : 
+                SetEntProp(victim, Prop_Send, "m_ArmorValue", 
+                    GetEntProp(victim, Prop_Send, "m_ArmorValue") - YIXING_SHOCK_ARMOR > 0 ? 
+                    GetEntProp(victim, Prop_Send, "m_ArmorValue") - YIXING_SHOCK_ARMOR : 
                     0
                 );
 
                 // 剥夺当前弹匣
-                int weapon = GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon");       
+                int weapon = GetEntPropEnt(victim, Prop_Send, "m_hActiveWeapon");       
                 if (weapon != -1)
                 {
                     if (HasEntProp(weapon, Prop_Send, "m_iClip1"))
@@ -204,15 +204,19 @@ void ShockWaveEffect(int zombie)
                     }
                 }
 
+                // 状态管理
+                g_bIsStuck[victim] = false;
+                g_bIsInvert[victim] = false;
+
                 // 记住当前方向
-                GetClientEyeAngles(client, g_flAng[client]);
+                GetClientEyeAngles(victim, g_flAng[victim]);
 
                 // 延时结束影响
-                g_bIsStock[client] = true;
-                CreateTimer(YIXING_SHOCK_TIME, Timer_DeShock, client);
+                g_bIsShock[victim] = true;
+                CreateTimer(YIXING_SHOCK_TIME, Timer_DeShock, victim);
 
                 // 音效（其实想做tesla电弧效果）
-                EmitSoundToClient(client, SFX_SHOCK2, _, SNDCHAN_STATIC, SNDLEVEL_NORMAL, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
+                EmitSoundToClient(victim, SFX_SHOCK2, _, SNDCHAN_STATIC, SNDLEVEL_NORMAL, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
 
                 // // 剥夺所有clip（个人感觉堪比护甲减半）
                 // for (int j = 0; j < 48; j++)
@@ -235,7 +239,7 @@ void ShockWaveEffect(int zombie)
 
 public Action Timer_DeShock(Handle timer, int client)
 {
-    g_bIsStock[client] = false;
+    g_bIsShock[client] = false;
 
     return Plugin_Stop;
 }

@@ -185,5 +185,5 @@ Handle g_hMovetype[2048] = {INVALID_HANDLE,...};             // 帮助NPC僵尸�
 // 技能状态管理（BOSS异形斗兽）
 //========================================================================================
 
-bool g_bIsStock[MAXPLAYERS+1];            // 是否被震荡波波及
+bool g_bIsShock[MAXPLAYERS+1];            // 是否被震荡波波及
 float g_flAng[MAXPLAYERS+1][3];           // 存储被震荡波波及时的视角

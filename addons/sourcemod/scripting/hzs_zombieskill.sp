@@ -67,33 +67,8 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
     // 干扰人类移动的僵尸技能
     if (IsHumanAlive(client))
     {
-        if (g_bIsStuck[client])                 // if分支有优先级，如果被定住了，就无法被女巫和吸力影响
-        {
-            vel[0] = vel[1] = vel[2] = 0.0;     // 其实可以不管垂直速度，禁止跳即可
-
-            buttons &= ~IN_JUMP;
-        }
-        else if (g_bIsInvert[client])           // 应当增加一个视觉反馈（如果能做一些视觉扭曲就更好了）
-        {
-            vel[0] = -vel[0];
-            vel[1] = -vel[1];
-            // vel[2] = -vel[2];                // 这个是多余的吧
-
-            SetHudTextParams(0.50, 0.45, 0.1, 255, 0, 0, 255);
-            ShowHudText(client, -1, "  方向键取反了!!!");
-        }
-        else if (g_iZombiePull[client] != -1)   // 在0 0 0点等待复活的人类不会被吸
-        {
-            int zombie = g_iZombiePull[client];
-
-            if (!IsValidEntity(zombie) || GetEntProp(zombie, Prop_Data, "m_iHealth") <= 0)
-                return Plugin_Continue;
-
-            CreateKnockback(zombie, client, view_as<float>({-ANGELA_PULL_POWER, -ANGELA_PULL_POWER, -ANGELA_PULL_POWER}));      // 击退的反方向就是吸力
-
-            EmitSoundToClient(client, SFX_PULL1, _, SNDCHAN_STATIC, SNDLEVEL_NORMAL, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);    // 这样写，音效比较有魄力
-        }
-        else if (g_bIsGrappled[client])
+        // if分支有优先级
+        if (g_bIsGrappled[client])
         {
             // 擒抱状态下，玩家无法移动和攻击
             vel[0] = vel[1] = vel[2] = 0.0;
@@ -124,7 +99,24 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
                 }
             }
         }
-        else if (g_bIsStock[client])
+        else if (g_bIsStuck[client])
+        {
+            vel[0] = vel[1] = vel[2] = 0.0;     // 其实可以不管垂直速度，禁止跳即可
+
+            buttons &= ~IN_JUMP;
+        }
+        else if (g_iZombiePull[client] != -1)   // 在0 0 0点等待复活的人类不会被吸
+        {
+            int zombie = g_iZombiePull[client];
+
+            if (!IsValidEntity(zombie) || GetEntProp(zombie, Prop_Data, "m_iHealth") <= 0)
+                return Plugin_Continue;
+
+            CreateKnockback(zombie, client, view_as<float>({-ANGELA_PULL_POWER, -ANGELA_PULL_POWER, -ANGELA_PULL_POWER}));      // 击退的反方向就是吸力
+
+            EmitSoundToClient(client, SFX_PULL1, _, SNDCHAN_STATIC, SNDLEVEL_NORMAL, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);    // 这样写，音效比较有魄力
+        }
+        else if (g_bIsShock[client])
         {
             vel[0] = 0.1 * vel[0];
             vel[1] = 0.1 * vel[1];
@@ -133,6 +125,15 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
             buttons &= ~IN_DUCK;     // 也没法蹲
 
             TeleportEntity(client, NULL_VECTOR, g_flAng[client], NULL_VECTOR);
+        }
+        else if (g_bIsInvert[client])           // 应当增加一个视觉反馈（如果能做一些视觉扭曲就更好了）
+        {
+            vel[0] = -vel[0];
+            vel[1] = -vel[1];
+            // vel[2] = -vel[2];                // 这个是多余的吧
+
+            SetHudTextParams(0.50, 0.45, 0.1, 255, 0, 0, 255);
+            ShowHudText(client, -1, "  方向键取反了!!!");
         }
 
         g_iLastButtons[client] = buttons;       // 虽然多了个数组，但这样写确实简洁
@@ -189,7 +190,7 @@ void InitHumanState()
 
         ClearGrappleHandles(i);
 
-        g_bIsStock[i] = false;
+        g_bIsShock[i] = false;
         // 在使用前赋值的
         // g_flAng[]
     }
