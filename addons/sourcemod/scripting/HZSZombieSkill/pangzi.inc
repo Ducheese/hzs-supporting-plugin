@@ -528,7 +528,10 @@ public Action Timer_LandZombie(Handle timer, DataPack pack)
 
     if (!IsValidEntity(zombie) || GetEntProp(zombie, Prop_Data, "m_iHealth") <= 0)
     {
-        // PrintToChatAll("僵尸无效，直接销毁dummy实体");
+        if (IsValidEntity(zombie))
+            AcceptEntityInput(zombie, "ClearParent");
+        // else
+        //     PrintToChatAll("僵尸无效，直接销毁dummy实体");
     }
     else
     {

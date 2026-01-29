@@ -67,7 +67,11 @@
 #define YIXING_DASH_FORCE       4000.0     // 异形斗兽冲撞的推力，要比胖子强
 #define YIXING_DASH_DAMAGE      10.0       // 异形斗兽冲撞造成的伤害（如果位置不好可能造成叠伤）
 #define YIXING_DASH_RADIUS      4.0        // 异形斗兽冲撞的碰撞半径（单位：米）
-#define YIXING_DASH_CD          10.0        // 异形斗兽冲撞的冷却时间（秒）
+#define YIXING_DASH_CD          15.0       // 异形斗兽冲撞的冷却时间（秒）
+#define YIXING_SHOCK_ARMOR      10         // 异形斗兽震荡波所扣减的护甲值
+#define YIXING_SHOCK_TIME       3.0        // 异形斗兽震荡波副作用的持续时间（秒）
+#define YIXING_SHOCK_RADIUS     19.0       // 异形斗兽震荡波的作用半径（单位：米）
+#define YIXING_SHOCK_CD         15.0       // 异形斗兽震荡波的冷却时间（秒）
 
 // 音效路径（非BOSS特殊僵尸）
 #define SFX_SMOKE1             "custom/gas_cough_gasp_1.wav"                // 迷雾僵尸吐烟时的音效1（咳嗽声）
@@ -101,6 +105,8 @@
 #define SFX_DASH2              "custom/zombiedog_attack3.wav"
 #define SFX_DASH3              "custom/concrete_break3.wav"
 #define SFX_DASH4              "custom/body_medium_break2.wav"
+#define SFX_SHOCK1             "custom/electra_blast1.wav"
+#define SFX_SHOCK2             "custom/electra_hit.wav"
 
 //========================================================================================
 // HANDLES & VARIABLES
@@ -173,3 +179,10 @@ Handle g_hGrapple[MAXPLAYERS+1] = {INVALID_HANDLE, ...};     // 实现擒抱和�
 Handle g_hGrapplePack[MAXPLAYERS+1] = {INVALID_HANDLE,...};  // 专门用来存擒抱关联的 DataPack
 
 Handle g_hMovetype[2048] = {INVALID_HANDLE,...};             // 帮助NPC僵尸应用速度的句柄
+
+//========================================================================================
+// 技能状态管理（BOSS异形斗兽）
+//========================================================================================
+
+bool g_bIsStock[MAXPLAYERS+1];            // 是否被震荡波波及
+float g_flAng[MAXPLAYERS+1][3];           // 存储被震荡波波及时的视角

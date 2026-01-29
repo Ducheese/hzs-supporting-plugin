@@ -126,7 +126,7 @@ void DashKnockback(int zombie)
 
                 // 屏幕震动+渐隐
                 Shake(i, 30.0, 10.0, 3.0);
-                Fade(i, 103, 0, 16, {255, 0, 0, 200});
+                Fade(i, 128, 0, 16, {255, 0, 0, 200});
 
                 // 音效
                 EmitSoundToClient(i, SFX_DASH4, _, SNDCHAN_STATIC, SNDLEVEL_NORMAL, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
@@ -144,4 +144,121 @@ public Action Timer_Deafness(Handle timer, int client)
     Fade(client, 512, 128, 17, {0, 0, 0, 255});
 
     return Plugin_Stop;
+}
+
+// ========================================================================================
+// 异形斗兽技能：震荡波
+// ========================================================================================
+
+void StartShockWave(int zombie)
+{   
+    // 基础信息
+    float pos[3];
+    GetEntPropVector(zombie, Prop_Send, "m_vecOrigin", pos);
+    pos[2] += 20.0;
+
+    // 瞬间闪光
+    CreateDynamicLight(pos, 75, 75, 255, 10, 500.0, 0.25, 0.0);
+
+    // 光圈
+    TE_SetupBeamRingPoint(pos, 10.0, YIXING_SHOCK_RADIUS / GAMEUNITS_TO_METERS, 
+        PrecacheModel("materials/sprites/lgtning.vmt"), 
+        PrecacheModel("materials/sprites/halo01.vmt"), 
+        1, 1, 0.25, 100.0, 1.0, 
+        {75, 75, 255, 255}, 
+        0, 0);
+    TE_SendToAll();
+
+    // 延时开放技能占位
+    CreateTimer(YIXING_SHOCK_CD, Timer_SkillEnd, zombie);
+
+    // 实际影响
+    ShockWaveEffect(zombie);
+
+    // 音效
+    EmitAmbientSound(SFX_SHOCK1, pos, _, SNDLEVEL_GUNFIRE, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
+}
+
+void ShockWaveEffect(int zombie)
+{
+    for (int client = 1; client <= MaxClients; client++)
+    {
+        if (IsHumanAlive(client))
+        {
+            if (GetMeterDistance(zombie, client) < YIXING_SHOCK_RADIUS)
+            {
+                // 护甲扣减固定值
+                SetEntProp(client, Prop_Send, "m_ArmorValue", 
+                    GetEntProp(client, Prop_Send, "m_ArmorValue") - YIXING_SHOCK_ARMOR > 0 ? 
+                    GetEntProp(client, Prop_Send, "m_ArmorValue") - YIXING_SHOCK_ARMOR : 
+                    0
+                );
+
+                // 剥夺当前弹匣
+                int weapon = GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon");       
+                if (weapon != -1)
+                {
+                    if (HasEntProp(weapon, Prop_Send, "m_iClip1"))
+                    {
+                        SetEntProp(weapon, Prop_Send, "m_iClip1", 0);
+                    }
+                }
+
+                // 记住当前方向
+                GetClientEyeAngles(client, g_flAng[client]);
+
+                // 延时结束影响
+                g_bIsStock[client] = true;
+                CreateTimer(YIXING_SHOCK_TIME, Timer_DeShock, client);
+
+                // 音效（其实想做tesla电弧效果）
+                EmitSoundToClient(client, SFX_SHOCK2, _, SNDCHAN_STATIC, SNDLEVEL_NORMAL, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
+
+                // // 剥夺所有clip（个人感觉堪比护甲减半）
+                // for (int j = 0; j < 48; j++)
+                // {
+                //     int weapon = GetEntPropEnt(i, Prop_Data, "m_hMyWeapons", j);
+                //     if (weapon != -1)
+                //     {
+                //         if (HasEntProp(weapon, Prop_Send, "m_iClip1"))
+                //         {
+                //             SetEntProp(weapon, Prop_Send, "m_iClip1", 0);
+                //         }
+                //     }
+                // }
+
+                // BOT很蠢，切武器约等于剥夺武器
+            }
+        }
+    }
+}
+
+public Action Timer_DeShock(Handle timer, int client)
+{
+    g_bIsStock[client] = false;
+
+    return Plugin_Stop;
+}
+
+void CreateDynamicLight(float pos[3], int r, int g, int b, int exponent, float radius, float time, float decay)
+{
+    /**
+     * 在位置生成一个瞬时动态光
+     * @param pos          光源位置
+     * @param r, g, b      颜色 (0-255)
+     * @param exponent     衰减指数（通常设为 8-10，决定光的硬度）
+     * @param radius       光照半径
+     * @param time         持续时间（秒）
+     * @param decay        衰减速度
+     */
+    TE_Start("Dynamic Light");
+    TE_WriteVector("m_vecOrigin", pos);
+    TE_WriteNum("r", r);
+    TE_WriteNum("g", g);
+    TE_WriteNum("b", b);
+    TE_WriteNum("exponent", exponent);
+    TE_WriteFloat("m_fRadius", radius);
+    TE_WriteFloat("m_fTime", time);
+    TE_WriteFloat("m_fDecay", decay);
+    TE_SendToAll();
 }

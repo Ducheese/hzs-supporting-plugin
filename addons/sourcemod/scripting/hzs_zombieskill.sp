@@ -77,7 +77,7 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
         {
             vel[0] = -vel[0];
             vel[1] = -vel[1];
-            vel[2] = -vel[2];
+            // vel[2] = -vel[2];                // 这个是多余的吧
 
             SetHudTextParams(0.50, 0.45, 0.1, 255, 0, 0, 255);
             ShowHudText(client, -1, "  方向键取反了!!!");
@@ -123,6 +123,16 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
                     // PrintToChatAll("按键计数：%d", g_iUsePressCount[client]);
                 }
             }
+        }
+        else if (g_bIsStock[client])
+        {
+            vel[0] = 0.1 * vel[0];
+            vel[1] = 0.1 * vel[1];
+
+            buttons &= ~IN_JUMP;
+            buttons &= ~IN_DUCK;     // 也没法蹲
+
+            TeleportEntity(client, NULL_VECTOR, g_flAng[client], NULL_VECTOR);
         }
 
         g_iLastButtons[client] = buttons;       // 虽然多了个数组，但这样写确实简洁
@@ -178,6 +188,10 @@ void InitHumanState()
         // g_flEscapePos[]
 
         ClearGrappleHandles(i);
+
+        g_bIsStock[i] = false;
+        // 在使用前赋值的
+        // g_flAng[]
     }
 }
 
@@ -222,4 +236,6 @@ void InitSoundCache()
     PrecacheSound(SFX_DASH2, true);
     PrecacheSound(SFX_DASH3, true);
     PrecacheSound(SFX_DASH4, true);
+    PrecacheSound(SFX_SHOCK1, true);
+    PrecacheSound(SFX_SHOCK2, true);
 }

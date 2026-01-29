@@ -313,7 +313,9 @@ public void Han_OnZombieAttack(int zombie, int victim)
     }
     else if (IsSameName(zombie, BOSS_YIXING) && !g_bIsSkillUsed[zombie])
     {
-        // 什么都不做
+        // 震荡波
+        g_bIsSkillUsed[zombie] = true;
+        StartShockWave(zombie);
     }
 }
 
