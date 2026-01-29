@@ -1,5 +1,5 @@
 //========================================================================================
-// HZS STOCK
+// HZS储备函数
 //========================================================================================
 
 stock bool IsSameName(int zombie, char string[32])     // 这个僵尸的名字是否和string相同
@@ -16,6 +16,15 @@ stock int FindAnimEntity(int zombie)                   // 根据僵尸实体号�
     GetEntPropString(zombie, Prop_Data, "m_iName", targetname, sizeof(targetname));
 
     return EntRefToEntIndex(StringToInt(targetname));
+}
+
+//========================================================================================
+// 人类有效性验证
+//========================================================================================
+
+stock bool IsValidClient(int client, bool bAlive = false)    // 从sika那挪过来的常用函数
+{
+    return (client >= 1 && client <= MaxClients && IsClientInGame(client) && !IsClientSourceTV(client) && (!bAlive || IsPlayerAlive(client)));
 }
 
 stock bool IsZeroPostion(int client)                   // 和hzs_botfakerespawn插件相关，如果人类出现在0 0 0点附近，判断为已死亡
@@ -42,26 +51,17 @@ stock bool IsHumanAlive(int client)                    // 判断人类是否活�
 }
 
 //========================================================================================
-// 僵尸无敌时间 修改自sm_dmlite.sp 更适合NPC的合法性验证
+// 计算实体间米制距离
 //========================================================================================
 
-void ProtectZombie(int zombie, float duration)
+stock float GetMeterDistance(int entity1, int entity2)
 {
-    SetEntProp(zombie, Prop_Data, "m_takedamage", 0, 1);
-    CreateTimer(duration, Timer_RemoveProtect, zombie);
-}
+    float pos1[3];
+    float pos2[3];
 
-public Action Timer_RemoveProtect(Handle timer, int zombie)
-{
-    if (!IsValidEntity(zombie) || GetEntProp(zombie, Prop_Data, "m_iHealth") <= 0)
-    {
-        KillTimer(timer);
-        return Plugin_Stop;
-    }
-
-    SetEntProp(zombie, Prop_Data, "m_takedamage", 2, 1);
-
-    return Plugin_Stop;
+    GetEntPropVector(entity1, Prop_Send, "m_vecOrigin", pos1);
+    GetEntPropVector(entity2, Prop_Send, "m_vecOrigin", pos2);
+    return GetVectorDistance(pos1, pos2) * GAMEUNITS_TO_METERS;
 }
 
 //========================================================================================
@@ -97,6 +97,29 @@ bool IsTargetForward(int zombie, int human)
     }
 
     return false;
+}
+
+//========================================================================================
+// 僵尸无敌时间 修改自sm_dmlite.sp 更适合NPC的合法性验证
+//========================================================================================
+
+void ProtectZombie(int zombie, float duration)
+{
+    SetEntProp(zombie, Prop_Data, "m_takedamage", 0, 1);
+    CreateTimer(duration, Timer_RemoveProtect, zombie);
+}
+
+public Action Timer_RemoveProtect(Handle timer, int zombie)
+{
+    if (!IsValidEntity(zombie) || GetEntProp(zombie, Prop_Data, "m_iHealth") <= 0)
+    {
+        KillTimer(timer);
+        return Plugin_Stop;
+    }
+
+    SetEntProp(zombie, Prop_Data, "m_takedamage", 2, 1);
+
+    return Plugin_Stop;
 }
 
 //========================================================================================
@@ -140,20 +163,6 @@ public Action Timer_DeleteParticle(Handle timer, int entity)
 }
 
 //========================================================================================
-// 计算实体间米制距离
-//========================================================================================
-
-stock float GetMeterDistance(int entity1, int entity2)
-{
-    float pos1[3];
-    float pos2[3];
-
-    GetEntPropVector(entity1, Prop_Send, "m_vecOrigin", pos1);
-    GetEntPropVector(entity2, Prop_Send, "m_vecOrigin", pos2);
-    return GetVectorDistance(pos1, pos2) * GAMEUNITS_TO_METERS;
-}
-
-//========================================================================================
 // 计算到地面距离 飞行和冲锋逻辑都会用到
 //========================================================================================
 
@@ -179,17 +188,12 @@ public bool TraceEntityFilter_NotClient(int entity, int mask, any data)
 }
 
 //========================================================================================
-// STOCK
+// 特殊效果：屏幕晃动、屏幕渐变、闪光
 //========================================================================================
-
-stock bool IsValidClient(int client, bool bAlive = false)    // 从sika那挪过来的常用函数
-{
-    return (client >= 1 && client <= MaxClients && IsClientInGame(client) && !IsClientSourceTV(client) && (!bAlive || IsPlayerAlive(client)));
-}
 
 stock void Shake(int client, float flAmplitude, float flFrequency, float flDuration)    // 只对活着的玩家有效
 {
-    Handle hBf = StartMessageOne("Shake", client);
+    Handle hBf = StartMessageOne("Shake", client);   // hBf (Handle to Buffer)
 
     if (hBf != INVALID_HANDLE)
     {
@@ -203,14 +207,40 @@ stock void Shake(int client, float flAmplitude, float flFrequency, float flDurat
 
 stock void Fade(int client, int duration, int holdtime, int flags, int color[4])    // 对已经死了的玩家也有效
 {
-	Handle hFadeClient = StartMessageOne("Fade", client, 0);
+    Handle hBf = StartMessageOne("Fade", client, 0);
 
-	BfWriteShort(hFadeClient, duration);
-	BfWriteShort(hFadeClient, holdtime);
-	BfWriteShort(hFadeClient, flags);
-	BfWriteByte(hFadeClient, color[0]);
-	BfWriteByte(hFadeClient, color[1]);
-	BfWriteByte(hFadeClient, color[2]);
-	BfWriteByte(hFadeClient, color[3]);
-	EndMessage();
+    if (hBf != INVALID_HANDLE)
+    {
+        BfWriteShort(hBf, duration);
+        BfWriteShort(hBf, holdtime);
+        BfWriteShort(hBf, flags);
+        BfWriteByte(hBf, color[0]);
+        BfWriteByte(hBf, color[1]);
+        BfWriteByte(hBf, color[2]);
+        BfWriteByte(hBf, color[3]);
+        EndMessage();
+    }
+}
+
+stock void DynamicLight(float pos[3], int r, int g, int b, int exponent, float radius, float time, float decay)
+{
+    /**
+     * 在位置生成一个瞬时动态光
+     * @param pos          光源位置
+     * @param r, g, b      颜色 (0-255)
+     * @param exponent     衰减指数（通常设为 8-10，决定光的硬度）
+     * @param radius       光照半径
+     * @param time         持续时间（秒）
+     * @param decay        衰减速度
+     */
+    TE_Start("Dynamic Light");
+    TE_WriteVector("m_vecOrigin", pos);
+    TE_WriteNum("r", r);
+    TE_WriteNum("g", g);
+    TE_WriteNum("b", b);
+    TE_WriteNum("exponent", exponent);
+    TE_WriteFloat("m_fRadius", radius);
+    TE_WriteFloat("m_fTime", time);
+    TE_WriteFloat("m_fDecay", decay);
+    TE_SendToAll();
 }

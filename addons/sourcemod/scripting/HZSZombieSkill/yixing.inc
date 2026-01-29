@@ -158,7 +158,7 @@ void StartShockWave(int zombie)
     pos[2] += 20.0;
 
     // 瞬间闪光
-    CreateDynamicLight(pos, 75, 75, 255, 10, 500.0, 0.25, 0.0);
+    DynamicLight(pos, 75, 75, 255, 10, 500.0, 0.25, 0.0);
 
     // 光圈
     TE_SetupBeamRingPoint(pos, 10.0, YIXING_SHOCK_RADIUS / GAMEUNITS_TO_METERS, 
@@ -238,27 +238,4 @@ public Action Timer_DeShock(Handle timer, int client)
     g_bIsStock[client] = false;
 
     return Plugin_Stop;
-}
-
-void CreateDynamicLight(float pos[3], int r, int g, int b, int exponent, float radius, float time, float decay)
-{
-    /**
-     * 在位置生成一个瞬时动态光
-     * @param pos          光源位置
-     * @param r, g, b      颜色 (0-255)
-     * @param exponent     衰减指数（通常设为 8-10，决定光的硬度）
-     * @param radius       光照半径
-     * @param time         持续时间（秒）
-     * @param decay        衰减速度
-     */
-    TE_Start("Dynamic Light");
-    TE_WriteVector("m_vecOrigin", pos);
-    TE_WriteNum("r", r);
-    TE_WriteNum("g", g);
-    TE_WriteNum("b", b);
-    TE_WriteNum("exponent", exponent);
-    TE_WriteFloat("m_fRadius", radius);
-    TE_WriteFloat("m_fTime", time);
-    TE_WriteFloat("m_fDecay", decay);
-    TE_SendToAll();
 }

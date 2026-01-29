@@ -30,6 +30,7 @@
 #define HEAL_RANGE              5.0        // 巫蛊术尸群疗的作用范围（单位：米）
 #define HEAL_INTERVAL           1.0        // 巫蛊术尸群疗的时间间隔（秒）
 #define DEIMOS_KNOCKPOWER       300.0      // 恶魔猎手击飞玩家的力度（水平和垂直同力度）
+#define DEIMOS_JUMPRANGE        10.0
 #define BUTCHER_STUCKTIME       3.0        // 憎恶屠夫用鬼手把人控制住的持续时间（秒）
 #define WITCH_INVERTTIME        3.0        // 嗜血女巫让人操作取反的持续时间（秒）
 

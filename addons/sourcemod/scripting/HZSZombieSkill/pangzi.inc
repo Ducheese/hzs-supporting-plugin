@@ -515,7 +515,7 @@ void ThrowZombie(int zombie, int victim)
         DataPack pack = new DataPack();
         pack.WriteCell(zombie);
         pack.WriteCell(dummy);
-        CreateTimer(PANGZI_THROW_FLYTIME+0.1, Timer_LandZombie, pack);
+        CreateTimer(PANGZI_THROW_FLYTIME-0.1, Timer_LandZombie, pack);
     }
 }
 

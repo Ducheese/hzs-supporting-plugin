@@ -146,7 +146,16 @@ public void Han_OnZombieHurt(int zombie, int attacker)
     }
     else if (IsSameName(zombie, ZOMBIE_DEIMOS))
     {
-        // 什么都不做
+        // 跳跃技能（感觉如果能躲枪线也很酷）
+        if (GetMeterDistance(zombie, attacker) > 3.0              // 3.0米以外
+        && GetMeterDistance(zombie, attacker) < DEIMOS_JUMPRANGE  // 10.0米以内
+        && IsTargetForward(zombie, attacker)                      // 在前方（防止子弹僵尸卡墙）
+        && attacker == GetEntDataEnt2(zombie, g_iLeaderOffset)    // 且目标和攻击者是同一个
+        && !g_bIsPickup[zombie])
+        {
+            g_bIsPickup[zombie] = true;
+            ThrowZombie(zombie, attacker);
+        }
     }
     else if (IsSameName(zombie, ZOMBIE_BUTCHER))
     {
@@ -206,13 +215,16 @@ public void Han_OnZombieHurt(int zombie, int attacker)
     {
         // 半血以上投掷僵尸
         if (GetMeterDistance(zombie, attacker) > PANGZI_THROW_RANGE
+        && IsTargetForward(zombie, attacker)                      // 在前方（防止子弹僵尸卡墙）
+        && attacker == GetEntDataEnt2(zombie, g_iLeaderOffset)    // 且目标和攻击者是同一个
         && GetEntProp(zombie, Prop_Data, "m_iHealth") > g_iMaxHealth[zombie] / 2)
         {
             g_bIsSkillUsed[zombie] = true;
             StartPickupAndThrow(zombie, attacker);
         }
         // 半血以下冲锋擒抱
-        else if (attacker == GetEntDataEnt2(zombie, g_iLeaderOffset)    // 如果目标和攻击者是同一个，才触发冲锋擒抱
+        else if (IsTargetForward(zombie, attacker)                // 在前方
+        && attacker == GetEntDataEnt2(zombie, g_iLeaderOffset)    // 且目标和攻击者是同一个
         && GetEntProp(zombie, Prop_Data, "m_iHealth") < g_iMaxHealth[zombie] / 2)
         {
             g_bIsSkillUsed[zombie] = true;
@@ -222,7 +234,8 @@ public void Han_OnZombieHurt(int zombie, int attacker)
     else if (IsSameName(zombie, BOSS_YIXING) && !g_bIsSkillUsed[zombie])
     {        
         // 冲撞
-        if (attacker == GetEntDataEnt2(zombie, g_iLeaderOffset))
+        if (IsTargetForward(zombie, attacker)                     // 在前方
+        && attacker == GetEntDataEnt2(zombie, g_iLeaderOffset))   // 且目标和攻击者是同一个
         {
             g_bIsSkillUsed[zombie] = true;
             StartDash(zombie, attacker);    // 很巧也是lovelive的歌
