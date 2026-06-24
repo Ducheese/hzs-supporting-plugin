@@ -244,3 +244,47 @@ stock void DynamicLight(float pos[3], int r, int g, int b, int exponent, float r
     TE_WriteFloat("m_fDecay", decay);
     TE_SendToAll();
 }
+
+//========================================================================================
+// Debug：画出实体的碰撞箱（用光束画12条棱）
+//========================================================================================
+
+stock void DebugDrawBBox(int entity, float duration, int color[4])
+{
+    float origin[3], mins[3], maxs[3];
+    GetEntPropVector(entity, Prop_Send, "m_vecOrigin", origin);
+    GetEntPropVector(entity, Prop_Send, "m_vecMins", mins);
+    GetEntPropVector(entity, Prop_Send, "m_vecMaxs", maxs);
+
+    // 8个顶点
+    float v[8][3];
+    for (int i = 0; i < 8; i++)
+    {
+        v[i][0] = origin[0] + ((i & 1) ? maxs[0] : mins[0]);
+        v[i][1] = origin[1] + ((i & 2) ? maxs[1] : mins[1]);
+        v[i][2] = origin[2] + ((i & 4) ? maxs[2] : mins[2]);
+    }
+
+    // 12条棱的顶点对
+    int edges[12][2] = {
+        {0,1},{0,2},{0,4},{1,3},{1,5},
+        {2,3},{2,6},{3,7},{4,5},{4,6},
+        {5,7},{6,7}
+    };
+
+    int sprite = PrecacheModel(TOOL_BEAMSPRITE, true);
+    for (int i = 0; i < 12; i++)
+    {
+        TE_SetupBeamPoints(v[edges[i][0]], v[edges[i][1]], sprite, 0, 0, 0, duration, 1.0, 1.0, 1, 0.0, color, 0);
+        TE_SendToAll();
+    }
+}
+
+//========================================================================================
+// 射线Trace过滤器（只命中世界几何，忽略实体）
+//========================================================================================
+
+public bool TraceEntityFilter_Ground(int entity, int mask, any data)
+{
+    return (entity == 0);
+}

@@ -104,6 +104,34 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
             vel[0] = vel[1] = vel[2] = 0.0;     // 其实可以不管垂直速度，禁止跳即可
 
             buttons &= ~IN_JUMP;
+
+            // 检测AD键交替连打
+            if (!IsFakeClient(client))
+            {
+                if ((buttons & IN_MOVELEFT)
+                && !(g_iLastButtons[client] & IN_MOVELEFT)
+                && g_iUsePressStep[client] % 2 == 0)
+                {
+                    g_iUsePressStep[client]++;
+                }
+
+                if ((buttons & IN_MOVERIGHT)
+                && !(g_iLastButtons[client] & IN_MOVERIGHT)
+                && g_iUsePressStep[client] % 2 == 1)
+                {
+                    g_iUsePressStep[client]++;
+                }
+
+                SetHudTextParams(0.50, 0.45, 0.1, 255, 0, 0, 255);
+                ShowHudText(client, -1, "  快交替按AD键挣脱!!!");
+            }
+            else
+            {
+                if (GetRandomInt(1, 20) == 1)
+                {
+                    g_iUsePressStep[client]++;
+                }
+            }
         }
         else if (g_iZombiePull[client] != -1)   // 在0 0 0点等待复活的人类不会被吸
         {
@@ -177,6 +205,8 @@ void InitHumanState()
     {
         g_bIsStuck[i] = g_bIsInvert[i] = false;
 
+        g_iUsePressStep[i] = 0;
+
         g_iZombieCall[i] = g_iZombiePull[i] = -1;
 
         g_bIsGrappled[i] = false;
@@ -199,8 +229,9 @@ void InitHumanState()
 void InitModelCache()
 {
     // 模型预缓存
-    g_iBeamSprite = PrecacheModel("materials/sprites/physbeam.vmt", true);	       // 辅助线
-    g_iZombieTrap = PrecacheModel("models/heavyzombietrap/zombitrap.mdl", true);   // 鬼手陷阱
+    PrecacheModel(ZOMBIE_TRAP, true);        // 鬼手陷阱
+    PrecacheModel(TOOL_BEAMSPRITE, true);	 // 辅助线
+    PrecacheModel(TOOL_TRAPPHYS, true);      // 受击体
 }
 
 void InitSoundCache()

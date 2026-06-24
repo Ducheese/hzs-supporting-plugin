@@ -78,7 +78,7 @@ public void Han_OnZombieDeath(int zombie, int killer)
     }
     else if (IsSameName(zombie, ZOMBIE_BUTCHER))
     {
-        // 什么都不做
+        StartTrap(zombie);
     }
     else if (IsSameName(zombie, ZOMBIE_WITCH))
     {
@@ -146,16 +146,7 @@ public void Han_OnZombieHurt(int zombie, int attacker)
     }
     else if (IsSameName(zombie, ZOMBIE_DEIMOS))
     {
-        // 跳跃技能（感觉如果能躲枪线也很酷）
-        if (GetMeterDistance(zombie, attacker) > 3.0              // 3.0米以外
-        && GetMeterDistance(zombie, attacker) < DEIMOS_JUMPRANGE  // 10.0米以内
-        && IsTargetForward(zombie, attacker)                      // 在前方（防止子弹僵尸卡墙）
-        && attacker == GetEntDataEnt2(zombie, g_iLeaderOffset)    // 且目标和攻击者是同一个
-        && !g_bIsPickup[zombie])
-        {
-            g_bIsPickup[zombie] = true;
-            ThrowZombie(zombie, attacker);
-        }
+        // 跳跃技能已移除
     }
     else if (IsSameName(zombie, ZOMBIE_BUTCHER))
     {
@@ -268,20 +259,22 @@ public void Han_OnZombieAttack(int zombie, int victim)
     {
         // 什么都不做
     }
-    else if (IsSameName(zombie, ZOMBIE_DEIMOS))
+    else if (IsSameName(zombie, ZOMBIE_DEIMOS)
+        && !g_bIsSkillUsed[zombie]
+    )
     {
+        g_bIsSkillUsed[zombie] = true;
         g_bIsStuck[victim] = false;        // 解除憎恶屠夫的控制
         g_bIsInvert[victim] = false;       // 解除嗜血女巫的干扰
         StartKnockback(zombie, victim);
+        CreateTimer(DEIMOS_KNOCK_CD, Timer_SkillEnd, zombie);
     }
     else if (IsSameName(zombie, ZOMBIE_BUTCHER) 
         && !g_bIsSkillUsed[zombie]         // 一次性技能
         && !g_bIsStuck[victim]             // 一个人不会同时中多个陷阱
     )
     {
-        g_bIsSkillUsed[zombie] = true;
-        g_bIsStuck[victim] = true;
-        StartTrap(zombie, victim);
+        // 陷阱改由死亡时生成，攻击时不再触发
     }
     else if (IsSameName(zombie, ZOMBIE_WITCH) 
         && !g_bIsSkillUsed[zombie] 
@@ -352,11 +345,22 @@ void InitZombieState(zombie)
     g_iMaxHealth[zombie] = GetEntProp(zombie, Prop_Data, "m_iHealth");
     g_bIsSkillUsed[zombie] = false;
 
-    // 安哥拉使用的数组在自己的if分支初始化
+    // 句柄数组统一初始化
+    g_hHeal[zombie] = INVALID_HANDLE;
+    g_hPull[zombie] = INVALID_HANDLE;
+    g_hFly[zombie] = INVALID_HANDLE;
+    g_hCharge[zombie] = INVALID_HANDLE;
+    g_hChargePack[zombie] = INVALID_HANDLE;
+    g_hMovetype[zombie] = INVALID_HANDLE;
+
+    // 安哥拉使用的数组
+    g_iBulletCount[zombie] = 0;
+    g_BossState[zombie] = STATE_GROUND;
+    g_Mode[zombie] = FLY_RANDOM;
+    g_flLastFlyEnd[zombie] = 0.0;
+    g_flLastFlySound[zombie] = 0.0;
 
     // 巨型狂暴使用的数组
     g_iGrappling[zombie] = -1;
     g_bIsPickup[zombie] = false;
-
-    // 异形斗兽暂无数组需要提前初始化
 }
