@@ -307,10 +307,11 @@ void CreateTrap(float pos[3])
     g_iTrapTrigger[phys] = trigger;
     g_iTriggerOwner[trigger] = phys;
     g_iTrapVictim[phys] = -1;
+    g_iTrapCount++;
     g_hTrapLifetime[phys] = CreateTimer(BUTCHER_TRAP_LIFETIME, Timer_DestroyTrap, phys);
 
-    DebugDrawBBox(phys,    BUTCHER_TRAP_LIFETIME, {255, 0, 0, 255});
-    DebugDrawBBox(trigger, BUTCHER_TRAP_LIFETIME, {0, 255, 0, 255});
+    // DebugDrawBBox(phys,    BUTCHER_TRAP_LIFETIME, {255, 0, 0, 255});
+    // DebugDrawBBox(trigger, BUTCHER_TRAP_LIFETIME, {0, 255, 0, 255});
 }
 
 void KillTrapVisualAndTrigger(int phys)
@@ -370,6 +371,9 @@ public Action OnTrapTriggerTouch(int trigger, int victim)
     // 陷阱伤害
     SDKHooks_TakeDamage(victim, phys, phys, BUTCHER_TRAP_DAMAGE, DMG_SLASH, _, _, _, false);
 
+    // 屏幕抖动
+    Shake(victim, 10.0, 10.0, 1.0);
+
     // 挣脱句柄
     g_iUsePressStep[victim] = 0;
 
@@ -417,7 +421,7 @@ public Action Timer_TrapEscapeThink(Handle timer, DataPack pack)
     }
 
     // 连按速率达标，只解除stuck，不消除陷阱模型
-    if (g_iUsePressStep[victim] >= BUTCHER_KEYRATE * 2)
+    if (g_iUsePressStep[victim] >= BUTCHER_TRAP_KEYRATE * 2)
     {
         ClearGrappleHandles(victim);
         g_bIsStuck[victim] = false;
@@ -432,12 +436,11 @@ public Action Timer_TrapEscapeThink(Handle timer, DataPack pack)
 
 public Action OnTrapTakeDamage(int phys, int &attacker, int &inflictor, float &damage, int &damagetype)
 {
-    // 受击特效（可注释）
+    // 受击特效：未被踩中 +16，被踩中 +32
     float hitPos[3];
     GetEntPropVector(phys, Prop_Send, "m_vecOrigin", hitPos);
-    hitPos[2] += 20.0;
-    DynamicLight(hitPos, 255, 0, 0, 8, 96.0, 0.1, 256.0);
-    TE_SetupSparks(hitPos, view_as<float>({0.0, 0.0, 1.0}), 3, 2);
+    hitPos[2] += (g_iTrapVictim[phys] != -1) ? 32.0 : 16.0;
+    TE_SetupBloodSprite(hitPos, view_as<float>({0.0, 0.0, 0.0}), {255, 0, 0, 255}, 3, g_iBloodSpray, g_iBloodDrop);
     TE_SendToAll();
 
     // 只关心是否会被打死，血量交给引擎处理
@@ -462,6 +465,7 @@ public Action OnTrapTakeDamage(int phys, int &attacker, int &inflictor, float &d
         }
 
         KillTrapVisualAndTrigger(phys);
+        if (g_iTrapCount > 0) g_iTrapCount--;
     }
 
     return Plugin_Continue;
@@ -470,6 +474,7 @@ public Action OnTrapTakeDamage(int phys, int &attacker, int &inflictor, float &d
 public Action Timer_DestroyTrap(Handle timer, int phys)
 {
     g_hTrapLifetime[phys] = INVALID_HANDLE;
+    if (g_iTrapCount > 0) g_iTrapCount--;
 
     if (IsValidEntity(phys))
     {

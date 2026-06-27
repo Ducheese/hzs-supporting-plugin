@@ -41,6 +41,8 @@ public void OnPluginStart()
     InitHumanState();
     InitModelCache();
     InitSoundCache();
+
+    HookEvent("round_start", Event_RoundStart);
 }
 
 public void OnMapStart()
@@ -56,6 +58,11 @@ public void OnClientPutInServer(int client)
 public void OnClientDisconnect_Post(int client)
 {
     g_ClientName[client] = NULL_STRING;
+}
+
+public void Event_RoundStart(Event event, const char[] name, bool dontBroadcast)
+{
+    g_iTrapCount = 0;
 }
 
 //========================================================================================
@@ -232,6 +239,8 @@ void InitModelCache()
     PrecacheModel(ZOMBIE_TRAP, true);        // 鬼手陷阱
     PrecacheModel(TOOL_BEAMSPRITE, true);	 // 辅助线
     PrecacheModel(TOOL_TRAPPHYS, true);      // 受击体
+    g_iBloodSpray = PrecacheModel("sprites/bloodspray.vmt");
+    g_iBloodDrop  = PrecacheModel("sprites/blooddrop.vmt");
 }
 
 void InitSoundCache()

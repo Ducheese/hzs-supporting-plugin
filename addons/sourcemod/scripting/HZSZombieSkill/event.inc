@@ -76,7 +76,10 @@ public void Han_OnZombieDeath(int zombie, int killer)
     {
         // 什么都不做
     }
-    else if (IsSameName(zombie, ZOMBIE_BUTCHER))
+    else if (IsSameName(zombie, ZOMBIE_BUTCHER)
+        && GetRandomFloat(0.0, 1.0) <= BUTCHER_TRAP_CHANCE
+        && g_iTrapCount < BUTCHER_TRAP_MAX
+    )
     {
         StartTrap(zombie);
     }
