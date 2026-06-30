@@ -126,7 +126,6 @@ public Action Timer_CreateSmashKnock(Handle timer, int zombie)
 
             // 状态管理
             g_bIsStuck[victim] = false;
-            g_bIsInvert[victim] = false;
 
             // 生成击退
             Shake(victim, 30.0, 10.0, 3.0);
@@ -179,7 +178,6 @@ public Action Timer_CreateSwingKnock(Handle timer, int zombie)
             
             // 状态管理
             g_bIsStuck[victim] = false;
-            g_bIsInvert[victim] = false;
 
             // 生成击退
             Shake(victim, 30.0, 10.0, 3.0);

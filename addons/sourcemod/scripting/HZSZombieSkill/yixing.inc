@@ -116,7 +116,6 @@ void DashKnockback(int zombie)
             {
                 // 状态管理
                 g_bIsStuck[victim] = false;
-                g_bIsInvert[victim] = false;
                 
                 // 造成伤害
                 SDKHooks_TakeDamage(victim, zombie, zombie, YIXING_DASH_DAMAGE, DMG_SLASH, _, _, _, false);
@@ -206,7 +205,8 @@ void ShockWaveEffect(int zombie)
 
                 // 状态管理
                 g_bIsStuck[victim] = false;
-                g_bIsInvert[victim] = false;
+                if (g_bIsBlind[victim])
+                    EndWitchBlind(victim);
 
                 // 记住当前方向
                 GetClientEyeAngles(victim, g_flAng[victim]);

@@ -167,7 +167,6 @@ void StartGrapple(int zombie, int victim)
 
     // 状态管理
     g_bIsStuck[victim] = false;
-    g_bIsInvert[victim] = false;
 
     // 更换第一视角
     GrappleFirstView(zombie, victim);

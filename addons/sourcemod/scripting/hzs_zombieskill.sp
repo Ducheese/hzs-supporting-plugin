@@ -53,6 +53,7 @@ public void OnMapStart()
 public void OnClientPutInServer(int client)
 {
     GetClientName(client, g_ClientName[client], 32);   // 伪复活插件会更换玩家名字，所以要提前保存
+    SDKHook(client, SDKHook_SetTransmit, OnWitchBlindSetTransmit);
 }
 
 public void OnClientDisconnect_Post(int client)
@@ -161,14 +162,50 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 
             TeleportEntity(client, NULL_VECTOR, g_flAng[client], NULL_VECTOR);
         }
-        else if (g_bIsInvert[client])           // 应当增加一个视觉反馈（如果能做一些视觉扭曲就更好了）
+        else if (g_bIsBlind[client])            // 女巫致盲：WASD旋转映射
         {
-            vel[0] = -vel[0];
-            vel[1] = -vel[1];
-            // vel[2] = -vel[2];                // 这个是多余的吧
+            int btn = buttons & ~(IN_FORWARD | IN_BACK | IN_MOVELEFT | IN_MOVERIGHT);
+            int rot = g_iWitchKeyRot[client];
+
+            // rot 0=DWAS(逆时针1位) 1=ASDW(顺时针1位) 2=SDWA(顺时针2位)
+            if (buttons & IN_FORWARD)
+            {
+                if (rot == 0)      btn |= IN_MOVERIGHT;
+                else if (rot == 1) btn |= IN_MOVELEFT;
+                else               btn |= IN_BACK;
+            }
+            if (buttons & IN_BACK)
+            {
+                if (rot == 0)      btn |= IN_MOVELEFT;
+                else if (rot == 1) btn |= IN_MOVERIGHT;
+                else               btn |= IN_FORWARD;
+            }
+            if (buttons & IN_MOVELEFT)
+            {
+                if (rot == 0)      btn |= IN_FORWARD;
+                else if (rot == 1) btn |= IN_BACK;
+                else               btn |= IN_MOVERIGHT;
+            }
+            if (buttons & IN_MOVERIGHT)
+            {
+                if (rot == 0)      btn |= IN_BACK;
+                else if (rot == 1) btn |= IN_FORWARD;
+                else               btn |= IN_MOVELEFT;
+            }
+
+            buttons = btn;
+
+            // 根据映射后的方向flag设置速度
+            float fmove = 0.0, smove = 0.0;
+            if (btn & IN_FORWARD)   fmove += 200.0;
+            if (btn & IN_BACK)      fmove -= 200.0;
+            if (btn & IN_MOVELEFT)  smove -= 200.0;
+            if (btn & IN_MOVERIGHT) smove += 200.0;
+            vel[0] = fmove;
+            vel[1] = smove;
 
             SetHudTextParams(0.50, 0.45, 0.1, 255, 0, 0, 255);
-            ShowHudText(client, -1, "  方向键取反了!!!");
+            ShowHudText(client, -1, "  方向键旋转了!!!");
         }
 
         g_iLastButtons[client] = buttons;       // 虽然多了个数组，但这样写确实简洁
@@ -196,7 +233,7 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
                     Han_UnlockZombie(zombie);   // 解除所有僵尸的强制目标（这里对多个安哥拉的考虑欠佳）
                 }
             }
-        }   
+        }
     }
 
     return Plugin_Continue;
@@ -210,7 +247,7 @@ void InitHumanState()
     // 玩家相关数组初始化（不爽的位置）
     for (int i = 1; i <= MaxClients; i++)
     {
-        g_bIsStuck[i] = g_bIsInvert[i] = false;
+        g_bIsStuck[i] = false;
 
         g_iUsePressStep[i] = 0;
 
@@ -228,6 +265,13 @@ void InitHumanState()
         ClearGrappleHandles(i);
 
         g_bIsShock[i] = false;
+
+        g_bIsBlind[i] = false;
+        g_iWitchPhase[i] = 0;
+        g_flWitchNearTime[i] = 0.0;
+        g_iWitchKeyRot[i] = -1;
+        g_bWitchDSPFlip[i] = false;
+
         // 在使用前赋值的
         // g_flAng[]
     }
@@ -241,6 +285,9 @@ void InitModelCache()
     PrecacheModel(TOOL_TRAPPHYS, true);      // 受击体
     g_iBloodSpray = PrecacheModel("sprites/bloodspray.vmt");
     g_iBloodDrop  = PrecacheModel("sprites/blooddrop.vmt");
+
+    AddFileToDownloadsTable(LUT_WITCH_MILD);
+    AddFileToDownloadsTable(LUT_WITCH_SEVERE);
 }
 
 void InitSoundCache()
@@ -252,7 +299,8 @@ void InitSoundCache()
     PrecacheSound(SFX_EXPLODE2, true);
     PrecacheSound(SFX_KNOCKBACK, true);
     PrecacheSound(SFX_BUTCHER, true);
-    PrecacheSound(SFX_WITCH, true);
+    PrecacheSound(SFX_WITCH1, true);
+    PrecacheSound(SFX_WITCH2, true);
 
     // 音频预缓存（BOSS安哥拉）
     PrecacheSound(SFX_CALL, true);

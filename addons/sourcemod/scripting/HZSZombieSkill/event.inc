@@ -6,6 +6,11 @@ public void Han_OnZombieCreated(int zombie)
 {
     InitZombieState(zombie);
 
+    // 为致盲模型隐藏hook SetTransmit（只hook渲染实体）
+    int animEnt = FindAnimEntity(zombie);
+    if (animEnt != -1)
+        SDKHook(animEnt, SDKHook_SetTransmit, OnWitchBlindSetTransmit);
+
     // 僵尸种类分支
     if (IsSameName(zombie, ZOMBIE_SMOKE))
     {
@@ -29,7 +34,7 @@ public void Han_OnZombieCreated(int zombie)
     }
     else if (IsSameName(zombie, ZOMBIE_WITCH))
     {
-        // 什么都不做
+        g_hWitchNear[zombie] = CreateTimer(0.1, Timer_WitchNearThink, zombie, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
     }
     else if (IsSameName(zombie, ZOMBIE_GHOST))
     {
@@ -85,7 +90,35 @@ public void Han_OnZombieDeath(int zombie, int killer)
     }
     else if (IsSameName(zombie, ZOMBIE_WITCH))
     {
-        // 暂时什么都不做
+        if (g_hWitchNear[zombie] != INVALID_HANDLE)
+        {
+            KillTimer(g_hWitchNear[zombie]);
+            g_hWitchNear[zombie] = INVALID_HANDLE;
+        }
+
+        // 最后一头女巫死亡时，清理所有失去覆盖的Phase 1玩家
+        for (int victim = 1; victim <= MaxClients; victim++)
+        {
+            if (g_iWitchPhase[victim] != 1)
+                continue;
+
+            bool anyNear;
+            for (int i = 1; i <= 2048; i++)
+            {
+                if (i != zombie && IsValidEntity(i) && IsSameName(i, ZOMBIE_WITCH) && GetMeterDistance(i, victim) <= WITCH_NEAR_RANGE)
+                {
+                    anyNear = true;
+                    break;
+                }
+            }
+
+            if (!anyNear)
+            {
+                g_iWitchPhase[victim] = 0;
+                g_flWitchNearTime[victim] = 0.0;
+                KillWitchCC(victim);
+            }
+        }
     }
     else if (IsSameName(zombie, ZOMBIE_GHOST))
     {
@@ -268,25 +301,16 @@ public void Han_OnZombieAttack(int zombie, int victim)
     {
         g_bIsSkillUsed[zombie] = true;
         g_bIsStuck[victim] = false;        // 解除憎恶屠夫的控制
-        g_bIsInvert[victim] = false;       // 解除嗜血女巫的干扰
         StartKnockback(zombie, victim);
         CreateTimer(DEIMOS_KNOCK_CD, Timer_SkillEnd, zombie);
     }
-    else if (IsSameName(zombie, ZOMBIE_BUTCHER) 
-        && !g_bIsSkillUsed[zombie]         // 一次性技能
-        && !g_bIsStuck[victim]             // 一个人不会同时中多个陷阱
-    )
+    else if (IsSameName(zombie, ZOMBIE_BUTCHER))
     {
         // 陷阱改由死亡时生成，攻击时不再触发
     }
-    else if (IsSameName(zombie, ZOMBIE_WITCH) 
-        && !g_bIsSkillUsed[zombie] 
-        && !g_bIsInvert[victim]
-    )
+    else if (IsSameName(zombie, ZOMBIE_WITCH))
     {
-        g_bIsSkillUsed[zombie] = true;
-        g_bIsInvert[victim] = true;
-        StartInvert(zombie, victim);
+        // 致幻已改为距离触发，攻击时不再触发
     }
     else if (IsSameName(zombie, ZOMBIE_GHOST))
     {
