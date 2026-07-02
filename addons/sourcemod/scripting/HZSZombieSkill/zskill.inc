@@ -1,4 +1,4 @@
-//========================================================================================
+﻿//========================================================================================
 // 迷雾僵尸技能：受击后立刻产生大量黑烟，阻碍真人玩家视线，一次性技能
 //========================================================================================
 
@@ -495,8 +495,22 @@ public Action Timer_DestroyTrap(Handle timer, int phys)
 }
 
 //========================================================================================
-// 嗜血女巫技能：致幻（两阶段：接近→灰度，5秒后→致盲）
+// 嗜血女巫技能：致幻（两阶段：接近→灰度，长时间后→致盲+方向键旋转）
 //========================================================================================
+
+void PrepWitchCCDetour()
+{
+    // CColorCorrection vtable[19] = UpdateTransmitState (IDA 确认)
+    g_hShouldTransmitDetour = DHookCreate(19, HookType_Entity, ReturnType_Int, ThisPointer_CBaseEntity);
+    if (!g_hShouldTransmitDetour)
+        LogError("Failed to create UpdateTransmitState vtable hook");
+}
+
+public MRESReturn OnCCUpdateTransmitState_Pre(int entity, Handle hReturn)
+{
+    DHookSetReturn(hReturn, 0);
+    return MRES_Supercede;
+}
 
 // 创建per-player CC实体（通用）
 int CreateWitchCC(int victim, const char[] lutFile)
@@ -512,8 +526,17 @@ int CreateWitchCC(int victim, const char[] lutFile)
     DispatchKeyValue(cc, "minfalloff", "-1");
     DispatchKeyValue(cc, "maxfalloff", "-1");
     DispatchKeyValue(cc, "StartDisabled", "1");
+
+    // vtable[19] hook：必须在 Spawn 前（Spawn → UpdateTransmitState → FL_EDICT_ALWAYS）
+    DHookEntity(g_hShouldTransmitDetour, false, cc, _, OnCCUpdateTransmitState_Pre);
+
     DispatchSpawn(cc);
     ActivateEntity(cc);
+
+    float victimPos[3];
+    GetEntPropVector(victim, Prop_Send, "m_vecOrigin", victimPos);
+    TeleportEntity(cc, victimPos, NULL_VECTOR, NULL_VECTOR);
+
     g_iWitchCCOwner[cc] = victim;
     SDKHook(cc, SDKHook_SetTransmit, OnWitchCCSetTransmit);
     AcceptEntityInput(cc, "Enable");
@@ -540,6 +563,33 @@ void KillWitchCC(int client)
         AcceptEntityInput(cc2, "Kill");
     }
     g_iWitchSevereCC[client] = -1;
+}
+
+// 清理失去所有女巫覆盖的Phase 1玩家（可选排除指定实体）
+void CleanupOrphanedWitchPhase1(int excludeEntity = -1)
+{
+    for (int victim = 1; victim <= MaxClients; victim++)
+    {
+        if (g_iWitchPhase[victim] != 1)
+            continue;
+
+        bool anyNear;
+        for (int i = 1; i <= 2048; i++)
+        {
+            if (i != excludeEntity && IsValidEntity(i) && IsSameName(i, ZOMBIE_WITCH) && GetMeterDistance(i, victim) <= WITCH_NEAR_RANGE)
+            {
+                anyNear = true;
+                break;
+            }
+        }
+
+        if (!anyNear)
+        {
+            g_iWitchPhase[victim] = 0;
+            g_flWitchNearTime[victim] = 0.0;
+            KillWitchCC(victim);
+        }
+    }
 }
 
 // 第一阶段：接近女巫→普通灰度
@@ -666,6 +716,17 @@ public Action Timer_WitchNearThink(Handle timer, int zombie)
     if (!IsValidEntity(zombie))
     {
         g_hWitchNear[zombie] = INVALID_HANDLE;
+
+        // 灾变插件可能直接kill所有女巫而不触发死亡事件
+        // 如果没有任何存活的witch，清理所有Phase 1受害者
+        bool anyAlive;
+        for (int i = 1; i <= 2048; i++)
+        {
+            if (IsValidEntity(i) && IsSameName(i, ZOMBIE_WITCH)) { anyAlive = true; break; }
+        }
+        if (!anyAlive)
+            CleanupOrphanedWitchPhase1();
+
         return Plugin_Stop;
     }
 
@@ -692,38 +753,14 @@ public Action Timer_WitchNearThink(Handle timer, int zombie)
         // out-of-range 不在此timer处理，Phase 1/2清理见下方
     }
 
-    // 对每个人类：如果phase=1且没被任何witch覆盖 → 取消phase 1
-    // 只在索引最小的witch回调中执行清理，避免重复
+    // 清理失去覆盖的Phase 1玩家（仅首个witch执行，避免重复）
     int firstWitch = -1;
     for (int i = 1; i <= 2048; i++)
     {
         if (IsValidEntity(i) && IsSameName(i, ZOMBIE_WITCH)) { firstWitch = i; break; }
     }
     if (zombie == firstWitch)
-    {
-        for (int victim = 1; victim <= MaxClients; victim++)
-        {
-            if (g_iWitchPhase[victim] != 1)
-                continue;
-
-            bool anyNear;
-            for (int i = 1; i <= 2048; i++)
-            {
-                if (IsValidEntity(i) && IsSameName(i, ZOMBIE_WITCH) && GetMeterDistance(i, victim) <= WITCH_NEAR_RANGE)
-                {
-                    anyNear = true;
-                    break;
-                }
-            }
-
-            if (!anyNear)
-            {
-                g_iWitchPhase[victim] = 0;
-                g_flWitchNearTime[victim] = 0.0;
-                KillWitchCC(victim);
-            }
-        }
-    }
+        CleanupOrphanedWitchPhase1();
 
     return Plugin_Continue;
 }
@@ -770,6 +807,217 @@ void SetVisible(int zombie)
         SetEntityRenderFx(AnimEnt, RENDERFX_NONE);
         SetEntityRenderColor(AnimEnt, 255, 255, 255, 255);
     }
+}
+
+//========================================================================================
+// 伪人僵尸技能：随机选取一个玩家，模仿其模型和动作
+//========================================================================================
+
+void EndImposter(int zombie)
+{
+    if (g_hImposterSync[zombie] != INVALID_HANDLE)
+    {
+        KillTimer(g_hImposterSync[zombie]);
+        g_hImposterSync[zombie] = INVALID_HANDLE;
+    }
+
+    int animEnt = FindAnimEntity(zombie);
+    if (animEnt != -1)
+    {
+        SetEntityRenderMode(animEnt, RENDER_NORMAL);
+        SetEntityRenderColor(animEnt, 255, 255, 255, 255);
+    }
+
+    int fake = g_iFakeBody[zombie];
+    if (fake > 0 && IsValidEntity(fake))
+    {
+        FadeEntity(fake, 0, true);
+    }
+}
+
+int CreateImposterFake(int zombie, int human)
+{
+    char model[PLATFORM_MAX_PATH];
+    GetEntPropString(human, Prop_Data, "m_ModelName", model, sizeof(model));
+
+    int fake = CreateEntityByName("prop_dynamic");
+    if (fake == -1)
+        return -1;
+
+    DispatchKeyValue(fake, "model", model);
+    DispatchSpawn(fake);
+
+    // 禁用客户端自主动画——改为服务端全量同步驱动
+    SetEntProp(fake, Prop_Data, "m_bClientSideAnimation", 0);
+
+    SetVariantString("!activator");
+    AcceptEntityInput(fake, "SetParent", zombie);
+    TeleportEntity(fake, view_as<float>({0.0, 0.0, 0.0}), view_as<float>({0.0, 0.0, 0.0}), NULL_VECTOR);
+
+    SetEntityRenderMode(fake, RENDER_TRANSCOLOR);
+    SetEntityRenderColor(fake, 255, 255, 255, 0);
+    SDKHook(fake, SDKHook_SetTransmit, OnWitchBlindSetTransmit);
+
+    return fake;
+}
+
+public Action Timer_ImposterThink(Handle timer, int zombie)
+{
+    if (!IsValidEntity(zombie) || GetEntProp(zombie, Prop_Data, "m_iHealth") <= 0)
+    {
+        g_hImposterSync[zombie] = INVALID_HANDLE;
+        return Plugin_Stop;
+    }
+
+    int target = g_iImposterTarget[zombie];
+
+    // target 死了 → 清掉
+    if (target > 0 && !IsHumanAlive(target))
+    {
+        g_iImposterTarget[zombie] = 0;
+        target = 0;
+    }
+
+    // ── 没 target → 显形，随机选人复制 ──
+    if (target == 0)
+    {
+        int human = PickRandomHuman();
+        if (human != -1)
+        {
+            g_iImposterTarget[zombie] = human;
+
+            // 杀旧假身
+            int oldFake = g_iFakeBody[zombie];
+            if (oldFake > 0 && IsValidEntity(oldFake))
+            {
+                FadeEntity(oldFake, 0, true);
+                g_iFakeBody[zombie] = -1;
+            }
+
+            // 藏真身
+            int animEnt = FindAnimEntity(zombie);
+            if (animEnt != -1)
+            {
+                SetEntityRenderMode(animEnt, RENDER_TRANSCOLOR);
+                FadeEntity(animEnt, 0, false);
+            }
+
+            // 建假身 → fade-in
+            int newFake = CreateImposterFake(zombie, human);
+            if (newFake != -1)
+            {
+                g_iFakeBody[zombie] = newFake;
+                FadeEntity(newFake, 255, false);
+            }
+        }
+        else
+        {
+            // 没人 → 显形
+            int animEnt = FindAnimEntity(zombie);
+            if (animEnt != -1)
+            {
+                SetEntityRenderMode(animEnt, RENDER_NORMAL);
+                SetEntityRenderColor(animEnt, 255, 255, 255, 255);
+            }
+
+            int oldFake = g_iFakeBody[zombie];
+            if (oldFake > 0 && IsValidEntity(oldFake))
+            {
+                FadeEntity(oldFake, 0, true);
+                g_iFakeBody[zombie] = -1;
+            }
+        }
+        return Plugin_Continue;
+    }
+
+    // ── 有 target → 同步 ──
+
+    int fake = g_iFakeBody[zombie];
+
+    // 人停→伪人停，人动→恢复
+    if (IsHumanMoving(target))
+    {
+        if (g_bImposterPaused[zombie])
+        {
+            g_bImposterPaused[zombie] = false;
+            Han_UnlockZombie(zombie);
+        }
+    }
+    else
+    {
+        if (!g_bImposterPaused[zombie])
+        {
+            g_bImposterPaused[zombie] = true;
+            Han_SetZombieTarget(zombie, zombie, 0.0);
+        }
+    }
+
+    // 朝向
+    float ang[3];
+    GetEntPropVector(target, Prop_Send, "m_angRotation", ang);
+    TeleportEntity(fake, NULL_VECTOR, ang, NULL_VECTOR);
+
+    // 动画
+    SetEntProp(fake, Prop_Send, "m_nSequence", GetEntProp(target, Prop_Send, "m_nSequence"));
+    SetEntPropFloat(fake, Prop_Send, "m_flCycle", GetEntPropFloat(target, Prop_Send, "m_flCycle"));
+    SetEntProp(fake, Prop_Send, "m_flAnimTime", GetEntProp(target, Prop_Send, "m_flAnimTime"));
+
+    for (int i = 0; i < 24; i++)
+    {
+        SetEntPropFloat(fake, Prop_Send, "m_flPoseParameter", GetEntPropFloat(target, Prop_Send, "m_flPoseParameter", i), i);
+    }
+
+    return Plugin_Continue;
+}
+
+// fade：targetAlpha=255 渐显，targetAlpha=0 渐隐，killAtEnd 结束时 ClearParent+Kill
+void FadeEntity(int entity, int targetAlpha, bool killAtEnd)
+{
+    DataPack pack = new DataPack();
+    pack.WriteCell(EntIndexToEntRef(entity));
+    pack.WriteCell(targetAlpha);
+    pack.WriteCell(killAtEnd);
+    pack.WriteFloat(GetGameTime());
+    CreateTimer(0.01, Timer_FadeEntity, pack, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
+}
+
+public Action Timer_FadeEntity(Handle timer, DataPack pack)
+{
+    pack.Reset();
+    int entity = EntRefToEntIndex(pack.ReadCell());
+    int targetAlpha = pack.ReadCell();
+    bool killAtEnd = pack.ReadCell();
+    float startTime = pack.ReadFloat();
+
+    if (entity == INVALID_ENT_REFERENCE || !IsValidEntity(entity))
+    {
+        delete pack;
+        return Plugin_Stop;
+    }
+
+    float progress = (GetGameTime() - startTime) / 0.25;
+
+    if (progress >= 1.0)
+    {
+        SetEntityRenderColor(entity, 255, 255, 255, targetAlpha);
+        if (killAtEnd)
+        {
+            char classname[64];
+            GetEdictClassname(entity, classname, sizeof(classname));
+            if (StrEqual(classname, "prop_dynamic"))
+            {
+                AcceptEntityInput(entity, "ClearParent");
+                AcceptEntityInput(entity, "Kill");
+            }
+        }
+        delete pack;
+        return Plugin_Stop;
+    }
+
+    int fromAlpha = (targetAlpha == 255) ? 0 : 255;
+    int alpha = fromAlpha + RoundToFloor((targetAlpha - fromAlpha) * progress);
+    SetEntityRenderColor(entity, 255, 255, 255, alpha);
+    return Plugin_Continue;
 }
 
 //========================================================================================

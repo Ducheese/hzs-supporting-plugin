@@ -288,3 +288,35 @@ public bool TraceEntityFilter_Ground(int entity, int mask, any data)
 {
     return (entity == 0);
 }
+
+//========================================================================================
+// 随机选取一个存活人类
+//========================================================================================
+
+stock int PickRandomHuman()
+{
+    int humans[MAXPLAYERS+1];
+    int count = 0;
+
+    for (int i = 1; i <= MaxClients; i++)
+    {
+        if (IsHumanAlive(i))
+            humans[count++] = i;
+    }
+
+    if (count == 0)
+        return -1;
+
+    return humans[GetRandomInt(0, count - 1)];
+}
+
+//========================================================================================
+// 判断人类是否在移动（速度 > 50 units/s）
+//========================================================================================
+
+stock bool IsHumanMoving(int client)
+{
+    float vel[3];
+    GetEntPropVector(client, Prop_Data, "m_vecVelocity", vel);
+    return GetVectorLength(vel) > 50.0;
+}

@@ -12,6 +12,7 @@
 
 #include <morecolors>
 #include <HanZombieScenarioAPI>
+#include <dhooks>
 
 #include "HZSZombieSkill/global"       // 全局变量定义
 #include "HZSZombieSkill/event"        // 僵尸事件
@@ -43,6 +44,8 @@ public void OnPluginStart()
     InitSoundCache();
 
     HookEvent("round_start", Event_RoundStart);
+
+    PrepWitchCCDetour();
 }
 
 public void OnMapStart()

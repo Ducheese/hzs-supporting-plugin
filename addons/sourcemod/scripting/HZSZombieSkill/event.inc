@@ -52,6 +52,10 @@ public void Han_OnZombieCreated(int zombie)
     {
         // 什么都不做
     }
+    else if (IsSameName(zombie, ZOMBIE_IMPOSTER))
+    {
+        g_hImposterSync[zombie] = CreateTimer(0.1, Timer_ImposterThink, zombie, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
+    }
 }
 
 //========================================================================================
@@ -96,29 +100,7 @@ public void Han_OnZombieDeath(int zombie, int killer)
             g_hWitchNear[zombie] = INVALID_HANDLE;
         }
 
-        // 最后一头女巫死亡时，清理所有失去覆盖的Phase 1玩家
-        for (int victim = 1; victim <= MaxClients; victim++)
-        {
-            if (g_iWitchPhase[victim] != 1)
-                continue;
-
-            bool anyNear;
-            for (int i = 1; i <= 2048; i++)
-            {
-                if (i != zombie && IsValidEntity(i) && IsSameName(i, ZOMBIE_WITCH) && GetMeterDistance(i, victim) <= WITCH_NEAR_RANGE)
-                {
-                    anyNear = true;
-                    break;
-                }
-            }
-
-            if (!anyNear)
-            {
-                g_iWitchPhase[victim] = 0;
-                g_flWitchNearTime[victim] = 0.0;
-                KillWitchCC(victim);
-            }
-        }
+        CleanupOrphanedWitchPhase1(zombie);
     }
     else if (IsSameName(zombie, ZOMBIE_GHOST))
     {
@@ -158,6 +140,10 @@ public void Han_OnZombieDeath(int zombie, int killer)
     {
         ClearChargeHandles(zombie);
     }
+    else if (IsSameName(zombie, ZOMBIE_IMPOSTER))
+    {
+        EndImposter(zombie);
+    }
 }
 
 //========================================================================================
@@ -189,6 +175,10 @@ public void Han_OnZombieHurt(int zombie, int attacker)
         // 什么都不做
     }
     else if (IsSameName(zombie, ZOMBIE_WITCH))
+    {
+        // 什么都不做
+    }
+    else if (IsSameName(zombie, ZOMBIE_IMPOSTER))
     {
         // 什么都不做
     }
@@ -312,6 +302,10 @@ public void Han_OnZombieAttack(int zombie, int victim)
     {
         // 致幻已改为距离触发，攻击时不再触发
     }
+    else if (IsSameName(zombie, ZOMBIE_IMPOSTER))
+    {
+        // 什么都不做
+    }
     else if (IsSameName(zombie, ZOMBIE_GHOST))
     {
         // 什么都不做
@@ -390,4 +384,10 @@ void InitZombieState(zombie)
     // 巨型狂暴使用的数组
     g_iGrappling[zombie] = -1;
     g_bIsPickup[zombie] = false;
+
+    // 伪人僵尸使用的数组
+    g_iImposterTarget[zombie] = 0;
+    g_iFakeBody[zombie] = -1;
+    g_hImposterSync[zombie] = INVALID_HANDLE;
+    g_bImposterPaused[zombie] = false;
 }
