@@ -1,0 +1,14 @@
+"Games"
+{
+    "cstrike"
+    {
+        "Signatures"
+        {
+            "R_LoadNamedSkys"
+            {
+                "library"    "engine"
+                "windows"    "\x55\x8B\xEC\x81\xEC\x34\x01\x00\x00\x8B\x0D\x2A\x2A\x2A\x2A\x53\x56\x57\x8B\x01"
+            }
+        }
+    }
+}

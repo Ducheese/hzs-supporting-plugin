@@ -108,11 +108,11 @@ public void Han_OnZombieDeath(int zombie, int killer)
     }
     else if (IsSameName(zombie, BOSS_ANGELA))
     {
-        // 如果吸力过程不无敌
-        if (g_hPull[zombie] != INVALID_HANDLE)
+        // 清理自愈timer
+        if (g_hHeal[zombie] != INVALID_HANDLE)
         {
-            KillTimer(g_hPull[zombie]);
-            g_hPull[zombie] = INVALID_HANDLE;
+            KillTimer(g_hHeal[zombie]);
+            g_hHeal[zombie] = INVALID_HANDLE;
         }
 
         // 如果飞行过程不无敌
@@ -199,15 +199,8 @@ public void Han_OnZombieHurt(int zombie, int attacker)
             // 30发子弹，至少触发一次技能的概率是45.45%，目前测下来是很合适的值
             int rand = GetRandomInt(1, 50);
 
-            // 吸力黑洞，BOSS容易被集火而死
-            if (rand == 1 
-            && GetEntProp(zombie, Prop_Data, "m_iHealth") > g_iMaxHealth[zombie] / 2)
-            {
-                g_bIsSkillUsed[zombie] = true;
-                StartPull(zombie);
-            }
-            // 感觉还差个技能
-            else if (rand == 2 
+            // 差个技能
+            if (rand == 1
             && GetEntProp(zombie, Prop_Data, "m_iHealth") > g_iMaxHealth[zombie] / 2)
             {
                 // 
@@ -368,8 +361,10 @@ void InitZombieState(zombie)
 
     // 句柄数组统一初始化
     g_hHeal[zombie] = INVALID_HANDLE;
-    g_hPull[zombie] = INVALID_HANDLE;
     g_hFly[zombie] = INVALID_HANDLE;
+    g_iFog[zombie] = -1;
+    g_iPoisonCC[zombie] = -1;
+    g_hDebris[zombie] = INVALID_HANDLE;
     g_hCharge[zombie] = INVALID_HANDLE;
     g_hChargePack[zombie] = INVALID_HANDLE;
     g_hMovetype[zombie] = INVALID_HANDLE;

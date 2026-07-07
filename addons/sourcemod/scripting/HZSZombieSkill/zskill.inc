@@ -242,7 +242,7 @@ void CreateTrap(float pos[3])
     if (visual == -1)
         return;
 
-    DispatchKeyValue(visual, "model", ZOMBIE_TRAP);
+    DispatchKeyValue(visual, "model", MODEL_ZOMBIETRAP);
     DispatchKeyValue(visual, "disableshadows", "1");
     DispatchKeyValue(visual, "disableshadowdepth", "1");
     DispatchSpawn(visual);

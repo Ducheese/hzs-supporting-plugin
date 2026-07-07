@@ -103,7 +103,7 @@ bool IsTargetForward(int zombie, int human)
 // 僵尸无敌时间 修改自sm_dmlite.sp 更适合NPC的合法性验证
 //========================================================================================
 
-void ProtectZombie(int zombie, float duration)
+stock void ProtectZombie(int zombie, float duration)
 {
     SetEntProp(zombie, Prop_Data, "m_takedamage", 0, 1);
     CreateTimer(duration, Timer_RemoveProtect, zombie);
@@ -126,7 +126,7 @@ public Action Timer_RemoveProtect(Handle timer, int zombie)
 // 粒子生成和消灭 来自CSS Blood.sp
 //========================================================================================
 
-void WriteParticle(char[] ParticleName, float ImpactOrigin[3], float duration)
+stock void WriteParticle(char[] ParticleName, float ImpactOrigin[3], float duration)
 {
     int ent = CreateEntityByName("info_particle_system");
     
@@ -166,7 +166,7 @@ public Action Timer_DeleteParticle(Handle timer, int entity)
 // 计算到地面距离 飞行和冲锋逻辑都会用到
 //========================================================================================
 
-void GetDistanceToGround(int entity, float &dist, float fRayEndPoint[3])
+stock void GetDistanceToGround(int entity, float &dist, float fRayEndPoint[3])
 {
     float fRayStartPoint[3];
     GetEntPropVector(entity, Prop_Send, "m_vecOrigin", fRayStartPoint);
@@ -319,4 +319,61 @@ stock bool IsHumanMoving(int client)
     float vel[3];
     GetEntPropVector(client, Prop_Data, "m_vecVelocity", vel);
     return GetVectorLength(vel) > 50.0;
+}
+
+//========================================================================================
+// 运行时天空盒切换（DHook: R_LoadNamedSkys）
+//========================================================================================
+
+void PrepSkySDKCall()
+{
+    char filePath[PLATFORM_MAX_PATH];
+    BuildPath(Path_SM, filePath, sizeof(filePath), "gamedata/%s.txt", GAMEDATA_CUSTOM);
+    if (!FileExists(filePath))
+    {
+        Handle f = OpenFile(filePath, "w");
+        if (f == null)
+        {
+            LogError("[Angela] Cannot create gamedata/%s.txt", GAMEDATA_CUSTOM);
+            return;
+        }
+        WriteFileLine(f, "\"Games\"");
+        WriteFileLine(f, "{");
+        WriteFileLine(f, "    \"cstrike\"");
+        WriteFileLine(f, "    {");
+        WriteFileLine(f, "        \"Signatures\"");
+        WriteFileLine(f, "        {");
+        WriteFileLine(f, "            \"R_LoadNamedSkys\"");
+        WriteFileLine(f, "            {");
+        WriteFileLine(f, "                \"library\"    \"engine\"");
+        WriteFileLine(f, "                \"windows\"    \"\\x55\\x8B\\xEC\\x81\\xEC\\x34\\x01\\x00\\x00\\x8B\\x0D\\x2A\\x2A\\x2A\\x2A\\x53\\x56\\x57\\x8B\\x01\"");
+        WriteFileLine(f, "            }");
+        WriteFileLine(f, "        }");
+        WriteFileLine(f, "    }");
+        WriteFileLine(f, "}");
+        CloseHandle(f);
+    }
+
+    Handle gc = LoadGameConfigFile(GAMEDATA_CUSTOM);
+    if (gc == INVALID_HANDLE)
+    {
+        LogError("[Angela] Failed to load gamedata/%s.txt", GAMEDATA_CUSTOM);
+        return;
+    }
+
+    StartPrepSDKCall(SDKCall_Static);
+    if (!PrepSDKCall_SetFromConf(gc, SDKConf_Signature, "R_LoadNamedSkys"))
+    {
+        LogError("[Angela] Failed to find signature for R_LoadNamedSkys");
+        delete gc;
+        return;
+    }
+    PrepSDKCall_AddParameter(SDKType_String, SDKPass_Pointer);
+    PrepSDKCall_SetReturnInfo(SDKType_Bool, SDKPass_Plain);
+    g_hRLoadNamedSkys = EndPrepSDKCall();
+
+    if (g_hRLoadNamedSkys == INVALID_HANDLE)
+        LogError("[Angela] Failed to prepare SDKCall for R_LoadNamedSkys");
+
+    delete gc;
 }

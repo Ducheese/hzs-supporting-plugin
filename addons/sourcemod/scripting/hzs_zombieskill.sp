@@ -46,6 +46,7 @@ public void OnPluginStart()
     HookEvent("round_start", Event_RoundStart);
 
     PrepWitchCCDetour();
+    PrepSkySDKCall();
 }
 
 public void OnMapStart()
@@ -144,17 +145,6 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
                 }
             }
         }
-        else if (g_iZombiePull[client] != -1)   // 在0 0 0点等待复活的人类不会被吸
-        {
-            int zombie = g_iZombiePull[client];
-
-            if (!IsValidEntity(zombie) || GetEntProp(zombie, Prop_Data, "m_iHealth") <= 0)
-                return Plugin_Continue;
-
-            CreateKnockback(zombie, client, view_as<float>({-ANGELA_PULL_POWER, -ANGELA_PULL_POWER, -ANGELA_PULL_POWER}));      // 击退的反方向就是吸力
-
-            EmitSoundToClient(client, SFX_PULL1, _, SNDCHAN_STATIC, SNDLEVEL_NORMAL, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);    // 这样写，音效比较有魄力
-        }
         else if (g_bIsShock[client])
         {
             vel[0] = 0.1 * vel[0];
@@ -211,6 +201,10 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
             ShowHudText(client, -1, "  方向键旋转了!!!");
         }
 
+        // 安哥拉飞行刮风（不影响被擒抱/陷阱控制的玩家）
+        if (!g_bIsGrappled[client] && !g_bIsStuck[client])
+            ApplyWindPush(client, vel);
+
         g_iLastButtons[client] = buttons;       // 虽然多了个数组，但这样写确实简洁
     }
     else
@@ -254,7 +248,7 @@ void InitHumanState()
 
         g_iUsePressStep[i] = 0;
 
-        g_iZombieCall[i] = g_iZombiePull[i] = -1;
+        g_iZombieCall[i] = -1;
 
         g_bIsGrappled[i] = false;
 
@@ -283,7 +277,7 @@ void InitHumanState()
 void InitModelCache()
 {
     // 模型预缓存
-    PrecacheModel(ZOMBIE_TRAP, true);        // 鬼手陷阱
+    PrecacheModel(MODEL_ZOMBIETRAP, true);        // 鬼手陷阱
     PrecacheModel(TOOL_BEAMSPRITE, true);	 // 辅助线
     PrecacheModel(TOOL_TRAPPHYS, true);      // 受击体
     g_iBloodSpray = PrecacheModel("sprites/bloodspray.vmt");
@@ -291,6 +285,12 @@ void InitModelCache()
 
     AddFileToDownloadsTable(LUT_WITCH_MILD);
     AddFileToDownloadsTable(LUT_WITCH_SEVERE);
+    AddFileToDownloadsTable(LUT_ANGELA_GREEN);
+
+    for (int i = 0; i < DEBRIS_MODEL_COUNT; i++)
+    {
+        PrecacheModel(g_sDebrisModels[i], true);
+    }
 }
 
 void InitSoundCache()
@@ -307,8 +307,6 @@ void InitSoundCache()
 
     // 音频预缓存（BOSS安哥拉）
     PrecacheSound(SFX_CALL, true);
-    PrecacheSound(SFX_PULL1, true);
-    PrecacheSound(SFX_PULL2, true);
     PrecacheSound(SFX_SMASH, true);
     PrecacheSound(SFX_SWING, true);
     PrecacheSound(SFX_HEAL1, true);
@@ -316,6 +314,7 @@ void InitSoundCache()
     PrecacheSound(SFX_HEAL3, true);
     PrecacheSound(SFX_FLY, true);
     PrecacheSound(SFX_POISON, true);
+    PrecacheSound(SFX_WIND, true);
 
     // 音频预缓存（BOSS巨型狂暴形态僵尸）
     PrecacheSound(SFX_CHARGE1, true);

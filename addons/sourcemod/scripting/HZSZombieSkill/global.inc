@@ -9,9 +9,12 @@
 #define MAX_HEALTH              150        // 玩家最大生命值
 
 // 模型路径
-#define ZOMBIE_TRAP            "models/heavyzombietrap/zombitrap.mdl"    // 陷阱视觉模型
+#define MODEL_ZOMBIETRAP       "models/heavyzombietrap/zombitrap.mdl"    // 陷阱视觉模型
 #define TOOL_TRAPPHYS          "models/props/de_nuke/crate_small.mdl"    // 陷阱受击体模型
 #define TOOL_BEAMSPRITE        "materials/sprites/physbeam.vmt"          // 碰撞区域可视化辅助线
+
+// 函数签名
+#define GAMEDATA_CUSTOM        "hzs_zombieskill.gamedata"                // 切换天空盒SDKCall
 
 // 僵尸名称（需要与HanZombieScenarioZombieData.cfg同步）
 #define ZOMBIE_SMOKE           "迷雾僵尸"
@@ -39,8 +42,8 @@
 #define DEIMOS_KNOCK_CD         5.0        // 恶魔猎手击飞技能的冷却时间（秒）
 #define BUTCHER_TRAP_HEALTH     300        // 憎恶屠夫鬼手陷阱的血量
 #define BUTCHER_TRAP_LIFETIME   30.0       // 无人踩踏时鬼手陷阱的存在时间（秒）
-#define BUTCHER_TRAP_STUCKTIME  8.0        // 踩中后鬼手陷阱的剩余存在时间，trap动画最长也是8秒（秒）
-#define BUTCHER_TRAP_DAMAGE     10.0       // 踩中陷阱时造成的单次伤害
+#define BUTCHER_TRAP_STUCKTIME  8.0        // 鬼手陷阱被踩中后的剩余存在时间，trap动画最长也是8秒（秒）
+#define BUTCHER_TRAP_DAMAGE     10.0       // 踩中陷阱时造成的一次性伤害
 #define BUTCHER_TRAP_KEYRATE    2          // 真人玩家挣脱鬼手陷阱所需的每秒交替按AD键轮数
 #define BUTCHER_TRAP_CHANCE     0.8        // 憎恶屠夫死后生成鬼手陷阱的概率
 #define BUTCHER_TRAP_MAX        10         // 场内鬼手陷阱的最大数量上限
@@ -50,15 +53,24 @@
 
 // 技能参数（BOSS安哥拉）
 #define ANGELA_CALL_TIME        15.0       // 安哥拉呼唤僵尸集中攻击某个人类的持续时间（秒）
-#define ANGELA_PULL_POWER       500.0      // 安哥拉吸力的力度
-#define ANGELA_PULL_TIME        5.0        // 安哥拉吸力的持续时间（秒）
 #define ANGELA_HEAL_DAMAGE      500        // 安哥拉自愈时每秒恢复的血量
 #define ANGELA_HEAL_BULLET      50         // 打断安哥拉自愈所需的累计子弹数
 #define ANGELA_KNOCK_DAMAGE     20.0       // 安哥拉群体击飞造成的伤害值（两种群体击飞共用）
 #define ANGELA_KNOCK_RANGE      10.0       // 安哥拉群体击飞的作用范围（单位：米）
 #define ANGELA_FLY_TIME         15.0       // 安哥拉飞行的持续时间（秒）
 #define ANGELA_FLY_CD           30.0       // 安哥拉飞行的冷却时间（秒）
+#define ANGELA_FLY_PUSH_RANGE   30.0       // 安哥拉飞行刮风作用范围（米）
+#define ANGELA_FLY_PUSH_POWER   200.0      // 安哥拉飞行刮风力度
+#define ANGELA_POISON_DAMAGE    1.0        // 安哥拉毒雾每秒伤害
 // 两种群体击飞在水平和垂直方向上有力度区别，不方便在这里修改值
+
+#define DEBRIS_MODEL_COUNT      10          // 碎片模型种类数
+#define DEBRIS_SHOOTER_POOL     32          // shooter 池大小（≥ 最大玩家数，同 tick 不复用）
+#define DEBRIS_INTERVAL         0.01        // 生成间隔（秒）
+#define DEBRIS_RANGE            10.0        // 生成空间边长（单位：米）
+#define DEBRIS_BASE             2.0         // 生成空间底部高度（单位：米）
+#define DEBRIS_VELOCITY         800.0       // 碎片射出速度
+#define DEBRIS_LIFETIME         2.0         // 碎片存活时间（秒）
 
 // 技能参数（BOSS巨型狂暴形态僵尸）
 #define PANGZI_CHARGE_TIME      3.0        // 巨型狂暴形态僵尸冲锋的持续时间（秒）
@@ -96,16 +108,15 @@
 #define SFX_KNOCKBACK          "custom/loud_chargerimpact_04.wav"           // 恶魔猎手或安哥拉击飞玩家的音效
 #define SFX_BUTCHER            "custom/tank_yell_01.wav"                    // 憎恶屠夫的技能提示音效
 #define SFX_WITCH1             "custom/horrified_4.wav"                     // 嗜血女巫的技能提示音效
-#define SFX_WITCH2             "custom/not_a_laughing_matter_reverse.wav"   // 嗜血女巫致盲时播放的音乐
+#define SFX_WITCH2             "custom/pileobile.wav"                       // 嗜血女巫致盲时播放的音乐
 
 // 特殊资源
-#define LUT_WITCH_MILD          "resource/witch_L_g1p0.raw"       // Phase 1: 纯灰度 gamma 1.0
-#define LUT_WITCH_SEVERE        "resource/witch_L_g2p2_p8.raw"    // Phase 2: gamma 2.2 + posterize 8
+#define LUT_WITCH_MILD         "resource/witch_L_g1p0.raw"                 // Phase 1: 纯灰度 gamma 1.0
+#define LUT_WITCH_SEVERE       "resource/witch_L_g2p2_p8.raw"              // Phase 2: gamma 2.2 + posterize 8
+#define LUT_ANGELA_GREEN       "resource/angela_L_g1p0_r55_g100_b35.raw"   // 安哥拉毒雾 LUT
 
 // 音效路径（BOSS安哥拉）
 #define SFX_CALL               "custom/mega_mob_incoming.wav"               // 安哥拉呼唤僵尸集中攻击某个人类的音效
-#define SFX_PULL1              "custom/hole_hit5.wav"                       // 安哥拉吸力音效
-#define SFX_PULL2              "custom/tank_breathe_05.wav"                 // 安哥拉使用吸力时的吐息声
 #define SFX_SMASH              "custom/explode_3.wav"                       // 安哥拉砸地动作的音效
 #define SFX_SWING              "weapons/angela/zbs_attack_swing.wav"        // 安哥拉挥臂动作的音效
 #define SFX_HEAL1              "custom/tank_growl_09.wav"                   // 安哥拉自愈时的吐息声
@@ -113,6 +124,7 @@
 #define SFX_HEAL3              "custom/tank_growl_02.wav"                   // 安哥拉自愈被打断时的吐息声
 #define SFX_FLY                "weapons/angela/angra_zbs_fly2.wav"          // 安哥拉扇动翅膀的音效
 #define SFX_POISON             "weapons/angela/angra_zbs_poison_spit.wav"   // 安哥拉喷毒的音效
+#define SFX_WIND               "custom/heavy_wind01.wav"                    // 安哥拉飞行大风声
 
 // 音效路径（BOSS巨型狂暴形态僵尸）
 #define SFX_CHARGE1            "custom/charger_charge_02.wav"               // 巨型狂暴形态僵尸冲锋嚎叫声
@@ -198,15 +210,36 @@ Handle g_hImposterSync[2048] = {INVALID_HANDLE, ...};            // 动画同步
 //========================================================================================
 
 // 飞行以外的逻辑
-int g_iBulletCount[2048];                 // 安哥拉在自愈期间所受的累计子弹数
-int g_iZombieCall[MAXPLAYERS+1];          // 玩家是否被集中攻击，记录的是安哥拉的实体号
-int g_iZombiePull[MAXPLAYERS+1];          // 玩家是否被安哥拉所吸，记录的是安哥拉的实体号
+int g_iBulletCount[2048];                         // 安哥拉在自愈期间所受的累计子弹数
+int g_iZombieCall[MAXPLAYERS+1];                  // 玩家是否被集中攻击，记录的是安哥拉的实体号
 Handle g_hHeal[2048] = {INVALID_HANDLE,...};      // 实现治疗效果所用的timer，巫蛊术尸和安哥拉共用
-Handle g_hPull[2048] = {INVALID_HANDLE,...};      // 实现吸力所用的timer
+
+// 飞行增强 — 毒雾
+int g_iFog[2048] = {-1, ...};                     // 毒雾实体
+int g_iPoisonCC[2048] = {-1, ...};                // 毒雾color_correction实体
+char g_sOriginalSky[64];                          // 原地图天空盒名
+Handle g_hRLoadNamedSkys;                         // SDKCall: R_LoadNamedSkys
+
+// 飞行增强 — 碎片
+int g_iDebrisShooter[DEBRIS_SHOOTER_POOL];        // shooter 池（EntRef）
+Handle g_hDebris[2048] = {INVALID_HANDLE, ...};   // 碎片重复生成 timer
+
+char g_sDebrisModels[DEBRIS_MODEL_COUNT][] = {
+    "models/props_junk/garbage_newspaper001a.mdl",
+    "models/props_junk/garbage_metalcan001a.mdl",
+    "models/props_junk/garbage_metalcan002a.mdl",
+    "models/props_junk/garbage_glassbottle001a.mdl",
+    "models/props_junk/garbage_glassbottle003a.mdl",
+    "models/props_junk/garbage_milkcarton002a.mdl",
+    "models/props_junk/garbage_takeoutcarton001a.mdl",
+    "models/props_junk/glassjug01.mdl",
+    "models/props_junk/glassbottle01a.mdl",
+    "models/props_junk/popcan01a.mdl"
+};
 
 // 飞行逻辑（H-AN提供）
-float g_flLastFlyEnd[2048];               // 记录上一次飞行开始/结束的时间（飞行CD逻辑）
-float g_flLastFlySound[2048];             // 记录上一次扇翅膀音效的时间，用于播放音效
+float g_flLastFlyEnd[2048];                       // 记录上一次飞行开始/结束的时间（飞行CD逻辑）
+float g_flLastFlySound[2048];                     // 记录上一次扇翅膀音效的时间，用于播放音效
 Handle g_hFly[2048] = {INVALID_HANDLE,...};       // 实现飞行所用的timer
 
 enum BossState

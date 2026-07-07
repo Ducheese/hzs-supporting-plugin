@@ -1,85 +1,4 @@
 //========================================================================================
-// 安哥拉技能：全场吸力，半血以上受击有概率使用
-//========================================================================================
-
-void StartPull(int zombie)
-{
-    // 常规信息
-    char ZombieName[32];
-    Han_GetZombieName(zombie, ZombieName, sizeof(ZombieName));
-
-    float pos[3];
-    GetEntPropVector(zombie, Prop_Send, "m_vecOrigin", pos);
-
-    // 吸力效果
-    Han_SetCustomAnimation(zombie, "run_upper_knife", ANGELA_PULL_TIME);   // 飞起来的动作
-    ProtectZombie(zombie, ANGELA_PULL_TIME);
-    CreatePull(zombie, pos);
-
-    // 延时开放技能占位
-    CreateTimer(ANGELA_PULL_TIME, Timer_SkillEnd, zombie);
-
-    // 文字提示
-    CPrintToChatAll("{green}[华仔] {red}小心，%s使用了吸力！", ZombieName);
-}
-
-void CreatePull(int zombie, float pos[3])
-{
-    // 状态管理
-    for (int victim = 1; victim <= MaxClients; victim++)
-    {
-        if (IsHumanAlive(victim))    // 如果刚复活就不会被吸，毕竟还要买武器，降低难度吧
-        {
-            g_iZombiePull[victim] = zombie;                 // 记录安哥拉实体号
-            CreateTimer(ANGELA_PULL_TIME, Timer_DePull, victim);
-        }
-    }
-
-    // 特效
-    DataPack pack = new DataPack();
-    pack.WriteCell(zombie);
-    pack.WriteCell(pos[0]);
-    pack.WriteCell(pos[1]);
-    pack.WriteCell(pos[2]);
-    g_hPull[zombie] = CreateTimer(1.0, Timer_PullParticle, pack, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
-
-    // 音效
-    EmitAmbientSound(SFX_PULL2, pos, _, SNDLEVEL_GUNFIRE, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
-}
-
-public Action Timer_PullParticle(Handle timer, DataPack pack)
-{
-    float pos[3];
-
-    pack.Reset();
-    int zombie = pack.ReadCell();
-    pos[0] = pack.ReadCell();
-    pos[1] = pack.ReadCell();
-    pos[2] = pack.ReadCell();
-
-    // 技能结束
-    if (!g_bIsSkillUsed[zombie])
-    {
-        delete pack;
-
-        KillTimer(timer);
-        g_hPull[zombie] = INVALID_HANDLE;
-        return Plugin_Stop;
-    }
-
-    WriteParticle("z_shield_buff", pos, 1.0);
-
-    return Plugin_Continue;
-}
-
-public Action Timer_DePull(Handle timer, int client)
-{
-    g_iZombiePull[client] = -1;
-
-    return Plugin_Stop;
-}
-
-//========================================================================================
 // 安哥拉技能：群体击飞，一个砸地飞高，一个挥臂飞远
 //========================================================================================
 
@@ -367,7 +286,7 @@ void EndSelfHealingSuccess(int zombie)
 }
 
 //========================================================================================
-// 安哥拉技能：飞行避险喷毒，半血以下有飞行CD就使用
+// 安哥拉技能：飞行逻辑基础
 //========================================================================================
 
 void InitFlyingState(int zombie)
@@ -385,6 +304,9 @@ void EnterFlyingMode(int zombie)
 
     g_BossState[zombie] = STATE_FLYING;
     g_flLastFlyEnd[zombie] = GetEngineTime();                // 飞行开始计时（共用一个数组）
+
+    CreatePoisonFog(zombie);
+    CreateDebrisSystem(zombie);
 }
 
 void EnterGroundMode(int zombie)
@@ -393,10 +315,21 @@ void EnterGroundMode(int zombie)
 
     g_BossState[zombie] = STATE_GROUND;
     g_flLastFlyEnd[zombie] = GetEngineTime();                // 冷却开始计时（共用一个数组）
+
+    RemovePoisonFog(zombie);
+    RemoveDebrisSystem(zombie);
 }
 
 public Action Timer_FlyThink(Handle timer, int zombie)
 {    
+    // 合法性检测
+    if (!IsValidEntity(zombie) || GetEntProp(zombie, Prop_Data, "m_iHealth") <= 0)
+    {
+        KillTimer(g_hFly[zombie]);
+        g_hFly[zombie] = INVALID_HANDLE;
+        return Plugin_Stop;
+    }
+
     float currentTime = GetEngineTime();    
 
     // 如果当前是地面模式，检查冷却是否结束
@@ -509,6 +442,312 @@ void PlayWingSound(int zombie)
         g_flLastFlySound[zombie] = currentTime;
         
         Han_SetCustomAnimationEx(zombie, "run_upper_knife", 0.9);
-        EmitAmbientSound(SFX_FLY, pos, _, SNDLEVEL_GUNFIRE, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL)
+        EmitAmbientSound(SFX_FLY, pos, _, SNDLEVEL_GUNFIRE, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
     }
+}
+
+//========================================================================================
+// 安哥拉技能：飞行增强 — 毒雾
+//========================================================================================
+
+void CreatePoisonFog(int zombie)
+{
+    // 全场雾
+    int fog = CreateEntityByName("env_fog_controller");
+    if (fog != -1)
+    {
+        // spawn 时关着，设好所有参数最后再 TurnOn，避免瞬间闪过默认值
+        DispatchKeyValue(fog, "fogenable", "0");
+        DispatchKeyValue(fog, "fogblend", "1");
+        DispatchKeyValue(fog, "fogstart", "5000");
+        DispatchKeyValue(fog, "fogend", "10000");
+        DispatchKeyValue(fog, "fogcolor", "60 90 20");
+        DispatchKeyValue(fog, "fogmaxdensity", "0.99");
+        DispatchKeyValue(fog, "foglerptime", "5.0");
+        DispatchSpawn(fog);
+        ActivateEntity(fog);
+
+        // lerp fogstart/fogend 到目标值，最后开雾
+        SetVariantString("0");
+        AcceptEntityInput(fog, "SetStartDistLerpTo");
+        SetVariantString("1000");
+        AcceptEntityInput(fog, "SetEndDistLerpTo");
+        
+        // 驱动 fogstart/fogend 从当前值（5000/10000）平滑 lerp 到目标值（0/1000）
+        AcceptEntityInput(fog, "StartFogTransition");
+
+        AcceptEntityInput(fog, "TurnOn");
+
+        for (int client = 1; client <= MaxClients; client++)
+        {
+            if (IsClientInGame(client))
+                SetEntPropEnt(client, Prop_Send, "m_PlayerFog.m_hCtrl", fog);
+        }
+    }
+
+    g_iFog[zombie] = fog;
+
+    // 全场绿色 color_correction
+    int cc = CreateEntityByName("color_correction");
+    if (cc != -1)
+    {
+        DispatchKeyValue(cc, "filename", LUT_ANGELA_GREEN);
+        DispatchKeyValue(cc, "maxweight", "1.0");
+        DispatchKeyValue(cc, "fadeInDuration", "3.0");
+        DispatchKeyValue(cc, "fadeOutDuration", "3.0");
+        DispatchKeyValue(cc, "minfalloff", "-1");
+        DispatchKeyValue(cc, "maxfalloff", "-1");
+        DispatchKeyValue(cc, "StartDisabled", "1");
+        DispatchSpawn(cc);
+        ActivateEntity(cc);
+        AcceptEntityInput(cc, "Enable");
+    }
+
+    g_iPoisonCC[zombie] = cc;
+
+    // 运行时切绿色天空盒
+    if (g_hRLoadNamedSkys != INVALID_HANDLE)
+    {
+        FindConVar("sv_skyname").GetString(g_sOriginalSky, sizeof(g_sOriginalSky));
+        SDKCall(g_hRLoadNamedSkys, "sky_green");
+    }
+
+    // 全场大风声
+    EmitSoundToAll(SFX_WIND, 1, SNDCHAN_STATIC, SNDLEVEL_GUNFIRE, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
+}
+
+void RemovePoisonFog(int zombie)
+{
+    // 还原天空盒
+    if (g_sOriginalSky[0] != '\0' && g_hRLoadNamedSkys != INVALID_HANDLE)
+        SDKCall(g_hRLoadNamedSkys, g_sOriginalSky);
+
+    // 落地瞬间：停风声（风阻随 STATE_GROUND 自动停）
+    for (int i = 1; i <= MaxClients; i++)
+    {
+        if (IsClientInGame(i))
+            StopSound(i, SNDCHAN_STATIC, SFX_WIND);
+    }
+
+    // CC 开始 fade out（fadeOutDuration=5.0 已在创建时设好）
+    int cc = g_iPoisonCC[zombie];
+    if (cc > 0 && IsValidEntity(cc))
+        AcceptEntityInput(cc, "Disable");
+
+    int fog = g_iFog[zombie];
+    if (fog > 0 && IsValidEntity(fog))
+    {
+        // fog fade out: lerp fogstart/fogend 拉远到不可见
+        SetVariantString("5000");
+        AcceptEntityInput(fog, "SetStartDistLerpTo");
+        SetVariantString("10000");
+        AcceptEntityInput(fog, "SetEndDistLerpTo");
+        AcceptEntityInput(fog, "StartFogTransition");
+    }
+
+    // 5s 后 fog+CC fade 完毕，统一 Kill
+    DataPack pack = new DataPack();
+    pack.WriteCell(EntIndexToEntRef(fog));
+    pack.WriteCell(EntIndexToEntRef(cc));
+    CreateTimer(5.0, Timer_CleanupPoison, pack);
+
+    g_iFog[zombie] = -1;
+    g_iPoisonCC[zombie] = -1;
+}
+
+public Action Timer_CleanupPoison(Handle timer, DataPack pack)
+{
+    pack.Reset();
+    int fog = EntRefToEntIndex(pack.ReadCell());
+    int cc = EntRefToEntIndex(pack.ReadCell());
+    delete pack;
+
+    if (fog != INVALID_ENT_REFERENCE && IsValidEntity(fog))
+    {
+        AcceptEntityInput(fog, "TurnOff");
+        for (int client = 1; client <= MaxClients; client++)
+        {
+            if (IsClientInGame(client))
+                SetEntPropEnt(client, Prop_Send, "m_PlayerFog.m_hCtrl", -1);
+        }
+        AcceptEntityInput(fog, "Kill");
+    }
+
+    if (cc != INVALID_ENT_REFERENCE && IsValidEntity(cc))
+        AcceptEntityInput(cc, "Kill");
+
+    return Plugin_Stop;
+}
+
+//========================================================================================
+// 安哥拉技能：飞行增强 — 刮风推动玩家
+//========================================================================================
+
+void ApplyWindPush(int client, float vel[3])
+{
+    float clientPos[3];
+    GetClientAbsOrigin(client, clientPos);
+
+    float maxStrength = 0.0;
+    float pushDir[3];
+
+    int count = Han_GetZombieCount();
+    for (int i = 0; i < count; i++)
+    {
+        int zombie = Han_GetZombieByIndex(i);
+        if (!IsValidEntity(zombie)) continue;
+        if (g_BossState[zombie] != STATE_FLYING) continue;
+
+        float angelaPos[3];
+        GetEntPropVector(zombie, Prop_Send, "m_vecOrigin", angelaPos);
+
+        float dist = GetVectorDistance(clientPos, angelaPos) * GAMEUNITS_TO_METERS;
+        if (dist > ANGELA_FLY_PUSH_RANGE) continue;
+
+        float strength = ANGELA_FLY_PUSH_POWER * (1.0 - dist / ANGELA_FLY_PUSH_RANGE);
+        if (strength <= maxStrength) continue;
+
+        maxStrength = strength;
+        pushDir[0] = clientPos[0] - angelaPos[0];
+        pushDir[1] = clientPos[1] - angelaPos[1];
+        pushDir[2] = 0.0;
+    }
+
+    if (maxStrength <= 0.0) return;
+
+    NormalizeVector(pushDir, pushDir);
+
+    float angles[3];
+    GetClientEyeAngles(client, angles);
+    angles[0] = 0.0;
+    angles[2] = 0.0;
+
+    float fwd[3], right[3];
+    GetAngleVectors(angles, fwd, right, NULL_VECTOR);
+
+    float fwdPush = GetVectorDotProduct(pushDir, fwd) * maxStrength;
+    float rightPush = GetVectorDotProduct(pushDir, right) * maxStrength;
+
+    vel[0] += fwdPush;
+    vel[1] += rightPush;
+}
+
+//========================================================================================
+// 安哥拉技能：飞行增强 — 垃圾乱飞视觉效果
+//========================================================================================
+
+void CreateDebrisSystem(int zombie)
+{
+    for (int i = 0; i < DEBRIS_SHOOTER_POOL; i++)
+    {
+        int shooter = CreateEntityByName("env_shooter");
+        if (shooter == -1) continue;
+
+        DispatchKeyValue(shooter, "shootmodel", g_sDebrisModels[GetRandomInt(0, DEBRIS_MODEL_COUNT - 1)]);
+        DispatchKeyValue(shooter, "shootsounds", "-1");
+        DispatchKeyValue(shooter, "spawnflags", "5");
+        DispatchKeyValue(shooter, "m_iGibs", "1");
+        DispatchKeyValue(shooter, "Simulation", "0");
+        DispatchKeyValue(shooter, "m_flVariance", "0");
+        DispatchKeyValue(shooter, "gibgravityscale", "1.0");
+
+        char buf[16];
+        FloatToString(DEBRIS_VELOCITY, buf, sizeof(buf));
+        DispatchKeyValue(shooter, "m_flVelocity", buf);
+        FloatToString(DEBRIS_LIFETIME, buf, sizeof(buf));
+        DispatchKeyValue(shooter, "m_flGibLife", buf);
+
+        DispatchSpawn(shooter);
+        ActivateEntity(shooter);
+
+        g_iDebrisShooter[i] = EntIndexToEntRef(shooter);
+    }
+
+    g_hDebris[zombie] = CreateTimer(DEBRIS_INTERVAL, Timer_DebrisTick, zombie, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
+}
+
+void RemoveDebrisSystem(int zombie)
+{
+    if (g_hDebris[zombie] != INVALID_HANDLE)
+    {
+        KillTimer(g_hDebris[zombie]);
+        g_hDebris[zombie] = INVALID_HANDLE;
+    }
+
+    for (int i = 0; i < DEBRIS_SHOOTER_POOL; i++)
+    {
+        int shooter = EntRefToEntIndex(g_iDebrisShooter[i]);
+        if (shooter != INVALID_ENT_REFERENCE && IsValidEntity(shooter))
+            AcceptEntityInput(shooter, "Kill");
+        g_iDebrisShooter[i] = -1;
+    }
+}
+
+public Action Timer_DebrisTick(Handle timer, int zombie)
+{
+    if (!IsValidEntity(zombie) || GetEntProp(zombie, Prop_Data, "m_iHealth") <= 0)
+    {
+        g_hDebris[zombie] = INVALID_HANDLE;
+        return Plugin_Stop;
+    }
+
+    // 收集可用 shooter
+    int pool[DEBRIS_SHOOTER_POOL];
+    int poolSize = 0;
+    for (int i = 0; i < DEBRIS_SHOOTER_POOL; i++)
+    {
+        int s = EntRefToEntIndex(g_iDebrisShooter[i]);
+        if (s != INVALID_ENT_REFERENCE && IsValidEntity(s))
+            pool[poolSize++] = i;
+    }
+
+    float angelaPos[3];
+    GetEntPropVector(zombie, Prop_Send, "m_vecOrigin", angelaPos);
+
+    float range = DEBRIS_RANGE / GAMEUNITS_TO_METERS;
+    float base  = DEBRIS_BASE  / GAMEUNITS_TO_METERS;
+    float half  = range / 2.0;
+
+    for (int client = 1; client <= MaxClients; client++)
+    {
+        if (!IsHumanAlive(client)) continue;
+        if (poolSize == 0) break;
+
+        int r = GetRandomInt(0, poolSize - 1);
+        int idx = pool[r];
+        pool[r] = pool[--poolSize];
+
+        int shooter = EntRefToEntIndex(g_iDebrisShooter[idx]);
+        if (shooter == INVALID_ENT_REFERENCE || !IsValidEntity(shooter))
+            continue;
+
+        float center[3];
+        GetClientAbsOrigin(client, center);
+
+        // 玩家前方空间（基于 eye yaw），非轴对齐
+        float eyeAng[3];
+        GetClientEyeAngles(client, eyeAng);
+        eyeAng[0] = 0.0;
+
+        float fwd[3], right[3];
+        GetAngleVectors(eyeAng, fwd, right, NULL_VECTOR);
+
+        float pos[3];
+        pos[0] = center[0] + fwd[0] * GetRandomFloat(0.0, range)
+                           + right[0] * GetRandomFloat(-half, half);
+        pos[1] = center[1] + fwd[1] * GetRandomFloat(0.0, range)
+                           + right[1] * GetRandomFloat(-half, half);
+        pos[2] = center[2] + base + GetRandomFloat(0.0, range);
+
+        // 方向 = 安哥拉 → 玩家（水平）
+        float ang[3];
+        ang[0] = 0.0;
+        ang[1] = RadToDeg(ArcTangent2(center[1] - angelaPos[1], center[0] - angelaPos[0]));
+        ang[2] = 0.0;
+
+        TeleportEntity(shooter, pos, ang, NULL_VECTOR);
+        AcceptEntityInput(shooter, "Shoot");
+    }
+
+    return Plugin_Continue;
 }
