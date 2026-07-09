@@ -300,24 +300,56 @@ void InitFlyingState(int zombie)
 
 void EnterFlyingMode(int zombie)
 {
-    SetEntProp(zombie, Prop_Data, "m_takedamage", 0, 1);     // 飞的时候无敌，避免死在天上不好看
+    SetEntProp(zombie, Prop_Data, "m_takedamage", 0, 1);     // 飞行期间无敌，避免死在天上不好看
+    SetEntityMoveType(zombie, MOVETYPE_STEP);                // 灾变插件伤害钩子设了 MOVETYPE_NONE，需恢复
 
-    g_BossState[zombie] = STATE_FLYING;
+    g_BossState[zombie] = STATE_FLYING;                      // 切换飞行状态
     g_flLastFlyEnd[zombie] = GetEngineTime();                // 飞行开始计时（共用一个数组）
 
-    CreatePoisonFog(zombie);
-    CreateDebrisSystem(zombie);
+    CreatePoisonFog(zombie);                                 // 全场绿雾 + CC + 更换天空盒
+    CreateDebrisSystem(zombie);                              // 飞行垃圾效果
+    StartPoisonDamage();                                     // 每玩家独立毒伤 timer
+
+    OffsetAnimZ(zombie, true);                               // 视觉模型下移，对齐碰撞箱
 }
 
 void EnterGroundMode(int zombie)
 {
-    SetEntProp(zombie, Prop_Data, "m_takedamage", 2, 1);
+    SetEntProp(zombie, Prop_Data, "m_takedamage", 2, 1);     // 恢复可受伤
 
-    g_BossState[zombie] = STATE_GROUND;
+    g_BossState[zombie] = STATE_GROUND;                      // 切换地面状态
     g_flLastFlyEnd[zombie] = GetEngineTime();                // 冷却开始计时（共用一个数组）
 
-    RemovePoisonFog(zombie);
-    RemoveDebrisSystem(zombie);
+    RemovePoisonFog(zombie);                                 // 还原绿雾 + CC + 天空盒
+    RemoveDebrisSystem(zombie);                              // 停止飞行垃圾效果
+    StopPoisonDamage();                                      // 停止所有毒伤 timer
+
+    OffsetAnimZ(zombie, false);                              // 视觉模型归位
+}
+
+void OffsetAnimZ(int zombie, bool bFlying)
+{
+    int anim = FindAnimEntity(zombie);
+    if (anim == -1 || !IsValidEntity(anim))
+        return;
+
+    int effects = GetEntProp(anim, Prop_Send, "m_fEffects");
+    float delta = ANGELA_FLY_ANIM_OFFSET / GAMEUNITS_TO_METERS;
+
+    if (bFlying)
+    {
+        SetEntProp(anim, Prop_Send, "m_fEffects", effects & ~0x001);
+        delta = -delta;
+    }
+    else
+    {
+        SetEntProp(anim, Prop_Send, "m_fEffects", effects | 0x001);
+    }
+
+    float pos[3];
+    GetEntPropVector(anim, Prop_Send, "m_vecOrigin", pos);
+    pos[2] += delta;
+    SetEntPropVector(anim, Prop_Send, "m_vecOrigin", pos);
 }
 
 public Action Timer_FlyThink(Handle timer, int zombie)
@@ -406,6 +438,10 @@ void FlyingLogic(int zombie)
 
     // 扇动翅膀的声音
     PlayWingSound(zombie);
+
+    // Debug: 画碰撞箱
+    int white[4] = {255, 255, 255, 255};
+    DebugDrawBBox(zombie, 0.8, white);
 }
 
 void GetFlyingMode(int zombie, int target, float hitPos[3])
@@ -580,6 +616,61 @@ public Action Timer_CleanupPoison(Handle timer, DataPack pack)
 }
 
 //========================================================================================
+// 安哥拉技能：飞行增强 — 毒伤
+//========================================================================================
+
+void StartPoisonDamage()
+{
+    for (int client = 1; client <= MaxClients; client++)
+    {
+        if (!IsHumanAlive(client))
+            continue;
+
+        float interval = GetRandomFloat(ANGELA_FLY_POISON_MIN, ANGELA_FLY_POISON_MAX);
+        g_hPoisonDmg[client] = CreateTimer(5.0+interval, Timer_PoisonDamage, client);
+    }
+}
+
+void StopPoisonDamage()
+{
+    for (int client = 1; client <= MaxClients; client++)
+    {
+        if (g_hPoisonDmg[client] != INVALID_HANDLE)
+        {
+            KillTimer(g_hPoisonDmg[client]);
+            g_hPoisonDmg[client] = INVALID_HANDLE;
+        }
+    }
+}
+
+public Action Timer_PoisonDamage(Handle timer, int client)
+{
+    g_hPoisonDmg[client] = INVALID_HANDLE;
+
+    // 玩家已死或离开 → 停止
+    if (!IsHumanAlive(client))
+        return Plugin_Stop;
+
+    // 毒伤
+    float damage = GetRandomFloat(ANGELA_FLY_POISON_MIN, ANGELA_FLY_POISON_MAX);
+    SDKHooks_TakeDamage(client, 0, 0, damage, DMG_POISON, _, _, _, false);
+
+    // 随机咳嗽音效
+    char sCough[PLATFORM_MAX_PATH];
+    Format(sCough, sizeof(sCough), "%s", GetRandomInt(0, 1) ? SFX_COUGH1 : SFX_COUGH2);
+    EmitSoundToClient(client, sCough, _, SNDCHAN_STATIC, SNDLEVEL_NORMAL, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
+
+    // 眼前一黑（瞬间黑屏 → fade out）
+    Fade(client, 1024, 512, 17, {0, 0, 0, 240});
+
+    // 随机间隔后再次触发
+    float interval = GetRandomFloat(ANGELA_FLY_POISON_MIN, ANGELA_FLY_POISON_MAX);
+    g_hPoisonDmg[client] = CreateTimer(interval, Timer_PoisonDamage, client);
+
+    return Plugin_Stop;
+}
+
+//========================================================================================
 // 安哥拉技能：飞行增强 — 刮风推动玩家
 //========================================================================================
 
@@ -704,8 +795,8 @@ public Action Timer_DebrisTick(Handle timer, int zombie)
     float angelaPos[3];
     GetEntPropVector(zombie, Prop_Send, "m_vecOrigin", angelaPos);
 
-    float range = DEBRIS_RANGE / GAMEUNITS_TO_METERS;
-    float base  = DEBRIS_BASE  / GAMEUNITS_TO_METERS;
+    float range = DEBRIS_SIDE_LENGTH / GAMEUNITS_TO_METERS;
+    float base  = DEBRIS_BASE_HEIGHT / GAMEUNITS_TO_METERS;
     float half  = range / 2.0;
 
     for (int client = 1; client <= MaxClients; client++)

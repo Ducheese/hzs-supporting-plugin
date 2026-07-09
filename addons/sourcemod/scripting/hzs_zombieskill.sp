@@ -277,9 +277,11 @@ void InitHumanState()
 void InitModelCache()
 {
     // 模型预缓存
-    PrecacheModel(MODEL_ZOMBIETRAP, true);        // 鬼手陷阱
+    PrecacheModel(MODEL_ZOMBIETRAP, true);   // 鬼手陷阱
     PrecacheModel(TOOL_BEAMSPRITE, true);	 // 辅助线
     PrecacheModel(TOOL_TRAPPHYS, true);      // 受击体
+
+    // 用于鬼手陷阱受击反馈
     g_iBloodSpray = PrecacheModel("sprites/bloodspray.vmt");
     g_iBloodDrop  = PrecacheModel("sprites/blooddrop.vmt");
 
@@ -313,8 +315,9 @@ void InitSoundCache()
     PrecacheSound(SFX_HEAL2, true);
     PrecacheSound(SFX_HEAL3, true);
     PrecacheSound(SFX_FLY, true);
-    PrecacheSound(SFX_POISON, true);
     PrecacheSound(SFX_WIND, true);
+    PrecacheSound(SFX_COUGH1, true);
+    PrecacheSound(SFX_COUGH2, true);
 
     // 音频预缓存（BOSS巨型狂暴形态僵尸）
     PrecacheSound(SFX_CHARGE1, true);

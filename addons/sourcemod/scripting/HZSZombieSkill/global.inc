@@ -9,12 +9,17 @@
 #define MAX_HEALTH              150        // 玩家最大生命值
 
 // 模型路径
-#define MODEL_ZOMBIETRAP       "models/heavyzombietrap/zombitrap.mdl"    // 陷阱视觉模型
-#define TOOL_TRAPPHYS          "models/props/de_nuke/crate_small.mdl"    // 陷阱受击体模型
-#define TOOL_BEAMSPRITE        "materials/sprites/physbeam.vmt"          // 碰撞区域可视化辅助线
+#define MODEL_ZOMBIETRAP       "models/heavyzombietrap/zombitrap.mdl"       // 陷阱视觉模型
+#define TOOL_TRAPPHYS          "models/props/de_nuke/crate_small.mdl"       // 陷阱受击体模型（木头受击音效来源）
+#define TOOL_BEAMSPRITE        "materials/sprites/physbeam.vmt"             // 可视化辅助线（比如碰撞箱）
 
 // 函数签名
-#define GAMEDATA_CUSTOM        "hzs_zombieskill.gamedata"                // 切换天空盒SDKCall
+#define GAMEDATA_CUSTOM        "hzs_zombieskill.gamedata"                   // 包括：用于切换天空盒的SDKCall签名
+
+// 色彩滤镜（用于Color Correction实体）
+#define LUT_WITCH_MILD         "resource/witch_L_g1p0.raw"                  // Phase 1: 纯灰度 gamma 1.0
+#define LUT_WITCH_SEVERE       "resource/witch_L_g2p2_p8.raw"               // Phase 2: gamma 2.2 + posterize 8
+#define LUT_ANGELA_GREEN       "resource/angela_L_g1p0_r55_g100_b35.raw"    // 安哥拉毒雾 LUT
 
 // 僵尸名称（需要与HanZombieScenarioZombieData.cfg同步）
 #define ZOMBIE_SMOKE           "迷雾僵尸"
@@ -29,7 +34,7 @@
 #define BOSS_PANGZI            "巨型狂暴形态僵尸"
 #define BOSS_YIXING            "异形斗兽"
 
-// 技能参数（非BOSS特殊僵尸）
+// 技能参数（机制简单的特殊僵尸）
 #define SMOKE_FADETIME          5.0        // 几秒后迷雾僵尸的烟开始消散（秒）
 #define SMOKE_KILLTIME          10.0       // 几秒后迷雾僵尸的烟彻底消散（秒）
 #define EXPLODE_TIME            1.5        // 延时1.5秒自爆，最好把自爆僵尸的"death_anim"改成"ragdoll:1.5"，这样才能站着自爆
@@ -40,6 +45,8 @@
 #define HEAL_INTERVAL           3.0        // 巫蛊术尸群疗的时间间隔（秒）
 #define DEIMOS_KNOCK_POWER      300.0      // 恶魔猎手击飞玩家的力度（水平和垂直同力度）
 #define DEIMOS_KNOCK_CD         5.0        // 恶魔猎手击飞技能的冷却时间（秒）
+
+// 技能参数（憎恶屠夫）
 #define BUTCHER_TRAP_HEALTH     300        // 憎恶屠夫鬼手陷阱的血量
 #define BUTCHER_TRAP_LIFETIME   30.0       // 无人踩踏时鬼手陷阱的存在时间（秒）
 #define BUTCHER_TRAP_STUCKTIME  8.0        // 鬼手陷阱被踩中后的剩余存在时间，trap动画最长也是8秒（秒）
@@ -47,8 +54,10 @@
 #define BUTCHER_TRAP_KEYRATE    2          // 真人玩家挣脱鬼手陷阱所需的每秒交替按AD键轮数
 #define BUTCHER_TRAP_CHANCE     0.8        // 憎恶屠夫死后生成鬼手陷阱的概率
 #define BUTCHER_TRAP_MAX        10         // 场内鬼手陷阱的最大数量上限
+
+// 技能参数（嗜血女巫）
 #define WITCH_NEAR_RANGE        3.0        // 嗜血女巫致幻触发距离（单位：米）
-#define WITCH_NEAR_TIME         8.0        // 嗜血女巫近距离停留多久后触发致盲（秒）
+#define WITCH_NEAR_TIME         8.0        // 嗜血女巫近距离累计停留多久后触发致盲（秒）
 #define WITCH_BLIND_TIME        10.0       // 嗜血女巫致盲效果持续时间（秒）
 
 // 技能参数（BOSS安哥拉）
@@ -57,20 +66,22 @@
 #define ANGELA_HEAL_BULLET      50         // 打断安哥拉自愈所需的累计子弹数
 #define ANGELA_KNOCK_DAMAGE     20.0       // 安哥拉群体击飞造成的伤害值（两种群体击飞共用）
 #define ANGELA_KNOCK_RANGE      10.0       // 安哥拉群体击飞的作用范围（单位：米）
-#define ANGELA_FLY_TIME         15.0       // 安哥拉飞行的持续时间（秒）
+#define ANGELA_FLY_TIME         30.0       // 安哥拉飞行的持续时间（秒）
 #define ANGELA_FLY_CD           30.0       // 安哥拉飞行的冷却时间（秒）
 #define ANGELA_FLY_PUSH_RANGE   30.0       // 安哥拉飞行刮风作用范围（米）
 #define ANGELA_FLY_PUSH_POWER   200.0      // 安哥拉飞行刮风力度
-#define ANGELA_POISON_DAMAGE    1.0        // 安哥拉毒雾每秒伤害
+#define ANGELA_FLY_ANIM_OFFSET  5.0        // 飞行时安哥拉视觉模型下移量（单位：米）
+#define ANGELA_FLY_POISON_MIN   3.0        // 毒伤最短间隔（秒）或毒伤最低伤害
+#define ANGELA_FLY_POISON_MAX   10.0       // 毒伤最长间隔（秒）或毒伤最高伤害
 // 两种群体击飞在水平和垂直方向上有力度区别，不方便在这里修改值
 
-#define DEBRIS_MODEL_COUNT      10          // 碎片模型种类数
-#define DEBRIS_SHOOTER_POOL     32          // shooter 池大小（≥ 最大玩家数，同 tick 不复用）
-#define DEBRIS_INTERVAL         0.01        // 生成间隔（秒）
-#define DEBRIS_RANGE            10.0        // 生成空间边长（单位：米）
-#define DEBRIS_BASE             2.0         // 生成空间底部高度（单位：米）
-#define DEBRIS_VELOCITY         800.0       // 碎片射出速度
-#define DEBRIS_LIFETIME         2.0         // 碎片存活时间（秒）
+#define DEBRIS_MODEL_COUNT      10         // 碎片模型种类数
+#define DEBRIS_SHOOTER_POOL     32         // shooter 池大小（≥ 最大玩家数，同 tick 不复用）
+#define DEBRIS_INTERVAL         0.1        // 生成间隔（秒）
+#define DEBRIS_SIDE_LENGTH      10.0       // 生成空间边长（单位：米）
+#define DEBRIS_BASE_HEIGHT      2.0        // 生成空间底部高度（单位：米）
+#define DEBRIS_VELOCITY         800.0      // 碎片射出速度
+#define DEBRIS_LIFETIME         2.0        // 碎片存活时间（秒）
 
 // 技能参数（BOSS巨型狂暴形态僵尸）
 #define PANGZI_CHARGE_TIME      3.0        // 巨型狂暴形态僵尸冲锋的持续时间（秒）
@@ -110,11 +121,6 @@
 #define SFX_WITCH1             "custom/horrified_4.wav"                     // 嗜血女巫的技能提示音效
 #define SFX_WITCH2             "custom/pileobile.wav"                       // 嗜血女巫致盲时播放的音乐
 
-// 特殊资源
-#define LUT_WITCH_MILD         "resource/witch_L_g1p0.raw"                 // Phase 1: 纯灰度 gamma 1.0
-#define LUT_WITCH_SEVERE       "resource/witch_L_g2p2_p8.raw"              // Phase 2: gamma 2.2 + posterize 8
-#define LUT_ANGELA_GREEN       "resource/angela_L_g1p0_r55_g100_b35.raw"   // 安哥拉毒雾 LUT
-
 // 音效路径（BOSS安哥拉）
 #define SFX_CALL               "custom/mega_mob_incoming.wav"               // 安哥拉呼唤僵尸集中攻击某个人类的音效
 #define SFX_SMASH              "custom/explode_3.wav"                       // 安哥拉砸地动作的音效
@@ -123,8 +129,9 @@
 #define SFX_HEAL2              "custom/tank_breathe_06.wav"                 // 安哥拉自愈至满血时的吐息声
 #define SFX_HEAL3              "custom/tank_growl_02.wav"                   // 安哥拉自愈被打断时的吐息声
 #define SFX_FLY                "weapons/angela/angra_zbs_fly2.wav"          // 安哥拉扇动翅膀的音效
-#define SFX_POISON             "weapons/angela/angra_zbs_poison_spit.wav"   // 安哥拉喷毒的音效
 #define SFX_WIND               "custom/heavy_wind01.wav"                    // 安哥拉飞行大风声
+#define SFX_COUGH1             "custom/cough4.wav"                          // 毒雾咳嗽音效1
+#define SFX_COUGH2             "custom/cough5.wav"                          // 毒雾咳嗽音效2
 
 // 音效路径（BOSS巨型狂暴形态僵尸）
 #define SFX_CHARGE1            "custom/charger_charge_02.wav"               // 巨型狂暴形态僵尸冲锋嚎叫声
@@ -210,19 +217,20 @@ Handle g_hImposterSync[2048] = {INVALID_HANDLE, ...};            // 动画同步
 //========================================================================================
 
 // 飞行以外的逻辑
-int g_iBulletCount[2048];                         // 安哥拉在自愈期间所受的累计子弹数
-int g_iZombieCall[MAXPLAYERS+1];                  // 玩家是否被集中攻击，记录的是安哥拉的实体号
-Handle g_hHeal[2048] = {INVALID_HANDLE,...};      // 实现治疗效果所用的timer，巫蛊术尸和安哥拉共用
+int g_iBulletCount[2048];                                        // 安哥拉在自愈期间所受的累计子弹数
+int g_iZombieCall[MAXPLAYERS+1];                                 // 玩家是否被集中攻击，记录的是安哥拉的实体号
+Handle g_hHeal[2048] = {INVALID_HANDLE,...};                     // 实现治疗效果所用的timer，巫蛊术尸和安哥拉共用
 
 // 飞行增强 — 毒雾
-int g_iFog[2048] = {-1, ...};                     // 毒雾实体
-int g_iPoisonCC[2048] = {-1, ...};                // 毒雾color_correction实体
-char g_sOriginalSky[64];                          // 原地图天空盒名
-Handle g_hRLoadNamedSkys;                         // SDKCall: R_LoadNamedSkys
+int g_iFog[2048] = {-1, ...};                                    // 毒雾实体
+int g_iPoisonCC[2048] = {-1, ...};                               // 毒雾color_correction实体
+char g_sOriginalSky[64];                                         // 原地图天空盒名
+Handle g_hRLoadNamedSkys;                                        // SDKCall: R_LoadNamedSkys
+Handle g_hPoisonDmg[MAXPLAYERS+1] = {INVALID_HANDLE,...};        // 每人的毒伤 timer
 
 // 飞行增强 — 碎片
-int g_iDebrisShooter[DEBRIS_SHOOTER_POOL];        // shooter 池（EntRef）
-Handle g_hDebris[2048] = {INVALID_HANDLE, ...};   // 碎片重复生成 timer
+int g_iDebrisShooter[DEBRIS_SHOOTER_POOL];                       // shooter 池（EntRef）
+Handle g_hDebris[2048] = {INVALID_HANDLE, ...};                  // 碎片重复生成 timer
 
 char g_sDebrisModels[DEBRIS_MODEL_COUNT][] = {
     "models/props_junk/garbage_newspaper001a.mdl",
