@@ -46,8 +46,7 @@ public Action Timer_MovetypeThink(Handle timer, int zombie)
         return Plugin_Stop;
     }
 
-    float dist, hitPos[3];
-    GetDistanceToGround(zombie, dist, hitPos);
+    float dist = GetDistanceToGround(zombie);
 
     // NPC僵尸能冲锋的关键，交替变换movetype防止升天，最好用单独的高频timer来检测
     if (dist < 1.0)

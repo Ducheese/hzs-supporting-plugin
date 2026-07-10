@@ -9,6 +9,18 @@
                 "library"    "engine"
                 "windows"    "\x55\x8B\xEC\x81\xEC\x34\x01\x00\x00\x8B\x0D\x2A\x2A\x2A\x2A\x53\x56\x57\x8B\x01"
             }
+            "CHostage_Idle"
+            {
+                "library"    "server"
+                "windows"    "\x55\x8B\xEC\x51\x8B\x81\x38\x08\x00\x00\x56\x8D\xB1\x38\x08\x00\x00\xC7\x45\xFC\x00\x00\x00\x00"
+            }
+        }
+        "Addresses"
+        {
+            "IdleAddr"
+            {
+                "signature"    "CHostage_Idle"
+            }
         }
     }
 }

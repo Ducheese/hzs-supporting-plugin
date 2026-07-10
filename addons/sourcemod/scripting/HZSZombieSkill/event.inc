@@ -42,7 +42,7 @@ public void Han_OnZombieCreated(int zombie)
     }
     else if (IsSameName(zombie, BOSS_ANGELA))
     {
-        // 什么都不做
+        SDKHook(zombie, SDKHook_OnTakeDamage, OnFlyTakeDamage);  // 飞行时拦截伤害
     }
     else if (IsSameName(zombie, BOSS_PANGZI))
     {
@@ -121,6 +121,8 @@ public void Han_OnZombieDeath(int zombie, int killer)
             KillTimer(g_hFly[zombie]);
             g_hFly[zombie] = INVALID_HANDLE;
         }
+
+        SDKUnhook(zombie, SDKHook_OnTakeDamage, OnFlyTakeDamage);
     }
     else if (IsSameName(zombie, BOSS_PANGZI))
     {
@@ -186,39 +188,30 @@ public void Han_OnZombieHurt(int zombie, int attacker)
     {
         // 什么都不做
     }
-    // 这里还没改
-    else if (IsSameName(zombie, BOSS_ANGELA))
+    else if (IsSameName(zombie, BOSS_ANGELA) && !g_bIsSkillUsed[zombie])
     {
-        if (g_hHeal[zombie] != INVALID_HANDLE)
-        {
-            g_iBulletCount[zombie]++;
-        }
-        
-        if (g_hHeal[zombie] == INVALID_HANDLE && !g_bIsSkillUsed[zombie])
-        {
-            // 30发子弹，至少触发一次技能的概率是45.45%，目前测下来是很合适的值
-            int rand = GetRandomInt(1, 50);
+        // 30发子弹，至少触发一次技能的概率是45.45%，目前测下来是很合适的值
+        int rand = GetRandomInt(1, 50);
 
-            // 差个技能
-            if (rand == 1
-            && GetEntProp(zombie, Prop_Data, "m_iHealth") > g_iMaxHealth[zombie] / 2)
-            {
-                // 
-            }
-            // 一半生命值以下会尝试自愈
-            else if (rand == 3
-            && GetEntProp(zombie, Prop_Data, "m_iHealth") < g_iMaxHealth[zombie] / 2)
-            {
-                g_bIsSkillUsed[zombie] = true;
-                StartSelfHealing(zombie);
-            }
-            // 没有概率要求，半血以下开始飞行think避险
-            else if (g_hFly[zombie] == INVALID_HANDLE 
-            && GetEntProp(zombie, Prop_Data, "m_iHealth") < g_iMaxHealth[zombie] / 2)
-            {
-                InitFlyingState(zombie);
-                g_hFly[zombie] = CreateTimer(0.0, Timer_FlyThink, zombie, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
-            }
+        // 差个技能
+        if (rand == 1
+        && GetEntProp(zombie, Prop_Data, "m_iHealth") > g_iMaxHealth[zombie] / 2)
+        {
+            //
+        }
+        // 一半生命值以下会尝试自愈
+        else if (rand == 3
+        && GetEntProp(zombie, Prop_Data, "m_iHealth") < g_iMaxHealth[zombie] / 2)
+        {
+            g_bIsSkillUsed[zombie] = true;
+            StartSelfHealing(zombie);
+        }
+        // 没有概率要求，半血以下开始飞行think避险
+        else if (g_hFly[zombie] == INVALID_HANDLE
+        && GetEntProp(zombie, Prop_Data, "m_iHealth") < g_iMaxHealth[zombie])
+        {
+            InitFlyingState(zombie);
+            g_hFly[zombie] = CreateTimer(0.0, Timer_FlyThink, zombie, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
         }
     }
     else if (IsSameName(zombie, BOSS_PANGZI) && !g_bIsSkillUsed[zombie])

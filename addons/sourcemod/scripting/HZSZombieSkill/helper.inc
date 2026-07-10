@@ -166,15 +166,18 @@ public Action Timer_DeleteParticle(Handle timer, int entity)
 // 计算到地面距离 飞行和冲锋逻辑都会用到
 //========================================================================================
 
-stock void GetDistanceToGround(int entity, float &dist, float fRayEndPoint[3])
+stock float GetDistanceToGround(int entity)
 {
-    float fRayStartPoint[3];
-    GetEntPropVector(entity, Prop_Send, "m_vecOrigin", fRayStartPoint);
+    float pos[3];
+    GetEntPropVector(entity, Prop_Send, "m_vecOrigin", pos);
 
-    Handle trace = TR_TraceRayFilterEx(fRayStartPoint, {90.0, 0.0, 0.0}, MASK_PLAYERSOLID, RayType_Infinite, TraceEntityFilter_NotClient, entity);      // 方向向下
-    TR_GetEndPosition(fRayEndPoint, trace);
+    Handle trace = TR_TraceRayFilterEx(pos, {90.0, 0.0, 0.0}, MASK_PLAYERSOLID, RayType_Infinite, TraceEntityFilter_NotClient, entity);
 
-    dist = fRayStartPoint[2] - fRayEndPoint[2];
+    float endPos[3];
+    TR_GetEndPosition(endPos, trace);
+    delete trace;
+
+    return pos[2] - endPos[2];
 }
 
 public bool TraceEntityFilter_NotClient(int entity, int mask, any data)
@@ -290,6 +293,59 @@ public bool TraceEntityFilter_Ground(int entity, int mask, any data)
 }
 
 //========================================================================================
+// 检测脚下天空盒并传送至随机 T 复活点
+//========================================================================================
+
+stock bool TeleportOffSkybox(int entity)
+{
+    float pos[3];
+    GetEntPropVector(entity, Prop_Send, "m_vecOrigin", pos);
+    Handle tr = TR_TraceRayFilterEx(pos, view_as<float>({90.0, 0.0, 0.0}), MASK_SOLID, RayType_Infinite, TraceEntityFilter_NotClient, entity);
+    bool bSkybox = !TR_DidHit(tr) || TR_GetSurfaceProps(tr) == 76;
+    delete tr;
+
+    if (!bSkybox)
+        return false;
+
+    int n = GetArraySize(g_hSpawnPoint);
+    if (n <= 0)
+        return false;
+
+    int ref = GetArrayCell(g_hSpawnPoint, GetRandomInt(0, n - 1));
+    if (ref == INVALID_ENT_REFERENCE)
+        return false;
+
+    float sp[3], sa[3];
+    GetEntPropVector(ref, Prop_Send, "m_vecOrigin", sp);
+    GetEntPropVector(ref, Prop_Send, "m_angRotation", sa);
+    TeleportEntity(entity, sp, sa, NULL_VECTOR);
+    return true;
+}
+
+//========================================================================================
+// 扫描最近存活人类，写入 m_leader
+//========================================================================================
+
+stock int UpdateNearestTarget(int zombie)
+{
+    int target = 0;
+    float zOrigin[3], bestDist = 999999.0;
+    GetEntPropVector(zombie, Prop_Send, "m_vecOrigin", zOrigin);
+    for (int i = 1; i <= MaxClients; i++)
+    {
+        if (!IsHumanAlive(i))
+            continue;
+        float tp[3];
+        GetClientAbsOrigin(i, tp);
+        float d = GetVectorDistance(zOrigin, tp);
+        if (d < bestDist) { bestDist = d; target = i; }
+    }
+    if (target > 0)
+        SetEntDataEnt2(zombie, g_iLeaderOffset, target);
+    return target;
+}
+
+//========================================================================================
 // 随机选取一个存活人类
 //========================================================================================
 
@@ -319,6 +375,53 @@ stock bool IsHumanMoving(int client)
     float vel[3];
     GetEntPropVector(client, Prop_Data, "m_vecVelocity", vel);
     return GetVectorLength(vel) > 50.0;
+}
+
+//========================================================================================
+// 内存 Patch: 去掉 CHostage::UpdateFollowing 的 giveUp (2000u)，全图索敌
+//========================================================================================
+
+void PatchGiveUp()
+{
+    Handle gc = LoadGameConfigFile(GAMEDATA_CUSTOM);
+    if (gc == INVALID_HANDLE)
+        SetFailState("[HZS] Failed to load gamedata for GiveUp patch");
+
+    Address idleAddr = GameConfGetAddress(gc, "IdleAddr");
+    if (idleAddr == Address_Null)
+        SetFailState("[HZS] Failed to resolve Idle address");
+
+    // ja 指令相对 Idle 偏移 0x1B6D；0F 87 xx xx xx xx → 6x NOP
+    Address jaAddr = idleAddr + view_as<Address>(0x1B6D);
+    for (int i = 0; i < 6; i++)
+        StoreToAddress(jaAddr + view_as<Address>(i), 0x90, NumberType_Int8);
+
+    PrintToServer("[HZS] Patched UpdateFollowing giveUp JA");
+    delete gc;
+}
+
+//========================================================================================
+// DHook: CHostage::Idle — 阻止引擎清空 m_leader
+//========================================================================================
+
+void PrepIdleDetour()
+{
+    Handle gc = LoadGameConfigFile(GAMEDATA_CUSTOM);
+    if (gc == INVALID_HANDLE)
+        SetFailState("[HZS] Failed to load gamedata for Idle detour");
+
+    g_hIdleDetour = DHookCreateDetour(Address_Null, CallConv_THISCALL, ReturnType_Void, ThisPointer_CBaseEntity);
+    DHookSetFromConf(g_hIdleDetour, gc, SDKConf_Signature, "CHostage_Idle");
+
+    if (!DHookEnableDetour(g_hIdleDetour, false, OnIdle_Pre))
+        SetFailState("[HZS] Failed to enable Idle detour");
+
+    delete gc;
+}
+
+public MRESReturn OnIdle_Pre(int zombie)
+{
+    return MRES_Supercede;
 }
 
 //========================================================================================

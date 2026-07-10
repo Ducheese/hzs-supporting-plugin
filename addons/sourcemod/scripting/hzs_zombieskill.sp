@@ -38,14 +38,19 @@ public void OnPluginStart()
 {
     // 获取NPC在追随什么目标
     g_iLeaderOffset = FindSendPropInfo("CHostage", "m_leader");
+    // T复活点收集
+    g_hSpawnPoint = CreateArray(1);
 
     InitHumanState();
     InitModelCache();
     InitSoundCache();
 
     HookEvent("round_start", Event_RoundStart);
+    HookEvent("round_freeze_end", Event_RoundFreezeEnd);
 
     PrepWitchCCDetour();
+    PatchGiveUp();
+    PrepIdleDetour();
     PrepSkySDKCall();
 }
 
@@ -68,6 +73,15 @@ public void OnClientDisconnect_Post(int client)
 public void Event_RoundStart(Event event, const char[] name, bool dontBroadcast)
 {
     g_iTrapCount = 0;
+}
+
+public void Event_RoundFreezeEnd(Event event, const char[] name, bool dontBroadcast)
+{
+    // 收集 T 复活点（round_freeze_end 时实体才就绪）
+    ClearArray(g_hSpawnPoint);
+    int entity = -1;
+    while ((entity = FindEntityByClassname(entity, "info_player_terrorist")) != -1)
+        PushArrayCell(g_hSpawnPoint, EntIndexToEntRef(entity));
 }
 
 //========================================================================================

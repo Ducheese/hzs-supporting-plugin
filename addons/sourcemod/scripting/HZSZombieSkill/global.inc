@@ -62,17 +62,18 @@
 
 // 技能参数（BOSS安哥拉）
 #define ANGELA_CALL_TIME        15.0       // 安哥拉呼唤僵尸集中攻击某个人类的持续时间（秒）
-#define ANGELA_HEAL_DAMAGE      500        // 安哥拉自愈时每秒恢复的血量
-#define ANGELA_HEAL_BULLET      50         // 打断安哥拉自愈所需的累计子弹数
+#define ANGELA_HEAL_DAMAGE      200        // 安哥拉自愈时每秒恢复的血量
+#define ANGELA_HEAL_BULLET      100        // 打断安哥拉自愈所需的累计子弹数
 #define ANGELA_KNOCK_DAMAGE     20.0       // 安哥拉群体击飞造成的伤害值（两种群体击飞共用）
 #define ANGELA_KNOCK_RANGE      10.0       // 安哥拉群体击飞的作用范围（单位：米）
 #define ANGELA_FLY_TIME         30.0       // 安哥拉飞行的持续时间（秒）
-#define ANGELA_FLY_CD           30.0       // 安哥拉飞行的冷却时间（秒）
+#define ANGELA_FLY_CD           10.0       // 安哥拉飞行的冷却时间（秒）
 #define ANGELA_FLY_PUSH_RANGE   30.0       // 安哥拉飞行刮风作用范围（米）
 #define ANGELA_FLY_PUSH_POWER   200.0      // 安哥拉飞行刮风力度
 #define ANGELA_FLY_ANIM_OFFSET  5.0        // 飞行时安哥拉视觉模型下移量（单位：米）
 #define ANGELA_FLY_POISON_MIN   3.0        // 毒伤最短间隔（秒）或毒伤最低伤害
 #define ANGELA_FLY_POISON_MAX   10.0       // 毒伤最长间隔（秒）或毒伤最高伤害
+#define ANGELA_FLY_BULLET       50         // 迫使安哥拉提前落地所需累计子弹命中数
 // 两种群体击飞在水平和垂直方向上有力度区别，不方便在这里修改值
 
 #define DEBRIS_MODEL_COUNT      10         // 碎片模型种类数
@@ -217,7 +218,7 @@ Handle g_hImposterSync[2048] = {INVALID_HANDLE, ...};            // 动画同步
 //========================================================================================
 
 // 飞行以外的逻辑
-int g_iBulletCount[2048];                                        // 安哥拉在自愈期间所受的累计子弹数
+int g_iBulletCount[2048];                                        // 安哥拉在自愈/飞行期间所受的累计子弹数
 int g_iZombieCall[MAXPLAYERS+1];                                 // 玩家是否被集中攻击，记录的是安哥拉的实体号
 Handle g_hHeal[2048] = {INVALID_HANDLE,...};                     // 实现治疗效果所用的timer，巫蛊术尸和安哥拉共用
 
@@ -226,6 +227,8 @@ int g_iFog[2048] = {-1, ...};                                    // 毒雾实体
 int g_iPoisonCC[2048] = {-1, ...};                               // 毒雾color_correction实体
 char g_sOriginalSky[64];                                         // 原地图天空盒名
 Handle g_hRLoadNamedSkys;                                        // SDKCall: R_LoadNamedSkys
+Handle g_hIdleDetour;                                            // DHook: CHostage::Idle
+Handle g_hSpawnPoint;                                            // T 复活点数组（用于传送卡在天空盒的 NPC）
 Handle g_hPoisonDmg[MAXPLAYERS+1] = {INVALID_HANDLE,...};        // 每人的毒伤 timer
 
 // 飞行增强 — 碎片
