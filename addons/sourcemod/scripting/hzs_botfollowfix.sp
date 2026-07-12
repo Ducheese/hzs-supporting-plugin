@@ -66,7 +66,7 @@ void PrepStopFollowingDetour()
 
     g_hStopFollowingDetour = DHookCreateDetour(Address_Null, CallConv_THISCALL, ReturnType_Void, ThisPointer_CBaseEntity);
     DHookSetFromConf(g_hStopFollowingDetour, gc, SDKConf_Signature, "CCSBot_StopFollowing");
-
+    DHookAddParam(g_hStopFollowingDetour, HookParamType_CBaseEntity);         // 理论上不用写，但是不写的话64位进图闪退，写成别的32位可能钩住时闪退
     if (!DHookEnableDetour(g_hStopFollowingDetour, false, OnStopFollowing_Pre))
         SetFailState("[BotFollowFix] Failed to enable StopFollowing detour");
 
