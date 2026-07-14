@@ -8,18 +8,26 @@
             {
                 "library"    "engine"
                 "windows"    "\x55\x8B\xEC\x81\xEC\x34\x01\x00\x00\x8B\x0D\x2A\x2A\x2A\x2A\x53\x56\x57\x8B\x01"
+                "windows64"  "\x55\x8B\xEC\x81\xEC\x34\x01\x00\x00\x8B\x0D\x2A\x2A\x2A\x2A\x53\x56\x57\x8B\x01"
             }
             "CHostage_Idle"
             {
                 "library"    "server"
                 "windows"    "\x55\x8B\xEC\x51\x8B\x81\x38\x08\x00\x00\x56\x8D\xB1\x38\x08\x00\x00\xC7\x45\xFC\x00\x00\x00\x00"
+                "windows64"  "\x40\x53\x48\x83\xEC\x20\x48\x8D\x99\x0C\x0A\x00\x00\x4C\x8B\xC9\x8B\x13\x85\xD2\x74\x43\xB8\xFF\x1F\x00\x00\x83\xFA\xFF\x74\x03"
+            }
+            "GiveUpJA"
+            {
+                "library"    "server"
+                "windows"    "\x0F\x87\x2A\x2A\x2A\x2A\x83\xBF"
+                "windows64"  "\x0F\x87\x2A\x2A\x2A\x2A\x83\xBF\x60\x2A\x00\x00\x00\x7E"
             }
         }
         "Addresses"
         {
-            "IdleAddr"
+            "GiveUpAddr"
             {
-                "signature"    "CHostage_Idle"
+                "signature"    "GiveUpJA"
             }
         }
     }

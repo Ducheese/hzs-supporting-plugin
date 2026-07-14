@@ -387,16 +387,16 @@ void PatchGiveUp()
     if (gc == INVALID_HANDLE)
         SetFailState("[HZS] Failed to load gamedata for GiveUp patch");
 
-    Address idleAddr = GameConfGetAddress(gc, "IdleAddr");
-    if (idleAddr == Address_Null)
-        SetFailState("[HZS] Failed to resolve Idle address");
+    Address jaAddr = GameConfGetAddress(gc, "GiveUpAddr");
+    if (jaAddr == Address_Null)
+        SetFailState("[HZS] Failed to resolve GiveUp address");
 
-    // ja 指令相对 Idle 偏移 0x1B6D；0F 87 xx xx xx xx → 6x NOP
-    Address jaAddr = idleAddr + view_as<Address>(0x1B6D);
+    // 0F 87 xx xx xx xx → 6x NOP（跳过距离>2000的 giveUp return）
     for (int i = 0; i < 6; i++)
         StoreToAddress(jaAddr + view_as<Address>(i), 0x90, NumberType_Int8);
 
-    PrintToServer("[HZS] Patched UpdateFollowing giveUp JA");
+    LogMessage("[HZS] Patched UpdateFollowing giveUp JA at %X", jaAddr);
+    
     delete gc;
 }
 
