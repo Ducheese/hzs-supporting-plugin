@@ -139,9 +139,16 @@ public void Han_OnZombieDeath(int zombie, int killer)
             if (g_BossState[zombie] == STATE_FLYING)
             {
                 // 说白了就是提前了 EnterGroundMode 的清理逻辑
-                RemovePoisonFog(zombie);
-                RemovePoisonDamage();
-                RemoveDebrisSystem(zombie);
+                g_iAngelaFlightCount--;
+                if (g_iAngelaFlightCount <= 0)
+                {
+                    RemovePoisonFog();
+                    RemovePoisonDamage();
+                }
+
+                if (g_iDebrisOwner == zombie)
+                    RemoveDebrisSystem(zombie);
+                    
                 OffsetAnimZ(zombie, false);
             }
         }
@@ -393,9 +400,6 @@ void InitZombieState(zombie)
 
     // BOSS 安哥拉 — 飞行
     g_hFly[zombie] = INVALID_HANDLE;
-    g_iFog[zombie] = -1;
-    g_iPoisonCC[zombie] = -1;
-    g_hDebris[zombie] = INVALID_HANDLE;
     g_iBulletCount[zombie] = 0;
     g_BossState[zombie] = STATE_GROUND;
     g_Mode[zombie] = FLY_RANDOM;

@@ -15,6 +15,7 @@
 #include <HanZombieScenarioAPI>
 
 #include "HZSZombieSkill/global"       // 全局变量定义
+#include "HZSZombieSkill/tracker"      // 实体追踪池
 #include "HZSZombieSkill/event"        // 僵尸事件
 #include "HZSZombieSkill/helper"       // 杂项功能函数
 #include "HZSZombieSkill/zskill"       // 特殊僵尸技能函数
@@ -59,6 +60,9 @@ public void OnPluginStart()
     // 常规Hook
     HookEvent("round_start", Event_RoundStart);
     HookEvent("round_freeze_end", Event_RoundFreezeEnd);
+
+    // 每秒采样实体数
+    CreateTimer(1.0, Timer_EntityMonitor, _, TIMER_REPEAT);
 }
 
 public void OnMapStart()
@@ -85,6 +89,8 @@ public void Event_RoundStart(Event event, const char[] name, bool dontBroadcast)
 {
     // 应对CS_TerminateRound导致的清场（WinEndRound = true、hzs_setday、全人类死亡）
     g_iTrapCount = 0;
+
+    // 安哥拉技能改成全局单例后，变量要不要在这初始化呢？
 }
 
 public void Event_RoundFreezeEnd(Event event, const char[] name, bool dontBroadcast)

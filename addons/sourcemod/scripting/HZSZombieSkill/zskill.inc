@@ -43,6 +43,8 @@ void CreateSmoke(float pos[3])
 
         AcceptEntityInput(ent, "TurnOn");
 
+        PushEntRef(g_iSmokeStack, SMOKESTACK_POOL, ent);
+
         CreateTimer(SMOKE_FADETIME, Timer_StopSmoke, ent);
         CreateTimer(SMOKE_KILLTIME, Timer_KillSmoke, ent);
     }
@@ -62,6 +64,7 @@ public Action Timer_KillSmoke(Handle timer, int entity)
 {
     if (IsValidEntity(entity))
     {
+        PopEntRef(g_iSmokeStack, SMOKESTACK_POOL, entity);
         AcceptEntityInput(entity, "Kill");           // 烟彻底消散
     }
 
@@ -106,6 +109,8 @@ public Action Timer_CreateExplosion(Handle timer, DataPack pack)
 
     if (ent != -1)
     {
+        PushEntRef(g_iExplosion, EXPLOSION_POOL, ent);
+
         char Origin[32];
         Format(Origin, sizeof(Origin), "%f %f %f", pos[0], pos[1], pos[2]);
 

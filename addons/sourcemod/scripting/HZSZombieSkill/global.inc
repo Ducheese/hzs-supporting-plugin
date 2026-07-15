@@ -67,7 +67,7 @@
 #define ANGELA_KNOCK_DAMAGE     20.0       // 安哥拉群体击飞造成的伤害值（两种群体击飞共用）
 #define ANGELA_KNOCK_RANGE      10.0       // 安哥拉群体击飞的作用范围（单位：米）
 #define ANGELA_FLY_TIME         30.0       // 安哥拉飞行的持续时间（秒）
-#define ANGELA_FLY_CD           10.0       // 安哥拉飞行的冷却时间（秒）
+#define ANGELA_FLY_CD           30.0       // 安哥拉飞行的冷却时间（秒）
 #define ANGELA_FLY_PUSH_RANGE   30.0       // 安哥拉飞行刮风作用范围（米）
 #define ANGELA_FLY_PUSH_POWER   200.0      // 安哥拉飞行刮风力度
 #define ANGELA_FLY_ANIM_OFFSET  5.0        // 飞行时安哥拉视觉模型下移量（单位：米）
@@ -223,8 +223,9 @@ int g_iZombieCall[MAXPLAYERS+1];                                 // 玩家是否
 Handle g_hHeal[2048] = {INVALID_HANDLE,...};                     // 实现治疗效果所用的timer，巫蛊术尸和安哥拉共用
 
 // 飞行增强 — 毒雾
-int g_iFog[2048] = {-1, ...};                                    // 毒雾实体
-int g_iPoisonCC[2048] = {-1, ...};                               // 毒雾color_correction实体
+int g_iAngelaFlightCount = 0;                                    // 引用计数
+int g_iFog = -1;                                                 // 毒雾env_fog_controller实体
+int g_iFogCC = -1;                                               // 毒雾color_correction实体
 char g_sOriginalSky[64];                                         // 原地图天空盒名
 Handle g_hRLoadNamedSkys;                                        // SDKCall: R_LoadNamedSkys
 Handle g_hGetMaxClip1;                                           // SDKCall: GetMaxClip1
@@ -234,7 +235,8 @@ Handle g_hPoisonDmg[MAXPLAYERS+1] = {INVALID_HANDLE,...};        // 每人的毒
 
 // 飞行增强 — 碎片
 int g_iDebrisShooter[DEBRIS_SHOOTER_POOL];                       // shooter 池（EntRef）
-Handle g_hDebris[2048] = {INVALID_HANDLE, ...};                  // 碎片重复生成 timer
+int g_iDebrisOwner = -1;                                         // 当前 debris 持有者（EntIndex），-1 表示无
+Handle g_hDebris = INVALID_HANDLE;                               // 全局 debris timer
 
 char g_sDebrisModels[DEBRIS_MODEL_COUNT][] = {
     "models/props_junk/garbage_newspaper001a.mdl",

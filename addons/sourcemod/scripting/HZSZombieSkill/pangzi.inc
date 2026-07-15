@@ -468,6 +468,7 @@ void ThrowZombie(int zombie, int victim)
     int dummy = CreateEntityByName("prop_dynamic");
     if (dummy != -1)
     {
+        PushEntRef(g_iPangziDummy, PANGZI_DUMMY_POOL, dummy);
         /**
          * m_CollisionGroup : https://developer.valvesoftware.com/wiki/Collision_groups
          *     SetEntProp(dummy, Prop_Send, "m_CollisionGroup", 2);
@@ -552,6 +553,7 @@ public Action Timer_LandZombie(Handle timer, DataPack pack)
 
     if (IsValidEntity(dummy))
     {
+        PopEntRef(g_iPangziDummy, PANGZI_DUMMY_POOL, dummy);
         AcceptEntityInput(dummy, "Kill");
     }
 

@@ -299,9 +299,15 @@ void EnterFlyingMode(int zombie)
     g_iBulletCount[zombie] = 0;                              // 重置命中计数
 
     // 飞行增强
-    CreatePoisonFog(zombie);                                 // 全场绿雾 + CC + 更换天空盒
-    CreatePoisonDamage();                                    // 每玩家独立毒伤 timer
-    CreateDebrisSystem(zombie);                              // 飞行垃圾效果
+    if (g_iAngelaFlightCount == 0)
+    {
+        CreatePoisonFog();                                   // 全场绿雾 + CC + 更换天空盒
+        CreatePoisonDamage();                                // 每玩家独立毒伤 timer
+    }
+    g_iAngelaFlightCount++;
+
+    if (g_iDebrisOwner == -1)
+        CreateDebrisSystem(zombie);                          // 飞行垃圾效果
 
     // 修复补丁
     OffsetAnimZ(zombie, true);                               // 视觉模型下移，对齐碰撞箱
@@ -318,9 +324,15 @@ void EnterGroundMode(int zombie)
     CreateTimer(5.0, Timer_SkillEnd, zombie);
 
     // 飞行增强
-    RemovePoisonFog(zombie);                                 // 还原绿雾 + CC + 天空盒
-    RemovePoisonDamage();                                    // 停止所有毒伤 timer
-    RemoveDebrisSystem(zombie);                              // 停止飞行垃圾效果
+    g_iAngelaFlightCount--;
+    if (g_iAngelaFlightCount <= 0)
+    {
+        RemovePoisonFog();                                   // 还原绿雾 + CC + 天空盒
+        RemovePoisonDamage();                                // 停止所有毒伤 timer
+    }
+
+    if (g_iDebrisOwner == zombie)
+        RemoveDebrisSystem(zombie);                          // 停止飞行垃圾效果
 
     // 修复补丁
     OffsetAnimZ(zombie, false);                              // 视觉模型归位
@@ -564,7 +576,7 @@ public Action OnFlyTakeDamage(int zombie, int &attacker, int &inflictor, float &
 // 安哥拉技能：飞行增强 — 毒雾
 //========================================================================================
 
-void CreatePoisonFog(int zombie)
+void CreatePoisonFog()
 {
     // 全场雾
     int fog = CreateEntityByName("env_fog_controller");
@@ -599,7 +611,7 @@ void CreatePoisonFog(int zombie)
         }
     }
 
-    g_iFog[zombie] = fog;
+    g_iFog = fog;
 
     // 全场绿色 color_correction
     int cc = CreateEntityByName("color_correction");
@@ -617,7 +629,7 @@ void CreatePoisonFog(int zombie)
         AcceptEntityInput(cc, "Enable");
     }
 
-    g_iPoisonCC[zombie] = cc;
+    g_iFogCC = cc;
 
     // 运行时切绿色天空盒
     if (g_hRLoadNamedSkys != INVALID_HANDLE)
@@ -630,7 +642,7 @@ void CreatePoisonFog(int zombie)
     EmitSoundToAll(SFX_WIND, 1, SNDCHAN_STATIC, SNDLEVEL_GUNFIRE, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
 }
 
-void RemovePoisonFog(int zombie)
+void RemovePoisonFog()
 {
     // 还原天空盒
     if (g_sOriginalSky[0] != '\0' && g_hRLoadNamedSkys != INVALID_HANDLE)
@@ -644,11 +656,11 @@ void RemovePoisonFog(int zombie)
     }
 
     // CC 开始 fade out（fadeOutDuration=5.0 已在创建时设好）
-    int cc = g_iPoisonCC[zombie];
+    int cc = g_iFogCC;
     if (cc > 0 && IsValidEntity(cc))
         AcceptEntityInput(cc, "Disable");
 
-    int fog = g_iFog[zombie];
+    int fog = g_iFog;
     if (fog > 0 && IsValidEntity(fog))
     {
         // fog fade out: lerp fogstart/fogend 拉远到不可见
@@ -665,8 +677,8 @@ void RemovePoisonFog(int zombie)
     pack.WriteCell(EntIndexToEntRef(cc));
     CreateTimer(5.0, Timer_CleanupPoison, pack);
 
-    g_iFog[zombie] = -1;
-    g_iPoisonCC[zombie] = -1;
+    g_iFog = -1;
+    g_iFogCC = -1;
 }
 
 public Action Timer_CleanupPoison(Handle timer, DataPack pack)
@@ -832,17 +844,41 @@ void CreateDebrisSystem(int zombie)
         g_iDebrisShooter[i] = EntIndexToEntRef(shooter);
     }
 
-    g_hDebris[zombie] = CreateTimer(DEBRIS_INTERVAL, Timer_DebrisTick, zombie, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
+    g_iDebrisOwner = zombie;
+    g_hDebris = CreateTimer(DEBRIS_INTERVAL, Timer_DebrisTick, _, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
 }
 
+// owner 落地时转移或清理
 void RemoveDebrisSystem(int zombie)
 {
-    if (g_hDebris[zombie] != INVALID_HANDLE)
+    int other = FindFlyingAngela(zombie);
+    if (other != -1)
     {
-        KillTimer(g_hDebris[zombie]);
-        g_hDebris[zombie] = INVALID_HANDLE;
+        g_iDebrisOwner = other;  // 移交给另一只飞着的安哥拉
+        return;
     }
 
+    CleanupDebris();  // 没有其他安哥拉了，关闭 debris 系统
+}
+
+// 找另一只飞着的安哥拉（排除 excludeZombie，传 -1 不排除）
+int FindFlyingAngela(int excludeZombie)
+{
+    int count = Han_GetZombieCount();
+    for (int i = 0; i < count; i++)
+    {
+        int other = Han_GetZombieByIndex(i);
+        if (other == excludeZombie) continue;
+        if (!IsValidEntity(other)) continue;
+        if (g_BossState[other] == STATE_FLYING)
+            return other;
+    }
+    return -1;
+}
+
+// 销毁所有 shooter + 停止 timer + 重置 owner
+void CleanupDebris()
+{
     for (int i = 0; i < DEBRIS_SHOOTER_POOL; i++)
     {
         int shooter = EntRefToEntIndex(g_iDebrisShooter[i]);
@@ -850,14 +886,33 @@ void RemoveDebrisSystem(int zombie)
             AcceptEntityInput(shooter, "Kill");
         g_iDebrisShooter[i] = -1;
     }
+    if (g_hDebris != INVALID_HANDLE)
+    {
+        KillTimer(g_hDebris);
+        g_hDebris = INVALID_HANDLE;
+    }
+    g_iDebrisOwner = -1;
 }
 
-public Action Timer_DebrisTick(Handle timer, int zombie)
+public Action Timer_DebrisTick(Handle timer)
 {
-    if (!IsValidEntity(zombie) || GetEntProp(zombie, Prop_Data, "m_iHealth") <= 0)
-    {
-        g_hDebris[zombie] = INVALID_HANDLE;
+    if (g_iDebrisOwner == -1)
         return Plugin_Stop;
+
+    // owner 死亡或提前落地（被子弹打下来），找其他安哥拉接替
+    if (!IsValidEntity(g_iDebrisOwner) || GetEntProp(g_iDebrisOwner, Prop_Data, "m_iHealth") <= 0
+    || g_BossState[g_iDebrisOwner] != STATE_FLYING)
+    {
+        int other = FindFlyingAngela(-1);
+        if (other != -1)
+        {
+            g_iDebrisOwner = other;
+        }
+        else
+        {
+            CleanupDebris();
+            return Plugin_Stop;
+        }
     }
 
     // 收集可用 shooter
@@ -871,7 +926,7 @@ public Action Timer_DebrisTick(Handle timer, int zombie)
     }
 
     float angelaPos[3];
-    GetEntPropVector(zombie, Prop_Send, "m_vecOrigin", angelaPos);
+    GetEntPropVector(g_iDebrisOwner, Prop_Send, "m_vecOrigin", angelaPos);
 
     float range = DEBRIS_SIDE_LENGTH / GAMEUNITS_TO_METERS;
     float base  = DEBRIS_BASE_HEIGHT / GAMEUNITS_TO_METERS;

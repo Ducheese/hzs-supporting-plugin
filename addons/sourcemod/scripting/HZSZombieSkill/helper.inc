@@ -129,9 +129,11 @@ public Action Timer_RemoveProtect(Handle timer, int zombie)
 stock void WriteParticle(char[] ParticleName, float ImpactOrigin[3], float duration)
 {
     int ent = CreateEntityByName("info_particle_system");
-    
+
     if (ent != -1)
     {
+        PushEntRef(g_iParticle, PARTICLE_POOL, ent);
+
         DispatchKeyValue(ent, "effect_name", ParticleName);
 
         DispatchSpawn(ent);
@@ -155,6 +157,7 @@ public Action Timer_DeleteParticle(Handle timer, int entity)
 
         if (StrEqual(classname, "info_particle_system", false))
         {
+            PopEntRef(g_iParticle, PARTICLE_POOL, entity);
             RemoveEdict(entity);
         }
     }
