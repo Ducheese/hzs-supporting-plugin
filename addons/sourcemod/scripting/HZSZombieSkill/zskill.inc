@@ -498,20 +498,6 @@ public Action Timer_DestroyTrap(Handle timer, int phys)
 // 嗜血女巫技能：致幻（两阶段：接近→灰度，长时间后→致盲+方向键旋转）
 //========================================================================================
 
-void PrepWitchCCDetour()
-{
-    // CColorCorrection vtable[19] = UpdateTransmitState (IDA 确认)
-    g_hShouldTransmitDetour = DHookCreate(19, HookType_Entity, ReturnType_Int, ThisPointer_CBaseEntity);
-    if (!g_hShouldTransmitDetour)
-        LogError("Failed to create UpdateTransmitState vtable hook");
-}
-
-public MRESReturn OnCCUpdateTransmitState_Pre(int entity, Handle hReturn)
-{
-    DHookSetReturn(hReturn, 0);
-    return MRES_Supercede;
-}
-
 // 创建per-player CC实体（通用）
 int CreateWitchCC(int victim, const char[] lutFile)
 {
@@ -1045,8 +1031,30 @@ void GiveArmor(int client, int value)
 void GiveMoney(int client, int value)
 {
     SetEntProp(client, Prop_Send, "m_iAccount", 
-        GetEntProp(client, Prop_Send, "m_iAccount") + value < MAX_MONEY ? 
-        GetEntProp(client, Prop_Send, "m_iAccount") + value : 
+        GetEntProp(client, Prop_Send, "m_iAccount") + value < MAX_MONEY ?
+        GetEntProp(client, Prop_Send, "m_iAccount") + value :
         MAX_MONEY
     );
+}
+
+//========================================================================================
+// 伪人击杀奖励：给攻击者补一组满弹匣弹药
+//========================================================================================
+
+void GiveClip(int client)
+{
+    if (!IsHumanAlive(client))
+        return;
+
+    int weapon = GetEntPropEnt(client, Prop_Data, "m_hActiveWeapon");
+    if (weapon == -1 || g_hGetMaxClip1 == INVALID_HANDLE)
+        return;
+
+    int maxclip = SDKCall(g_hGetMaxClip1, weapon);
+    int ammotype = GetEntProp(weapon, Prop_Data, "m_iPrimaryAmmoType");
+    if (ammotype == -1 || maxclip <= 0)
+        return;
+
+    int reservedammo = GetEntProp(client, Prop_Data, "m_iAmmo", 4, ammotype);
+    SetEntProp(client, Prop_Data, "m_iAmmo", reservedammo + maxclip, 4, ammotype);
 }

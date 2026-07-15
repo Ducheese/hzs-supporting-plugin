@@ -145,6 +145,7 @@ public void Han_OnZombieDeath(int zombie, int killer)
     else if (IsSameName(zombie, ZOMBIE_IMPOSTER))
     {
         EndImposter(zombie);
+        GiveClip(killer);
     }
 }
 

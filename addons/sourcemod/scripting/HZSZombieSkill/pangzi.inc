@@ -174,7 +174,7 @@ void StartGrapple(int zombie, int victim)
     GrappleThirdView(zombie, victim);
 
     // 擒抱伤害和挣脱共用句柄（目前Bot无法自己挣脱）
-    g_iUsePressCount[victim] = 0;    // 初始化按键计数
+    g_iUsePressStep[victim] = 0;    // 初始化按键计数
 
     DataPack pack = new DataPack();
     g_hGrapplePack[victim] = pack;    // 全局管理，方便清理
@@ -266,7 +266,7 @@ public Action Timer_GrappleThink(Handle timer, DataPack pack)
     }
 
     if (!IsHumanAlive(victim)      // 人没了，关闭擒抱句柄即可（僵尸死亡的处理移到event）
-    || g_iUsePressCount[victim] >= PANGZI_GRAPPLE_KEYRATE)   // 或者连按速率达标
+    || g_iUsePressStep[victim] >= PANGZI_GRAPPLE_KEYRATE)   // 或者连按速率达标
     {
         ClearGrappleHandles(victim);
         EndGrapple(zombie, victim);
@@ -275,7 +275,7 @@ public Action Timer_GrappleThink(Handle timer, DataPack pack)
     }
 
     // 每秒重置计数，意味着必须在1秒内按够次数
-    g_iUsePressCount[victim] = 0;
+    g_iUsePressStep[victim] = 0;
 
     // 生成擒抱伤害
     Shake(victim, 10.0, 10.0, 1.0);

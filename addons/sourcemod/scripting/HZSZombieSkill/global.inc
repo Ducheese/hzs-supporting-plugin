@@ -103,7 +103,7 @@
 #define PANGZI_THROW_CD         15.0       // 巨型狂暴形态僵尸投掷子弹僵尸的冷却时间（秒）
 
 // 技能参数（BOSS异形斗兽）
-#define YIXING_DASH_FORCE       4000.0     // 异形斗兽冲撞的推力，要比胖子强
+#define YIXING_DASH_FORCE       4000.0     // 异形斗兽冲撞的推力，要比巨型狂暴形态僵尸的冲锋强
 #define YIXING_DASH_DAMAGE      20.0       // 异形斗兽冲撞造成的伤害（如果位置不好可能造成叠伤）
 #define YIXING_DASH_RADIUS      4.0        // 异形斗兽冲撞的碰撞半径（单位：米）
 #define YIXING_DASH_CD          15.0       // 异形斗兽冲撞的冷却时间（秒）
@@ -177,7 +177,7 @@ int g_iTrapVisual[2048];                  // phys（受击区域） → prop_dyn
 int g_iTrapTrigger[2048];                 // phys → trigger_multiple（触发区域）
 int g_iTriggerOwner[2048];                // trigger → phys
 
-int g_iUsePressStep[MAXPLAYERS+1];        // 玩家在1秒内交替按AD的情况
+int g_iUsePressStep[MAXPLAYERS+1];        // 共享：陷阱AD交替/擒抱E连打 计数（两者互斥）
 
 int g_iTrapCount;                                             // 场内鬼手陷阱的当前数量
 Handle g_hTrapLifetime[2048] = {INVALID_HANDLE,...};          // 鬼手陷阱自毁所用的timer（陷阱被踩中时要提前kill这个timer）
@@ -227,6 +227,7 @@ int g_iFog[2048] = {-1, ...};                                    // 毒雾实体
 int g_iPoisonCC[2048] = {-1, ...};                               // 毒雾color_correction实体
 char g_sOriginalSky[64];                                         // 原地图天空盒名
 Handle g_hRLoadNamedSkys;                                        // SDKCall: R_LoadNamedSkys
+Handle g_hGetMaxClip1;                                           // SDKCall: GetMaxClip1
 Handle g_hIdleDetour;                                            // DHook: CHostage::Idle
 Handle g_hSpawnPoint;                                            // T 复活点数组（用于传送卡在天空盒的 NPC）
 Handle g_hPoisonDmg[MAXPLAYERS+1] = {INVALID_HANDLE,...};        // 每人的毒伤 timer
@@ -274,7 +275,6 @@ FlySubState g_Mode[2048];
 int g_iGrappling[2048];                   // 僵尸擒抱对象，记录玩家的实体号
 bool g_bIsGrappled[MAXPLAYERS+1];         // 玩家是否被擒抱
 
-int g_iUsePressCount[MAXPLAYERS+1];       // 玩家在1秒内按E的次数
 int g_iLastButtons[MAXPLAYERS+1];         // 玩家上一帧的按键（因为按下松开才算一次）
 
 int g_iViewControl[MAXPLAYERS+1];         // 相机实体，全局管理，方便清理

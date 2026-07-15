@@ -65,7 +65,7 @@ stock float GetMeterDistance(int entity1, int entity2)
 }
 
 //========================================================================================
-// 朝向判断 修改自botstayhere.sp
+// 朝向判断（修改自botstayhere.sp）
 //========================================================================================
 
 bool IsTargetForward(int zombie, int human)
@@ -100,7 +100,7 @@ bool IsTargetForward(int zombie, int human)
 }
 
 //========================================================================================
-// 僵尸无敌时间 修改自sm_dmlite.sp 更适合NPC的合法性验证
+// 僵尸无敌时间（修改自sm_dmlite.sp 更适合NPC的合法性验证）
 //========================================================================================
 
 stock void ProtectZombie(int zombie, float duration)
@@ -123,7 +123,7 @@ public Action Timer_RemoveProtect(Handle timer, int zombie)
 }
 
 //========================================================================================
-// 粒子生成和消灭 来自CSS Blood.sp
+// 粒子生成和消灭（修改自CSS Blood.sp）
 //========================================================================================
 
 stock void WriteParticle(char[] ParticleName, float ImpactOrigin[3], float duration)
@@ -163,7 +163,7 @@ public Action Timer_DeleteParticle(Handle timer, int entity)
 }
 
 //========================================================================================
-// 计算到地面距离 飞行和冲锋逻辑都会用到
+// 计算到地面距离（飞行和冲锋逻辑都会用到）
 //========================================================================================
 
 stock float GetDistanceToGround(int entity)
@@ -173,6 +173,12 @@ stock float GetDistanceToGround(int entity)
 
     Handle trace = TR_TraceRayFilterEx(pos, {90.0, 0.0, 0.0}, MASK_PLAYERSOLID, RayType_Infinite, TraceEntityFilter_NotClient, entity);
 
+    if (!TR_DidHit(trace))
+    {
+        delete trace;
+        return 9999.0;  // 脚下虚空（天空盒/地图外），视为无限高
+    }
+
     float endPos[3];
     TR_GetEndPosition(endPos, trace);
     delete trace;
@@ -180,20 +186,16 @@ stock float GetDistanceToGround(int entity)
     return pos[2] - endPos[2];
 }
 
-public bool TraceEntityFilter_NotClient(int entity, int mask, any data)
-{
-    if (entity == data || (entity >= 1 && entity <= MaxClients))     // 忽略自身，以及人类client实体
-    {
-        return false;
-    }
-
-    return true;
-}
-
 //========================================================================================
-// 特殊效果：屏幕晃动、屏幕渐变、闪光
+// 屏幕震动 & 渐变色（UserMessage: Shake / Fade）
 //========================================================================================
 
+/**
+ * @param client      目标玩家
+ * @param flAmplitude 振幅
+ * @param flFrequency 频率
+ * @param flDuration  持续时间（秒）
+ */
 stock void Shake(int client, float flAmplitude, float flFrequency, float flDuration)    // 只对活着的玩家有效
 {
     Handle hBf = StartMessageOne("Shake", client);   // hBf (Handle to Buffer)
@@ -208,6 +210,13 @@ stock void Shake(int client, float flAmplitude, float flFrequency, float flDurat
     }
 }
 
+/**
+ * @param client   目标玩家
+ * @param duration 渐入时长（ms）
+ * @param holdtime 保持时长（ms）
+ * @param flags    渐变标志（FFADE_IN / FFADE_OUT 等）
+ * @param color    RGBA 颜色
+ */
 stock void Fade(int client, int duration, int holdtime, int flags, int color[4])    // 对已经死了的玩家也有效
 {
     Handle hBf = StartMessageOne("Fade", client, 0);
@@ -225,10 +234,13 @@ stock void Fade(int client, int duration, int holdtime, int flags, int color[4])
     }
 }
 
+//========================================================================================
+// 瞬时动态光（TE: Dynamic Light）
+//========================================================================================
+
 stock void DynamicLight(float pos[3], int r, int g, int b, int exponent, float radius, float time, float decay)
 {
     /**
-     * 在位置生成一个瞬时动态光
      * @param pos          光源位置
      * @param r, g, b      颜色 (0-255)
      * @param exponent     衰减指数（通常设为 8-10，决定光的硬度）
@@ -249,7 +261,7 @@ stock void DynamicLight(float pos[3], int r, int g, int b, int exponent, float r
 }
 
 //========================================================================================
-// Debug：画出实体的碰撞箱（用光束画12条棱）
+// 碰撞箱可视化（Debug: 光束画12条棱）
 //========================================================================================
 
 stock void DebugDrawBBox(int entity, float duration, int color[4])
@@ -284,12 +296,26 @@ stock void DebugDrawBBox(int entity, float duration, int color[4])
 }
 
 //========================================================================================
-// 射线Trace过滤器（只命中世界几何，忽略实体）
+// Trace 过滤器
 //========================================================================================
 
+/**
+ * 只命中世界几何（entity == 0），忽略所有实体。
+ */
 public bool TraceEntityFilter_Ground(int entity, int mask, any data)
 {
     return (entity == 0);
+}
+
+/**
+ * 忽略自身（data）以及所有玩家实体。
+ */
+public bool TraceEntityFilter_NotClient(int entity, int mask, any data)
+{
+    if (entity == data || (entity >= 1 && entity <= MaxClients))
+        return false;
+
+    return true;
 }
 
 //========================================================================================
@@ -298,10 +324,19 @@ public bool TraceEntityFilter_Ground(int entity, int mask, any data)
 
 stock bool TeleportOffSkybox(int entity)
 {
+    // 朝脚下打射线，检测是否站在天空盒上（头顶 90 度俯角穿透一切）
     float pos[3];
     GetEntPropVector(entity, Prop_Send, "m_vecOrigin", pos);
+
     Handle tr = TR_TraceRayFilterEx(pos, view_as<float>({90.0, 0.0, 0.0}), MASK_SOLID, RayType_Infinite, TraceEntityFilter_NotClient, entity);
-    bool bSkybox = !TR_DidHit(tr) || TR_GetSurfaceProps(tr) == 76;
+
+    bool bHit = TR_DidHit(tr);
+    bool bSkybox = !bHit;
+    if (bHit)
+    {
+        // 表面属性 76 = sky（CS:S 的天空盒材质）
+        bSkybox = TR_GetSurfaceProps(tr) == 76;
+    }
     delete tr;
 
     if (!bSkybox)
@@ -331,18 +366,25 @@ stock int UpdateNearestTarget(int zombie)
     int target = 0;
     float zOrigin[3], bestDist = 999999.0;
     GetEntPropVector(zombie, Prop_Send, "m_vecOrigin", zOrigin);
+
     for (int i = 1; i <= MaxClients; i++)
     {
         if (!IsHumanAlive(i))
             continue;
         float tp[3];
-        GetClientAbsOrigin(i, tp);
+        GetClientEyePosition(i, tp);
         float d = GetVectorDistance(zOrigin, tp);
         if (d < bestDist) { bestDist = d; target = i; }
     }
+
     if (target > 0)
+    {
         SetEntDataEnt2(zombie, g_iLeaderOffset, target);
-    return target;
+        return target;
+    }
+
+    SetEntDataEnt2(zombie, g_iLeaderOffset, zombie);
+    return -1;
 }
 
 //========================================================================================
@@ -378,105 +420,13 @@ stock bool IsHumanMoving(int client)
 }
 
 //========================================================================================
-// 内存 Patch: 去掉 CHostage::UpdateFollowing 的 giveUp (2000u)，全图索敌
+// T 复活点收集
 //========================================================================================
 
-void PatchGiveUp()
+stock void CollectTSpawnPoints()
 {
-    Handle gc = LoadGameConfigFile(GAMEDATA_CUSTOM);
-    if (gc == INVALID_HANDLE)
-        SetFailState("[HZS] Failed to load gamedata for GiveUp patch");
-
-    Address jaAddr = GameConfGetAddress(gc, "GiveUpAddr");
-    if (jaAddr == Address_Null)
-        SetFailState("[HZS] Failed to resolve GiveUp address");
-
-    // 0F 87 xx xx xx xx → 6x NOP（跳过距离>2000的 giveUp return）
-    for (int i = 0; i < 6; i++)
-        StoreToAddress(jaAddr + view_as<Address>(i), 0x90, NumberType_Int8);
-
-    LogMessage("[HZS] Patched UpdateFollowing giveUp JA at %X", jaAddr);
-    
-    delete gc;
-}
-
-//========================================================================================
-// DHook: CHostage::Idle — 阻止引擎清空 m_leader
-//========================================================================================
-
-void PrepIdleDetour()
-{
-    Handle gc = LoadGameConfigFile(GAMEDATA_CUSTOM);
-    if (gc == INVALID_HANDLE)
-        SetFailState("[HZS] Failed to load gamedata for Idle detour");
-
-    g_hIdleDetour = DHookCreateDetour(Address_Null, CallConv_THISCALL, ReturnType_Void, ThisPointer_CBaseEntity);
-    DHookSetFromConf(g_hIdleDetour, gc, SDKConf_Signature, "CHostage_Idle");
-
-    if (!DHookEnableDetour(g_hIdleDetour, false, OnIdle_Pre))
-        SetFailState("[HZS] Failed to enable Idle detour");
-
-    delete gc;
-}
-
-public MRESReturn OnIdle_Pre(int zombie)
-{
-    return MRES_Supercede;
-}
-
-//========================================================================================
-// 运行时天空盒切换（DHook: R_LoadNamedSkys）
-//========================================================================================
-
-void PrepSkySDKCall()
-{
-    char filePath[PLATFORM_MAX_PATH];
-    BuildPath(Path_SM, filePath, sizeof(filePath), "gamedata/%s.txt", GAMEDATA_CUSTOM);
-    if (!FileExists(filePath))
-    {
-        Handle f = OpenFile(filePath, "w");
-        if (f == null)
-        {
-            LogError("[Angela] Cannot create gamedata/%s.txt", GAMEDATA_CUSTOM);
-            return;
-        }
-        WriteFileLine(f, "\"Games\"");
-        WriteFileLine(f, "{");
-        WriteFileLine(f, "    \"cstrike\"");
-        WriteFileLine(f, "    {");
-        WriteFileLine(f, "        \"Signatures\"");
-        WriteFileLine(f, "        {");
-        WriteFileLine(f, "            \"R_LoadNamedSkys\"");
-        WriteFileLine(f, "            {");
-        WriteFileLine(f, "                \"library\"    \"engine\"");
-        WriteFileLine(f, "                \"windows\"    \"\\x55\\x8B\\xEC\\x81\\xEC\\x34\\x01\\x00\\x00\\x8B\\x0D\\x2A\\x2A\\x2A\\x2A\\x53\\x56\\x57\\x8B\\x01\"");
-        WriteFileLine(f, "            }");
-        WriteFileLine(f, "        }");
-        WriteFileLine(f, "    }");
-        WriteFileLine(f, "}");
-        CloseHandle(f);
-    }
-
-    Handle gc = LoadGameConfigFile(GAMEDATA_CUSTOM);
-    if (gc == INVALID_HANDLE)
-    {
-        LogError("[Angela] Failed to load gamedata/%s.txt", GAMEDATA_CUSTOM);
-        return;
-    }
-
-    StartPrepSDKCall(SDKCall_Static);
-    if (!PrepSDKCall_SetFromConf(gc, SDKConf_Signature, "R_LoadNamedSkys"))
-    {
-        LogError("[Angela] Failed to find signature for R_LoadNamedSkys");
-        delete gc;
-        return;
-    }
-    PrepSDKCall_AddParameter(SDKType_String, SDKPass_Pointer);
-    PrepSDKCall_SetReturnInfo(SDKType_Bool, SDKPass_Plain);
-    g_hRLoadNamedSkys = EndPrepSDKCall();
-
-    if (g_hRLoadNamedSkys == INVALID_HANDLE)
-        LogError("[Angela] Failed to prepare SDKCall for R_LoadNamedSkys");
-
-    delete gc;
+    ClearArray(g_hSpawnPoint);
+    int entity = -1;
+    while ((entity = FindEntityByClassname(entity, "info_player_terrorist")) != -1)
+        PushArrayCell(g_hSpawnPoint, EntIndexToEntRef(entity));
 }

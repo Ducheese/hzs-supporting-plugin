@@ -9,18 +9,20 @@
 #include <sdktools>
 #include <sdkhooks>
 #include <cstrike>
+#include <dhooks>
 
 #include <morecolors>
 #include <HanZombieScenarioAPI>
-#include <dhooks>
 
 #include "HZSZombieSkill/global"       // 全局变量定义
 #include "HZSZombieSkill/event"        // 僵尸事件
-#include "HZSZombieSkill/helper"       // 功能函数
+#include "HZSZombieSkill/helper"       // 杂项功能函数
 #include "HZSZombieSkill/zskill"       // 特殊僵尸技能函数
 #include "HZSZombieSkill/angela"       // BOSS技能函数（安哥拉）
 #include "HZSZombieSkill/pangzi"       // BOSS技能函数（巨型狂暴形态僵尸）
 #include "HZSZombieSkill/yixing"       // BOSS技能函数（异形斗兽）
+#include "HZSZombieSkill/detours"      // 拦截和修改引擎原有逻辑
+#include "HZSZombieSkill/sdkcall"      // 引擎函数直调
 
 //========================================================================================
 //========================================================================================
@@ -36,22 +38,27 @@ public Plugin myinfo =
 
 public void OnPluginStart()
 {
-    // 获取NPC在追随什么目标
-    g_iLeaderOffset = FindSendPropInfo("CHostage", "m_leader");
-    // T复活点收集
-    g_hSpawnPoint = CreateArray(1);
+    // 没想太多，就先放这里了
+    g_iLeaderOffset = FindSendPropInfo("CHostage", "m_leader");   // 获取NPC在追随什么目标
+    g_hSpawnPoint = CreateArray(1);                               // T复活点收集
 
+    // 都在当前代码内，只是归一类而已
     InitHumanState();
     InitModelCache();
     InitSoundCache();
 
-    HookEvent("round_start", Event_RoundStart);
-    HookEvent("round_freeze_end", Event_RoundFreezeEnd);
-
-    PrepWitchCCDetour();
+    // Detour(Patch+DHook)
+    PrepCCDetour();
     PatchGiveUp();
     PrepIdleDetour();
+
+    // SDKCall
     PrepSkySDKCall();
+    PrepMaxClipSDKCall();
+
+    // 常规Hook
+    HookEvent("round_start", Event_RoundStart);
+    HookEvent("round_freeze_end", Event_RoundFreezeEnd);
 }
 
 public void OnMapStart()
@@ -61,27 +68,29 @@ public void OnMapStart()
 
 public void OnClientPutInServer(int client)
 {
-    GetClientName(client, g_ClientName[client], 32);   // 伪复活插件会更换玩家名字，所以要提前保存
+    // 伪复活插件会更换玩家名字，所以要提前保存
+    GetClientName(client, g_ClientName[client], 32);
+
+    // 女巫致盲期间，人类队友模型也会被隐藏
     SDKHook(client, SDKHook_SetTransmit, OnWitchBlindSetTransmit);
 }
 
 public void OnClientDisconnect_Post(int client)
 {
     g_ClientName[client] = NULL_STRING;
+    SDKUnhook(client, SDKHook_SetTransmit, OnWitchBlindSetTransmit);
 }
 
 public void Event_RoundStart(Event event, const char[] name, bool dontBroadcast)
 {
+    // 应对CS_TerminateRound导致的清场（WinEndRound = true、hzs_setday、全人类死亡）
     g_iTrapCount = 0;
 }
 
 public void Event_RoundFreezeEnd(Event event, const char[] name, bool dontBroadcast)
 {
     // 收集 T 复活点（round_freeze_end 时实体才就绪）
-    ClearArray(g_hSpawnPoint);
-    int entity = -1;
-    while ((entity = FindEntityByClassname(entity, "info_player_terrorist")) != -1)
-        PushArrayCell(g_hSpawnPoint, EntIndexToEntRef(entity));
+    CollectTSpawnPoints();
 }
 
 //========================================================================================
@@ -94,7 +103,7 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
     if (IsHumanAlive(client))
     {
         // if分支有优先级
-        if (g_bIsGrappled[client])
+        if (g_bIsGrappled[client])              // 巨型狂暴形态僵尸的擒抱：无法动弹，可挣脱
         {
             // 擒抱状态下，玩家无法移动和攻击
             vel[0] = vel[1] = vel[2] = 0.0;
@@ -104,13 +113,14 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
             buttons &= ~IN_ATTACK2;
             buttons &= ~IN_RELOAD;
             buttons &= ~IN_JUMP;
+            buttons &= ~IN_DUCK;
 
             // 检测E键连打
             if (!IsFakeClient(client))
             {
                 if ((buttons & IN_USE) && !(g_iLastButtons[client] & IN_USE))   // 毕竟有松开键位才算按一次
                 {
-                    g_iUsePressCount[client]++;
+                    g_iUsePressStep[client]++;
                 }
 
                 SetHudTextParams(0.50, 0.45, 0.1, 255, 0, 0, 255);
@@ -120,12 +130,12 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
             {
                 if (GetRandomInt(1, 20) == 1)   // 大概率会被抱上两秒，这概率还可以
                 {
-                    g_iUsePressCount[client]++;
-                    // PrintToChatAll("按键计数：%d", g_iUsePressCount[client]);
+                    g_iUsePressStep[client]++;
+                    // PrintToChatAll("按键计数：%d", g_iUsePressStep[client]);
                 }
             }
         }
-        else if (g_bIsStuck[client])
+        else if (g_bIsStuck[client])            // 鬼手陷阱：无法动弹，可挣脱
         {
             vel[0] = vel[1] = vel[2] = 0.0;     // 其实可以不管垂直速度，禁止跳即可
 
@@ -159,7 +169,7 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
                 }
             }
         }
-        else if (g_bIsShock[client])
+        else if (g_bIsShock[client])            // 异形斗兽震荡波：麻痹视角，移动减速
         {
             vel[0] = 0.1 * vel[0];
             vel[1] = 0.1 * vel[1];
@@ -223,7 +233,12 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
     }
     else
     {
-        // 呼唤僵尸攻击人类，死后处理（草，忘了真死的情况）
+        /**
+         * 呼唤僵尸攻击人类 的 死后处理
+         * 理论上应该写在death事件钩子里，前提是botaddfix普及
+         * 或者 fakerespawn 主动创建死亡事件
+         */
+        // 
         if (g_iZombieCall[client] != -1)
         {
             g_iZombieCall[client] = -1;         // 防止这里重复执行
@@ -255,36 +270,38 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 
 void InitHumanState()
 {
-    // 玩家相关数组初始化（不爽的位置）
+    // 玩家相关数组初始化
     for (int i = 1; i <= MaxClients; i++)
     {
+        // 憎恶屠夫 — 鬼手陷阱
         g_bIsStuck[i] = false;
+        g_iUsePressStep[i] = 0;       // 实际多僵尸共享
 
-        g_iUsePressStep[i] = 0;
-
-        g_iZombieCall[i] = -1;
-
-        g_bIsGrappled[i] = false;
-
-        g_iUsePressCount[i] = 0;
-        g_iLastButtons[i] = -1;
-
-        // 这两个没有必要初始化，都是在使用前赋值的
-        // g_iViewControl
-        // g_flEscapePos[]
-
-        ClearGrappleHandles(i);
-
-        g_bIsShock[i] = false;
-
+        // 嗜血女巫 — 致盲
         g_bIsBlind[i] = false;
         g_iWitchPhase[i] = 0;
         g_flWitchNearTime[i] = 0.0;
         g_iWitchKeyRot[i] = -1;
         g_bWitchDSPFlip[i] = false;
+        g_iWitchMildCC[i] = -1;
+        g_iWitchSevereCC[i] = -1;
+        g_hWitchBlind[i] = INVALID_HANDLE;
+        g_hWitchDSPToggle[i] = INVALID_HANDLE;
 
-        // 在使用前赋值的
-        // g_flAng[]
+        // BOSS 安哥拉 — 集中攻击
+        g_iZombieCall[i] = -1;
+        g_hPoisonDmg[i] = INVALID_HANDLE;
+
+        // BOSS 巨型狂暴形态僵尸 — 擒抱
+        g_bIsGrappled[i] = false;
+        g_iLastButtons[i] = -1;       // 实际多僵尸共享
+        // g_iViewControl             // 在使用前赋值的
+        // g_flEscapePos[]            // 在使用前赋值的
+        ClearGrappleHandles(i);
+
+        // BOSS 异形斗兽 — 震荡波
+        g_bIsShock[i] = false;
+        // g_flAng[]                  // 在使用前赋值的
     }
 }
 
@@ -299,10 +316,12 @@ void InitModelCache()
     g_iBloodSpray = PrecacheModel("sprites/bloodspray.vmt");
     g_iBloodDrop  = PrecacheModel("sprites/blooddrop.vmt");
 
+    // CC的LUT（我感觉AddFileToDownloadsTable没啥用）
     AddFileToDownloadsTable(LUT_WITCH_MILD);
     AddFileToDownloadsTable(LUT_WITCH_SEVERE);
     AddFileToDownloadsTable(LUT_ANGELA_GREEN);
 
+    // 飞行垃圾模型
     for (int i = 0; i < DEBRIS_MODEL_COUNT; i++)
     {
         PrecacheModel(g_sDebrisModels[i], true);
@@ -311,7 +330,7 @@ void InitModelCache()
 
 void InitSoundCache()
 {
-    // 音频预缓存
+    // 音频预缓存（非BOSS特殊僵尸）
     PrecacheSound(SFX_SMOKE1, true);
     PrecacheSound(SFX_SMOKE2, true);
     PrecacheSound(SFX_EXPLODE1, true);
