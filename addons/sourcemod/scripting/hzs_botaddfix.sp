@@ -2,12 +2,12 @@
 // hzs_botaddfix.sp
 //
 // 补丁原理：
-//   在 InitializeHostageInfo 回边中，把循环比较指令
+//   在 Reset() 的 hostage 循环回边中，把
 //     cmp reg, [g_Hostages.m_Size]
 //   改为
-//     cmp reg, MAX_HOSTAGES (12)
+//     cmp reg, 0
 //     nop; nop; nop
-//   使循环最多执行 12 次，防止 m_hostage[12] 越界。
+//   使循环直接退出，跳过所有 zombie hostage 初始化。
 //========================================================================================
 
 #pragma semicolon 1
@@ -44,11 +44,11 @@ public void OnPluginStart()
 	if (cmpRegByte == -1)
 		SetFailState("[BotAddFix] 无法读取 CmpRegByte");
 
-	// 回边比较: cmp reg, 12; nop; nop; nop
+	// 回边比较: cmp reg, 0; nop; nop; nop
 	Address patchAddr = resetAddr + view_as<Address>(backedgeOffset);
 	StoreToAddress(patchAddr,                       0x83,    NumberType_Int8);
 	StoreToAddress(patchAddr + view_as<Address>(1), cmpRegByte, NumberType_Int8);
-	StoreToAddress(patchAddr + view_as<Address>(2), 0x0C,    NumberType_Int8);
+	StoreToAddress(patchAddr + view_as<Address>(2), 0x00,    NumberType_Int8);
 	StoreToAddress(patchAddr + view_as<Address>(3), 0x90,    NumberType_Int8);
 	StoreToAddress(patchAddr + view_as<Address>(4), 0x90,    NumberType_Int8);
 	StoreToAddress(patchAddr + view_as<Address>(5), 0x90,    NumberType_Int8);
