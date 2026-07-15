@@ -40,9 +40,14 @@ public void Han_OnZombieCreated(int zombie)
     {
         SetInvisible(zombie);
     }
+    else if (IsSameName(zombie, ZOMBIE_IMPOSTER))
+    {
+        g_hImposterSync[zombie] = CreateTimer(0.1, Timer_ImposterSyncThink, zombie, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
+    }
     else if (IsSameName(zombie, BOSS_ANGELA))
     {
-        SDKHook(zombie, SDKHook_OnTakeDamage, OnFlyTakeDamage);  // 飞行时拦截伤害
+        // 主要是用于飞行期间的伤害计算，也有累积计数逻辑
+        SDKHook(zombie, SDKHook_OnTakeDamage, OnFlyTakeDamage);
     }
     else if (IsSameName(zombie, BOSS_PANGZI))
     {
@@ -51,10 +56,6 @@ public void Han_OnZombieCreated(int zombie)
     else if (IsSameName(zombie, BOSS_YIXING))
     {
         // 什么都不做
-    }
-    else if (IsSameName(zombie, ZOMBIE_IMPOSTER))
-    {
-        g_hImposterSync[zombie] = CreateTimer(0.1, Timer_ImposterThink, zombie, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
     }
 }
 
@@ -75,6 +76,7 @@ public void Han_OnZombieDeath(int zombie, int killer)
     }
     else if (IsSameName(zombie, ZOMBIE_HEAL))
     {
+        // 清理逻辑比较简单，直接裸露出来了
         if (g_hHeal[zombie] != INVALID_HANDLE)
         {
             KillTimer(g_hHeal[zombie]);
@@ -86,10 +88,11 @@ public void Han_OnZombieDeath(int zombie, int killer)
         // 什么都不做
     }
     else if (IsSameName(zombie, ZOMBIE_BUTCHER)
-        && GetRandomFloat(0.0, 1.0) <= BUTCHER_TRAP_CHANCE
-        && g_iTrapCount < BUTCHER_TRAP_MAX
+    && GetRandomFloat(0.0, 1.0) <= BUTCHER_TRAP_CHANCE
+    && g_iTrapCount < BUTCHER_TRAP_MAX
     )
     {
+        // 有限制的生成鬼手陷阱
         StartTrap(zombie);
     }
     else if (IsSameName(zombie, ZOMBIE_WITCH))
@@ -100,11 +103,20 @@ public void Han_OnZombieDeath(int zombie, int killer)
             g_hWitchNear[zombie] = INVALID_HANDLE;
         }
 
+        /**
+         * 入参 excludeEntity = zombie 排除死者后，发现还有活的女巫在范围内 → 不清理，保持 Phase 1 正确
+         * 如果女巫全死光、没有 timer 再跑清理的时候，靠这个死亡事件来扫尾
+         */
         CleanupOrphanedWitchPhase1(zombie);
     }
     else if (IsSameName(zombie, ZOMBIE_GHOST))
     {
         SetVisible(zombie);    // 死的时候恢复渲染方式，显形
+    }
+    else if (IsSameName(zombie, ZOMBIE_IMPOSTER))
+    {
+        EndImposter(zombie);
+        GiveClip(killer);
     }
     else if (IsSameName(zombie, BOSS_ANGELA))
     {
@@ -115,17 +127,34 @@ public void Han_OnZombieDeath(int zombie, int killer)
             g_hHeal[zombie] = INVALID_HANDLE;
         }
 
-        // 如果飞行过程不无敌
+        /**
+         * 飞行期间死亡
+         * 注意，飞行think既控制飞行，也控制落地，即便落地后也还在继续
+         */
         if (g_hFly[zombie] != INVALID_HANDLE)
         {
             KillTimer(g_hFly[zombie]);
             g_hFly[zombie] = INVALID_HANDLE;
+
+            if (g_BossState[zombie] == STATE_FLYING)
+            {
+                // 说白了就是提前了 EnterGroundMode 的清理逻辑
+                RemovePoisonFog(zombie);
+                RemovePoisonDamage();
+                RemoveDebrisSystem(zombie);
+                OffsetAnimZ(zombie, false);
+            }
         }
 
         SDKUnhook(zombie, SDKHook_OnTakeDamage, OnFlyTakeDamage);
     }
     else if (IsSameName(zombie, BOSS_PANGZI))
     {
+        /**
+         * pangzi.inc的几个repeat timer，在僵尸有效性不通过时
+         * 都只是清空自己的handles数组，没有做完全的清理收尾
+         * 这里清理函数并非冗余
+         */
         // 如果在冲锋就停止冲锋句柄
         ClearChargeHandles(zombie);
 
@@ -141,11 +170,6 @@ public void Han_OnZombieDeath(int zombie, int killer)
     else if (IsSameName(zombie, BOSS_YIXING))
     {
         ClearChargeHandles(zombie);
-    }
-    else if (IsSameName(zombie, ZOMBIE_IMPOSTER))
-    {
-        EndImposter(zombie);
-        GiveClip(killer);
     }
 }
 
@@ -181,11 +205,11 @@ public void Han_OnZombieHurt(int zombie, int attacker)
     {
         // 什么都不做
     }
-    else if (IsSameName(zombie, ZOMBIE_IMPOSTER))
+    else if (IsSameName(zombie, ZOMBIE_GHOST))
     {
         // 什么都不做
     }
-    else if (IsSameName(zombie, ZOMBIE_GHOST))
+    else if (IsSameName(zombie, ZOMBIE_IMPOSTER))
     {
         // 什么都不做
     }
@@ -198,7 +222,7 @@ public void Han_OnZombieHurt(int zombie, int attacker)
         if (rand == 1
         && GetEntProp(zombie, Prop_Data, "m_iHealth") > g_iMaxHealth[zombie] / 2)
         {
-            //
+            // 最好是个远程技能
         }
         // 一半生命值以下会尝试自愈
         else if (rand == 3
@@ -211,7 +235,9 @@ public void Han_OnZombieHurt(int zombie, int attacker)
         else if (g_hFly[zombie] == INVALID_HANDLE
         && GetEntProp(zombie, Prop_Data, "m_iHealth") < g_iMaxHealth[zombie])
         {
-            InitFlyingState(zombie);
+            /**
+             * g_bIsSkillUsed 的更新在 EnterFlyingMode
+             */
             g_hFly[zombie] = CreateTimer(0.0, Timer_FlyThink, zombie, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
         }
     }
@@ -272,10 +298,9 @@ public void Han_OnZombieAttack(int zombie, int victim)
     {
         // 什么都不做
     }
-    else if (IsSameName(zombie, ZOMBIE_DEIMOS)
-        && !g_bIsSkillUsed[zombie]
-    )
+    else if (IsSameName(zombie, ZOMBIE_DEIMOS) && !g_bIsSkillUsed[zombie])
     {
+        // 因为逻辑很简短，就直接裸露出来了
         g_bIsSkillUsed[zombie] = true;
         g_bIsStuck[victim] = false;        // 解除憎恶屠夫的控制
         StartKnockback(zombie, victim);
@@ -297,7 +322,6 @@ public void Han_OnZombieAttack(int zombie, int victim)
     {
         // 什么都不做
     }
-    // 这里还没改
     else if (IsSameName(zombie, BOSS_ANGELA) && !g_bIsSkillUsed[zombie])
     {
         int rand = GetRandomInt(1, 3);
@@ -353,30 +377,37 @@ void InitZombieState(zombie)
     g_iMaxHealth[zombie] = GetEntProp(zombie, Prop_Data, "m_iHealth");
     g_bIsSkillUsed[zombie] = false;
 
-    // 句柄数组统一初始化
+    // 屠夫不需要，它没有 per-zombie 的状态变量
+
+    // 治疗僵尸 / BOSS 安哥拉 — 自愈
     g_hHeal[zombie] = INVALID_HANDLE;
+
+    // 嗜血女巫 — 靠近检测
+    g_hWitchNear[zombie] = INVALID_HANDLE;
+
+    // 伪人僵尸 — 模仿
+    g_iImposterTarget[zombie] = 0;
+    g_iFakeBody[zombie] = -1;
+    g_hImposterSync[zombie] = INVALID_HANDLE;
+    g_bImposterPaused[zombie] = false;
+
+    // BOSS 安哥拉 — 飞行
     g_hFly[zombie] = INVALID_HANDLE;
     g_iFog[zombie] = -1;
     g_iPoisonCC[zombie] = -1;
     g_hDebris[zombie] = INVALID_HANDLE;
-    g_hCharge[zombie] = INVALID_HANDLE;
-    g_hChargePack[zombie] = INVALID_HANDLE;
-    g_hMovetype[zombie] = INVALID_HANDLE;
-
-    // 安哥拉使用的数组
     g_iBulletCount[zombie] = 0;
     g_BossState[zombie] = STATE_GROUND;
     g_Mode[zombie] = FLY_RANDOM;
     g_flLastFlyEnd[zombie] = 0.0;
     g_flLastFlySound[zombie] = 0.0;
 
-    // 巨型狂暴使用的数组
+    // BOSS 巨型狂暴形态僵尸 — 冲锋/擒抱/投掷
+    g_hCharge[zombie] = INVALID_HANDLE;
+    g_hChargePack[zombie] = INVALID_HANDLE;
+    g_hMovetype[zombie] = INVALID_HANDLE;
     g_iGrappling[zombie] = -1;
     g_bIsPickup[zombie] = false;
 
-    // 伪人僵尸使用的数组
-    g_iImposterTarget[zombie] = 0;
-    g_iFakeBody[zombie] = -1;
-    g_hImposterSync[zombie] = INVALID_HANDLE;
-    g_bImposterPaused[zombie] = false;
+    // BOSS 异形斗兽 — 冲锋（g_hCharge/g_hChargePack 已在上方初始化）
 }

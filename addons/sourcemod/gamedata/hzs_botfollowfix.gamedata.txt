@@ -24,6 +24,10 @@
 				"windows"	"0x1A30"
 				"windows64"	"0x1E7C"
 			}
+			"IsWin64"
+			{
+				"windows64"	"1"
+			}
 		}
 	}
 }

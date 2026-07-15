@@ -289,15 +289,6 @@ void EndSelfHealingSuccess(int zombie)
 // 安哥拉技能：飞行逻辑基础
 //========================================================================================
 
-void InitFlyingState(int zombie)
-{
-    g_BossState[zombie] = STATE_GROUND;           // 默认在地上
-    g_Mode[zombie] = FLY_RANDOM;                  // 默认高飞模式
-
-    g_flLastFlyEnd[zombie] = 0.0;
-    g_flLastFlySound[zombie] = 0.0;
-}
-
 void EnterFlyingMode(int zombie)
 {
     // 起飞基础
