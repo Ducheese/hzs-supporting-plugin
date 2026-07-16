@@ -366,7 +366,7 @@ stock bool TeleportOffSkybox(int entity)
 
 stock int UpdateNearestTarget(int zombie)
 {
-    int target = 0;
+    int target = -1;
     float zOrigin[3], bestDist = 999999.0;
     GetEntPropVector(zombie, Prop_Send, "m_vecOrigin", zOrigin);
 

@@ -18,7 +18,10 @@
 #include "HZSZombieSkill/tracker"      // 实体追踪池
 #include "HZSZombieSkill/event"        // 僵尸事件
 #include "HZSZombieSkill/helper"       // 杂项功能函数
-#include "HZSZombieSkill/zskill"       // 特殊僵尸技能函数
+#include "HZSZombieSkill/zskill"       // 特殊僵尸技能函数（综合）
+#include "HZSZombieSkill/butcher"      // 特殊僵尸技能函数（憎恶屠夫）
+#include "HZSZombieSkill/witch"        // 特殊僵尸技能函数（嗜血女巫）
+#include "HZSZombieSkill/imposter"     // 特殊僵尸技能函数（伪人僵尸）
 #include "HZSZombieSkill/angela"       // BOSS技能函数（安哥拉）
 #include "HZSZombieSkill/pangzi"       // BOSS技能函数（巨型狂暴形态僵尸）
 #include "HZSZombieSkill/yixing"       // BOSS技能函数（异形斗兽）
@@ -90,7 +93,15 @@ public void Event_RoundStart(Event event, const char[] name, bool dontBroadcast)
     // 应对CS_TerminateRound导致的清场（WinEndRound = true、hzs_setday、全人类死亡）
     g_iTrapCount = 0;
 
-    // 安哥拉技能改成全局单例后，变量要不要在这初始化呢？
+    // 全局单例：暴清除飞残留，避免跨轮泄漏
+    g_iFlightCount = 0;
+
+    // 毒雾残留（雾 + CC + 天空盒 + 风声）
+    RemovePoisonFog();
+    // 玩家毒伤 timer 残留
+    RemovePoisonDamage();
+    // 碎片系统残留（shooter + timer + owner 全清）
+    CleanupDebris();
 }
 
 public void Event_RoundFreezeEnd(Event event, const char[] name, bool dontBroadcast)

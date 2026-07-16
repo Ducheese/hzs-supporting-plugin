@@ -208,7 +208,7 @@ Handle g_hShouldTransmitDetour;                                  // vtable hook 
 // 技能状态管理（伪人僵尸）
 //========================================================================================
 
-int g_iImposterTarget[2048];                                     // 伪人僵尸正在复制的人类玩家（0=无）
+int g_iImposterTarget[2048];                                     // 伪人僵尸正在复制的人类玩家（-1=无）
 int g_iFakeBody[2048];                                           // 假身体 prop_dynamic 实体号
 bool g_bImposterPaused[2048];							         // 人类停步时伪人也暂停跟随
 Handle g_hImposterSync[2048] = {INVALID_HANDLE, ...};            // 动画同步 timer（0.0=每帧）
@@ -223,7 +223,7 @@ int g_iZombieCall[MAXPLAYERS+1];                                 // 玩家是否
 Handle g_hHeal[2048] = {INVALID_HANDLE,...};                     // 实现治疗效果所用的timer，巫蛊术尸和安哥拉共用
 
 // 飞行增强 — 毒雾
-int g_iAngelaFlightCount = 0;                                    // 引用计数
+int g_iFlightCount = 0;                                          // 正在飞行的安哥拉数量
 int g_iFog = -1;                                                 // 毒雾env_fog_controller实体
 int g_iFogCC = -1;                                               // 毒雾color_correction实体
 char g_sOriginalSky[64];                                         // 原地图天空盒名

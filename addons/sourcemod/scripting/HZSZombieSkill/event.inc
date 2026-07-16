@@ -34,6 +34,7 @@ public void Han_OnZombieCreated(int zombie)
     }
     else if (IsSameName(zombie, ZOMBIE_WITCH))
     {
+        // 这个0.1s间隔要和witch.inc里的递增同步
         g_hWitchNear[zombie] = CreateTimer(0.1, Timer_WitchNearThink, zombie, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
     }
     else if (IsSameName(zombie, ZOMBIE_GHOST))
@@ -139,8 +140,8 @@ public void Han_OnZombieDeath(int zombie, int killer)
             if (g_BossState[zombie] == STATE_FLYING)
             {
                 // 说白了就是提前了 EnterGroundMode 的清理逻辑
-                g_iAngelaFlightCount--;
-                if (g_iAngelaFlightCount <= 0)
+                g_iFlightCount--;
+                if (g_iFlightCount <= 0)
                 {
                     RemovePoisonFog();
                     RemovePoisonDamage();
@@ -393,7 +394,7 @@ void InitZombieState(zombie)
     g_hWitchNear[zombie] = INVALID_HANDLE;
 
     // 伪人僵尸 — 模仿
-    g_iImposterTarget[zombie] = 0;
+    g_iImposterTarget[zombie] = -1;
     g_iFakeBody[zombie] = -1;
     g_hImposterSync[zombie] = INVALID_HANDLE;
     g_bImposterPaused[zombie] = false;

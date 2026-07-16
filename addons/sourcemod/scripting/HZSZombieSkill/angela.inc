@@ -299,12 +299,12 @@ void EnterFlyingMode(int zombie)
     g_iBulletCount[zombie] = 0;                              // 重置命中计数
 
     // 飞行增强
-    if (g_iAngelaFlightCount == 0)
+    if (g_iFlightCount == 0)
     {
         CreatePoisonFog();                                   // 全场绿雾 + CC + 更换天空盒
         CreatePoisonDamage();                                // 每玩家独立毒伤 timer
     }
-    g_iAngelaFlightCount++;
+    g_iFlightCount++;
 
     if (g_iDebrisOwner == -1)
         CreateDebrisSystem(zombie);                          // 飞行垃圾效果
@@ -324,8 +324,8 @@ void EnterGroundMode(int zombie)
     CreateTimer(5.0, Timer_SkillEnd, zombie);
 
     // 飞行增强
-    g_iAngelaFlightCount--;
-    if (g_iAngelaFlightCount <= 0)
+    g_iFlightCount--;
+    if (g_iFlightCount <= 0)
     {
         RemovePoisonFog();                                   // 还原绿雾 + CC + 天空盒
         RemovePoisonDamage();                                // 停止所有毒伤 timer
@@ -776,7 +776,7 @@ void ApplyWindPush(int client, float vel[3])
     for (int i = 0; i < count; i++)
     {
         int zombie = Han_GetZombieByIndex(i);
-        if (!IsValidEntity(zombie)) continue;
+        if (!IsValidEntity(zombie) || GetEntProp(zombie, Prop_Data, "m_iHealth") <= 0) continue;
         if (g_BossState[zombie] != STATE_FLYING) continue;
 
         float angelaPos[3];
