@@ -59,13 +59,15 @@ public void OnPluginStart()
     // SDKCall
     PrepSkySDKCall();
     PrepMaxClipSDKCall();
+    PrepHideSDKCall();
+    PrepGetWeaponSlot();
 
     // 常规Hook
     HookEvent("round_start", Event_RoundStart);
     HookEvent("round_freeze_end", Event_RoundFreezeEnd);
 
     // 每秒采样实体数
-    CreateTimer(1.0, Timer_EntityMonitor, _, TIMER_REPEAT);
+    // CreateTimer(1.0, Timer_EntityMonitor, _, TIMER_REPEAT);
 }
 
 public void OnMapStart()
@@ -102,12 +104,18 @@ public void Event_RoundStart(Event event, const char[] name, bool dontBroadcast)
     RemovePoisonDamage();
     // 碎片系统残留（shooter + timer + owner 全清）
     CleanupDebris();
+
+    // 避免开局买武器时触发
+    g_bBotFindWeapon = false;
 }
 
 public void Event_RoundFreezeEnd(Event event, const char[] name, bool dontBroadcast)
 {
     // 收集 T 复活点（round_freeze_end 时实体才就绪）
     CollectTSpawnPoints();
+
+    // 解锁 Bot 自动捡武器
+    g_bBotFindWeapon = true;
 }
 
 //========================================================================================
@@ -245,6 +253,10 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
         // 安哥拉飞行刮风（不影响被擒抱/陷阱控制的玩家）
         if (!g_bIsGrappled[client] && !g_bIsStuck[client])
             ApplyWindPush(client, vel);
+
+        // Bot 自动捡主武器
+        if (IsFakeClient(client))
+            BotFindWeapon(client);
 
         g_iLastButtons[client] = buttons;       // 虽然多了个数组，但这样写确实简洁
     }

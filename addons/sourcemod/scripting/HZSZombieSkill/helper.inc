@@ -433,3 +433,69 @@ stock void CollectTSpawnPoints()
     while ((entity = FindEntityByClassname(entity, "info_player_terrorist")) != -1)
         PushArrayCell(g_hSpawnPoint, EntIndexToEntRef(entity));
 }
+
+//========================================================================================
+// Bot 自动捡最近武器
+//========================================================================================
+
+stock void BotFindWeapon(int client)
+{
+    if (!g_bBotFindWeapon || g_hHideCall == INVALID_HANDLE)
+        return;
+
+    // 优先捡主武器
+    if (GetPlayerWeaponSlot(client, 0) == -1)
+    {
+        FindNearestWeapon(client, 0);
+        return;
+    }
+
+    // 有主武器但缺副武器
+    if (GetPlayerWeaponSlot(client, 1) == -1)
+        FindNearestWeapon(client, 1);
+}
+
+stock void FindNearestWeapon(int client, int slot)
+{
+    float now = GetEngineTime();
+    if (now - g_flBotFindThrottle[client] <= 3.0)
+        return;
+    g_flBotFindThrottle[client] = now;
+
+    float botPos[3];
+    GetClientAbsOrigin(client, botPos);
+
+    int bestEnt = -1;
+    float bestDist = 999999.0;
+    int e = -1;
+    while ((e = FindEntityByClassname(e, "weapon_*")) != -1)
+    {
+        if (GetEntPropEnt(e, Prop_Data, "m_hOwnerEntity") != -1)
+            continue;
+        if (SDKCall(g_hGetWeaponSlot, e) != slot)
+            continue;
+
+        float pos[3];
+        GetEntPropVector(e, Prop_Send, "m_vecOrigin", pos);
+        float dist = GetVectorDistance(botPos, pos, false);
+        if (dist < bestDist)
+        {
+            bestDist = dist;
+            bestEnt = e;
+        }
+    }
+
+    if (bestEnt == -1)
+        return;
+
+    float targetPos[3];
+    GetEntPropVector(bestEnt, Prop_Send, "m_vecOrigin", targetPos);
+    SDKCall(g_hHideCall, client, targetPos, 0, false);
+
+    // 画辅助线（到目标武器）
+    float zEye[3], wPos[3];
+    GetClientEyePosition(client, zEye);
+    wPos = targetPos;
+    TE_SetupBeamPoints(zEye, wPos, PrecacheModel(TOOL_BEAMSPRITE), 0, 0, 0, 0.15, 1.5, 1.5, 0, 0.0, {0, 255, 255, 255}, 0);
+    TE_SendToAll();
+}

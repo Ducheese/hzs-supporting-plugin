@@ -195,6 +195,11 @@ void StartKnockback(int zombie, int victim)
     Shake(victim, 30.0, 10.0, 3.0);
     CreateKnockback(zombie, victim, view_as<float>({DEIMOS_KNOCK_POWER, DEIMOS_KNOCK_POWER, DEIMOS_KNOCK_POWER}));
 
+    // 击落武器（不包括刀）
+    int weapon = GetEntPropEnt(victim, Prop_Data, "m_hActiveWeapon");
+    if (weapon != -1 && weapon != GetPlayerWeaponSlot(victim, 2))
+        CS_DropWeapon(victim, weapon, true, true);
+
     // 击退音效
     EmitSoundToClient(victim, SFX_KNOCKBACK, _, SNDCHAN_STATIC, SNDLEVEL_NORMAL, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
 

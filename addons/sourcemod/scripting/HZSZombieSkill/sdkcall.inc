@@ -57,3 +57,63 @@ void PrepMaxClipSDKCall()
 
     delete gc;
 }
+
+//========================================================================================
+// 获取武器槽位（SDKCall: GetWeaponSlot）
+//========================================================================================
+
+void PrepGetWeaponSlot()
+{
+    Handle gc = LoadGameConfigFile(GAMEDATA_CUSTOM);
+    if (gc == INVALID_HANDLE)
+    {
+        LogError("[hzs_zombieskill] Failed to load gamedata");
+        return;
+    }
+
+    StartPrepSDKCall(SDKCall_Entity);
+    if (!PrepSDKCall_SetFromConf(gc, SDKConf_Signature, "GetWeaponSlot"))
+    {
+        LogError("[hzs_zombieskill] Failed to find signature for GetWeaponSlot");
+        delete gc;
+        return;
+    }
+    PrepSDKCall_SetReturnInfo(SDKType_PlainOldData, SDKPass_ByValue);
+    g_hGetWeaponSlot = EndPrepSDKCall();
+
+    if (g_hGetWeaponSlot == INVALID_HANDLE)
+        LogError("[hzs_zombieskill] Failed to prepare SDKCall for GetWeaponSlot");
+
+    delete gc;
+}
+
+//========================================================================================
+// 让 Bot 移动到指定坐标（SDKCall: CCSBot_Hide）
+//========================================================================================
+
+void PrepHideSDKCall()
+{
+    Handle gc = LoadGameConfigFile(GAMEDATA_CUSTOM);
+    if (gc == INVALID_HANDLE)
+    {
+        LogError("[hzs_zombieskill] Failed to load gamedata");
+        return;
+    }
+
+    StartPrepSDKCall(SDKCall_Entity);
+    if (!PrepSDKCall_SetFromConf(gc, SDKConf_Signature, "CCSBot_Hide"))
+    {
+        LogError("[hzs_zombieskill] Failed to find signature for CCSBot_Hide");
+        delete gc;
+        return;
+    }
+    PrepSDKCall_AddParameter(SDKType_Vector, SDKPass_ByRef);
+    PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_ByValue);
+    PrepSDKCall_AddParameter(SDKType_Bool, SDKPass_ByValue);
+    g_hHideCall = EndPrepSDKCall();
+
+    if (g_hHideCall == INVALID_HANDLE)
+        LogError("[hzs_zombieskill] Failed to prepare SDKCall for CCSBot_Hide");
+
+    delete gc;
+}

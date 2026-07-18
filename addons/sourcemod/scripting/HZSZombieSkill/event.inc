@@ -379,7 +379,7 @@ public Action Timer_SkillEnd(Handle timer, int zombie)
 //========================================================================================
 //========================================================================================
 
-void InitZombieState(zombie)
+void InitZombieState(int zombie)
 {
     // 共用数组
     g_iMaxHealth[zombie] = GetEntProp(zombie, Prop_Data, "m_iHealth");
