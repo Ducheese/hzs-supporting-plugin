@@ -22,6 +22,7 @@
 #include "HZSZombieSkill/butcher"      // 特殊僵尸技能函数（憎恶屠夫）
 #include "HZSZombieSkill/witch"        // 特殊僵尸技能函数（嗜血女巫）
 #include "HZSZombieSkill/imposter"     // 特殊僵尸技能函数（伪人僵尸）
+#include "HZSZombieSkill/mystery"      // 特殊僵尸技能函数（神秘僵尸）
 #include "HZSZombieSkill/angela"       // BOSS技能函数（安哥拉）
 #include "HZSZombieSkill/pangzi"       // BOSS技能函数（巨型狂暴形态僵尸）
 #include "HZSZombieSkill/yixing"       // BOSS技能函数（异形斗兽）
@@ -337,6 +338,7 @@ void InitHumanState()
 void InitModelCache()
 {
     // 模型预缓存
+    PrecacheModel(MODEL_HL2PORTAL, true);    // 传送门
     PrecacheModel(MODEL_ZOMBIETRAP, true);   // 鬼手陷阱
     PrecacheModel(TOOL_BEAMSPRITE, true);	 // 辅助线
     PrecacheModel(TOOL_TRAPPHYS, true);      // 受击体
@@ -368,7 +370,8 @@ void InitSoundCache()
     PrecacheSound(SFX_BUTCHER, true);
     PrecacheSound(SFX_WITCH1, true);
     PrecacheSound(SFX_WITCH2, true);
-
+    PrecacheSound(SFX_MYSTERY, true);
+    
     // 音频预缓存（BOSS安哥拉）
     PrecacheSound(SFX_CALL, true);
     PrecacheSound(SFX_SMASH, true);

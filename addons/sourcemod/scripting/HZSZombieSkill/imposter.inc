@@ -43,7 +43,7 @@ public Action Timer_ImposterSyncThink(Handle timer, int zombie)
             }
 
             // 建假身
-            int newFake = CreateImposterFake(zombie, human);
+            int newFake = CreateFakeBody(zombie, human);
             if (newFake != -1)
             {
                 g_iFakeBody[zombie] = newFake;
@@ -67,7 +67,7 @@ public Action Timer_ImposterSyncThink(Handle timer, int zombie)
     int fake = g_iFakeBody[zombie];
     if (fake > 0 && IsValidEntity(fake))
     {
-        SyncImposterAnimation(zombie, fake, target);
+        SyncFakeBodyAnimation(zombie, fake, target);
     }
 
     return Plugin_Continue;
@@ -86,7 +86,7 @@ void KillFakeBody(int zombie)
 }
 
 // 同步假身动画和朝向
-void SyncImposterAnimation(int zombie, int fake, int target)
+void SyncFakeBodyAnimation(int zombie, int fake, int target)
 {
     // 人停→伪人停，人动→恢复
     if (IsHumanMoving(target))
@@ -122,7 +122,7 @@ void SyncImposterAnimation(int zombie, int fake, int target)
     }
 }
 
-int CreateImposterFake(int zombie, int human)
+int CreateFakeBody(int zombie, int human)
 {
     char model[PLATFORM_MAX_PATH];
     GetEntPropString(human, Prop_Data, "m_ModelName", model, sizeof(model));

@@ -9,6 +9,7 @@
 #define MAX_HEALTH              150        // 玩家最大生命值
 
 // 模型路径
+#define MODEL_HL2PORTAL        "models/props_combine/combine_citadelcloudcenter.mdl"    // 半条命2第二章天空大漩涡模型
 #define MODEL_ZOMBIETRAP       "models/heavyzombietrap/zombitrap.mdl"       // 陷阱视觉模型
 #define TOOL_TRAPPHYS          "models/props/de_nuke/crate_small.mdl"       // 陷阱受击体模型（木头受击音效来源）
 #define TOOL_BEAMSPRITE        "materials/sprites/physbeam.vmt"             // 可视化辅助线（比如碰撞箱、实体连线）
@@ -39,7 +40,7 @@
 #define SMOKE_FADETIME          5.0        // 几秒后迷雾僵尸的烟开始消散（秒）
 #define SMOKE_KILLTIME          10.0       // 几秒后迷雾僵尸的烟彻底消散（秒）
 #define EXPLODE_TIME            1.5        // 延时1.5秒自爆，最好把自爆僵尸的"death_anim"改成"ragdoll:1.5"，这样才能站着自爆
-#define EXPLODE_DAMAGE         "100"       // 自爆僵尸爆炸的伤害震级，和伤害大小正相关（字符）
+#define EXPLODE_DAMAGE         "50"        // 自爆僵尸爆炸的伤害震级，和伤害大小正相关（字符）
 #define EXPLODE_RANGE          "300"       // 自爆僵尸爆炸的伤害范围（字符）
 #define HEAL_DAMAGE             50         // 巫蛊术尸群疗时恢复的个体血量
 #define HEAL_RANGE              5.0        // 巫蛊术尸群疗的作用范围（单位：米）
@@ -60,6 +61,12 @@
 #define WITCH_NEAR_RANGE        3.0        // 嗜血女巫致幻触发距离（单位：米）
 #define WITCH_NEAR_TIME         8.0        // 嗜血女巫近距离停留时间累积多久后触发致盲（秒）
 #define WITCH_BLIND_TIME        10.0       // 嗜血女巫致盲效果持续时间（秒）
+
+// 技能参数（神秘僵尸）
+#define MYSTERY_PORTAL_RANGE    10.0       // 神秘僵尸能发动传送门的最远距离（米）
+#define MYSTERY_PORTAL_RADIUS   1.0        // 神秘僵尸传送门有效半径（米）
+#define MYSTERY_PORTAL_TIME     3.0        // 神秘僵尸传送门蓄力时间（秒）
+#define MYSTERY_PORTAL_CD       10.0       // 神秘僵尸传送门的冷却时间（秒）
 
 // 技能参数（BOSS安哥拉）
 #define ANGELA_CALL_TIME        15.0       // 安哥拉呼唤僵尸集中攻击某个人类的持续时间（秒）
@@ -110,7 +117,7 @@
 #define YIXING_DASH_CD          30.0       // 异形斗兽冲撞的冷却时间（秒）
 #define YIXING_SHOCK_ARMOR      10         // 异形斗兽震荡波所扣减的护甲值
 #define YIXING_SHOCK_TIME       3.0        // 异形斗兽震荡波副作用的持续时间（秒）
-#define YIXING_SHOCK_RADIUS     19.0       // 异形斗兽震荡波的作用半径（单位：米）
+#define YIXING_SHOCK_RADIUS     10.0       // 异形斗兽震荡波的作用半径（单位：米）
 #define YIXING_SHOCK_CD         30.0       // 异形斗兽震荡波的冷却时间（秒）
 
 // 音效路径（非BOSS特殊僵尸）
@@ -122,6 +129,7 @@
 #define SFX_BUTCHER            "custom/tank_yell_01.wav"                    // 憎恶屠夫鬼手陷阱命中提示音效
 #define SFX_WITCH1             "custom/horrified_4.wav"                     // 嗜血女巫致盲技能命中提示音效
 #define SFX_WITCH2             "custom/pileobile.wav"                       // 嗜血女巫致盲时播放的音乐
+#define SFX_MYSTERY            "ambient/machines/teleport1.wav"             // 神秘僵尸传送门交换音效
 
 // 音效路径（BOSS安哥拉）
 #define SFX_CALL               "custom/mega_mob_incoming.wav"               // 安哥拉呼唤僵尸集中攻击某个人类的音效

@@ -411,7 +411,11 @@ public Action Timer_FlyThink(Handle timer, int zombie)
 void FlyingLogic(int zombie)
 {
     // Han_Think 被翅膀动画阻塞（IsCustomAnim 每 0.8s 刷新）无机会更新目标，在这里补偿回来
-    int target = UpdateNearestTarget(zombie);
+    int target = FindNearestHuman(zombie);
+    if (target != -1)
+        SetEntDataEnt2(zombie, g_iLeaderOffset, target);
+    else
+        SetEntDataEnt2(zombie, g_iLeaderOffset, zombie);
 
     // HAN 受击钩子会设 MOVETYPE_NONE，每帧恢复
     SetEntityMoveType(zombie, MOVETYPE_STEP);

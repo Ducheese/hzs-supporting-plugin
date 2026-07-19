@@ -237,7 +237,7 @@ void SetInvisible(int zombie)
     {
         SetEntityRenderMode(AnimEnt, RENDER_TRANSCOLOR);
         SetEntityRenderFx(AnimEnt, RENDERFX_STROBE_FAST);     // https://sm.alliedmods.net/api/index.php?fastload=show&id=827&
-        SetEntityRenderColor(AnimEnt, 0, 0, 0, 10);
+        SetEntityRenderColor(AnimEnt, 0, 0, 0, 100);
     }
 }
 

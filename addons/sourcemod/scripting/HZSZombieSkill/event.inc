@@ -45,6 +45,10 @@ public void Han_OnZombieCreated(int zombie)
     {
         g_hImposterSync[zombie] = CreateTimer(0.1, Timer_ImposterSyncThink, zombie, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
     }
+    else if (IsSameName(zombie, ZOMBIE_MYSTERY))
+    {
+        g_hMysteryPortal[zombie] = CreateTimer(0.1, Timer_MysteryPortalThink, zombie, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
+    }
     else if (IsSameName(zombie, BOSS_ANGELA))
     {
         // 主要是用于飞行期间的伤害计算，也有累积计数逻辑
@@ -118,6 +122,10 @@ public void Han_OnZombieDeath(int zombie, int killer)
     {
         EndImposter(zombie);
         GiveClip(killer);
+    }
+    else if (IsSameName(zombie, ZOMBIE_MYSTERY))
+    {
+        // 什么都不做
     }
     else if (IsSameName(zombie, BOSS_ANGELA))
     {
@@ -221,6 +229,12 @@ public void Han_OnZombieHurt(int zombie, int attacker)
     {
         // 什么都不做
     }
+    else if (IsSameName(zombie, ZOMBIE_MYSTERY))
+    {
+        GiveHealth(attacker, 1);
+        GiveArmor(attacker, 1);
+        GiveMoney(attacker, 100);
+    }
     else if (IsSameName(zombie, BOSS_ANGELA) && !g_bIsSkillUsed[zombie])
     {
         // 30发子弹，至少触发一次技能的概率是45.45%，目前测下来是很合适的值
@@ -279,12 +293,6 @@ public void Han_OnZombieHurt(int zombie, int attacker)
             StartDash(zombie, attacker);    // 很巧也是lovelive的歌
         }
     }
-    else if (IsSameName(zombie, "神秘胖子僵尸"))
-    {
-        GiveHealth(attacker, 1);
-        GiveArmor(attacker, 1);
-        GiveMoney(attacker, 100);
-    }
 }
 
 //========================================================================================
@@ -322,11 +330,15 @@ public void Han_OnZombieAttack(int zombie, int victim)
     {
         // 致幻已改为距离触发，攻击时不再触发
     }
+    else if (IsSameName(zombie, ZOMBIE_GHOST))
+    {
+        // 什么都不做
+    }
     else if (IsSameName(zombie, ZOMBIE_IMPOSTER))
     {
         // 什么都不做
     }
-    else if (IsSameName(zombie, ZOMBIE_GHOST))
+    else if (IsSameName(zombie, ZOMBIE_MYSTERY))
     {
         // 什么都不做
     }

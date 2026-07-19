@@ -160,7 +160,7 @@ void StartShockWave(int zombie)
     DynamicLight(pos, 75, 75, 255, 10, 500.0, 0.25, 0.0);
 
     // 光圈
-    TE_SetupBeamRingPoint(pos, 10.0, YIXING_SHOCK_RADIUS / GAMEUNITS_TO_METERS, 
+    TE_SetupBeamRingPoint(pos, 10.0, 1000.0, 
         PrecacheModel("materials/sprites/lgtning.vmt"), 
         PrecacheModel("materials/sprites/halo01.vmt"), 
         1, 1, 0.25, 100.0, 1.0, 

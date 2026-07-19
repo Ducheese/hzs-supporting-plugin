@@ -299,6 +299,44 @@ stock void DebugDrawBBox(int entity, float duration, int color[4])
 }
 
 //========================================================================================
+// 半径可视化（Debug: 24段光束画圆环）
+//========================================================================================
+
+stock void DebugDrawRadius(const float center[3], float radius, int color[4], float duration)
+{
+    int sprite = PrecacheModel(TOOL_BEAMSPRITE, true);
+    float ground[3];
+    ground = center;
+
+    Handle tr = TR_TraceRayFilterEx(center, view_as<float>({90.0, 0.0, 0.0}), MASK_SOLID, RayType_Infinite, TraceEntityFilter_Ground);
+    if (TR_DidHit(tr))
+    {
+        float end[3];
+        TR_GetEndPosition(end, tr);
+        ground[2] = end[2] + 2.0;
+    }
+    delete tr;
+
+    int segments = 24;
+    float prev[3];
+    for (int i = 0; i <= segments; i++)
+    {
+        float ang = 2.0 * FLOAT_PI * float(i) / float(segments);
+        float cur[3];
+        cur[0] = ground[0] + radius * Cosine(ang);
+        cur[1] = ground[1] + radius * Sine(ang);
+        cur[2] = ground[2];
+
+        if (i > 0)
+        {
+            TE_SetupBeamPoints(prev, cur, sprite, 0, 0, 0, duration, 2.0, 2.0, 1, 0.0, color, 0);
+            TE_SendToAll();
+        }
+        prev = cur;
+    }
+}
+
+//========================================================================================
 // Trace 过滤器
 //========================================================================================
 
@@ -361,14 +399,14 @@ stock bool TeleportOffSkybox(int entity)
 }
 
 //========================================================================================
-// 扫描最近存活人类，写入 m_leader
+// 扫描最近存活人类（适用于任意实体，如僵尸、传送门等）
 //========================================================================================
 
-stock int UpdateNearestTarget(int zombie)
+stock int FindNearestHuman(int entity)
 {
     int target = -1;
-    float zOrigin[3], bestDist = 999999.0;
-    GetEntPropVector(zombie, Prop_Send, "m_vecOrigin", zOrigin);
+    float origin[3], bestDist = 999999.0;
+    GetEntPropVector(entity, Prop_Send, "m_vecOrigin", origin);
 
     for (int i = 1; i <= MaxClients; i++)
     {
@@ -376,18 +414,11 @@ stock int UpdateNearestTarget(int zombie)
             continue;
         float tp[3];
         GetClientEyePosition(i, tp);
-        float d = GetVectorDistance(zOrigin, tp);
+        float d = GetVectorDistance(origin, tp);
         if (d < bestDist) { bestDist = d; target = i; }
     }
 
-    if (target > 0)
-    {
-        SetEntDataEnt2(zombie, g_iLeaderOffset, target);
-        return target;
-    }
-
-    SetEntDataEnt2(zombie, g_iLeaderOffset, zombie);
-    return -1;
+    return target;
 }
 
 //========================================================================================
