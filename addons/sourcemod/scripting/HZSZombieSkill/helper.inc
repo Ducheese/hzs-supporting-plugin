@@ -158,7 +158,7 @@ public Action Timer_DeleteParticle(Handle timer, int entity)
         if (StrEqual(classname, "info_particle_system", false))
         {
             PopEntRef(g_iParticle, PARTICLE_POOL, entity);
-            RemoveEdict(entity);
+            AcceptEntityInput(entity, "Kill");
         }
     }
 

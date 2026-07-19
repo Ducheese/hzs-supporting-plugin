@@ -498,10 +498,10 @@ void GetFlyingMode(int zombie, int target)
         GetEntPropVector(zombie, Prop_Send, "m_vecOrigin", zPos);
         GetEntPropVector(target, Prop_Send, "m_vecOrigin", tPos);
 
-        // 只看水平距离
         zPos[2] = 0.0;
         tPos[2] = 0.0;
 
+        // 只看水平距离，没法用公共距离函数
         if (GetVectorDistance(zPos, tPos) <= 500.0)
             g_Mode[zombie] = FLY_TARGET;                // 执行低飞模式
         else
@@ -565,6 +565,7 @@ public Action OnFlyTakeDamage(int zombie, int &attacker, int &inflictor, float &
             GetEntPropVector(target, Prop_Send, "m_vecOrigin", tPos);
             zPos[2] = 0.0;
             tPos[2] = 0.0;
+            // 只看水平距离，没法用公共距离函数
             targetDist = GetVectorDistance(zPos, tPos) * GAMEUNITS_TO_METERS;
         }
         PrintToChat(attacker, "高度: %.0f | 衰减: %.0f%% | 伤害: %.0f -> %.0f | 子弹: %d | 目标距离: %.1fm",

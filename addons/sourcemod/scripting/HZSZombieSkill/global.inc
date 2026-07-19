@@ -66,7 +66,6 @@
 #define MYSTERY_PORTAL_RANGE    10.0       // 神秘僵尸能发动传送门的最远距离（米）
 #define MYSTERY_PORTAL_RADIUS   1.0        // 神秘僵尸传送门有效半径（米）
 #define MYSTERY_PORTAL_TIME     3.0        // 神秘僵尸传送门蓄力时间（秒）
-#define MYSTERY_PORTAL_CD       10.0       // 神秘僵尸传送门的冷却时间（秒）
 
 // 技能参数（BOSS安哥拉）
 #define ANGELA_CALL_TIME        15.0       // 安哥拉呼唤僵尸集中攻击某个人类的持续时间（秒）
@@ -230,6 +229,14 @@ int g_iImposterTarget[2048];                                     // 伪人僵尸
 int g_iFakeBody[2048];                                           // 假身体 prop_dynamic 实体号
 bool g_bImposterPaused[2048];							         // 人类停步时伪人也暂停跟随，尽量避免腿不动但模型继续平移的情况
 Handle g_hImposterSync[2048] = {INVALID_HANDLE, ...};            // 假身体动画同步timer
+
+//========================================================================================
+// 技能状态管理（神秘僵尸）
+//========================================================================================
+
+Handle g_hMysteryNear[2048] = {INVALID_HANDLE, ...};             // 
+Handle g_hMysterySwap[2048] = {INVALID_HANDLE, ...};             // 
+int g_iPortal[2048];                                             // 
 
 //========================================================================================
 // 技能状态管理（BOSS安哥拉）

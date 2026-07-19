@@ -47,7 +47,7 @@ public void Han_OnZombieCreated(int zombie)
     }
     else if (IsSameName(zombie, ZOMBIE_MYSTERY))
     {
-        g_hMysteryPortal[zombie] = CreateTimer(0.1, Timer_MysteryPortalThink, zombie, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
+        g_hMysteryNear[zombie] = CreateTimer(0.1, Timer_MysteryNearThink, zombie, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
     }
     else if (IsSameName(zombie, BOSS_ANGELA))
     {
@@ -125,7 +125,13 @@ public void Han_OnZombieDeath(int zombie, int killer)
     }
     else if (IsSameName(zombie, ZOMBIE_MYSTERY))
     {
-        // 什么都不做
+        if (g_hMysteryNear[zombie] != INVALID_HANDLE)
+        {
+            KillTimer(g_hMysteryNear[zombie]);
+            g_hMysteryNear[zombie] = INVALID_HANDLE;
+        }
+
+        CleanupMysteryPortal(zombie);
     }
     else if (IsSameName(zombie, BOSS_ANGELA))
     {
@@ -410,6 +416,11 @@ void InitZombieState(int zombie)
     g_iFakeBody[zombie] = -1;
     g_hImposterSync[zombie] = INVALID_HANDLE;
     g_bImposterPaused[zombie] = false;
+
+    // 神秘僵尸 — 传送门
+    g_hMysteryNear[zombie] = INVALID_HANDLE;
+    g_hMysterySwap[zombie] = INVALID_HANDLE;
+    g_iPortal[zombie] = -1;
 
     // BOSS 安哥拉 — 飞行
     g_hFly[zombie] = INVALID_HANDLE;

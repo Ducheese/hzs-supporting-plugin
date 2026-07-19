@@ -252,6 +252,9 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
         }
 
         // 安哥拉飞行刮风（不影响被擒抱/陷阱控制的玩家）
+        /**
+         * 如果有多个安哥拉，会取推力最大，也就是距离最近的为准
+         */
         if (!g_bIsGrappled[client] && !g_bIsStuck[client])
             ApplyWindPush(client, vel);
 

@@ -245,7 +245,7 @@ void ClearViewControl(int victim)
 
         if (StrEqual(classname, "point_viewcontrol", false))
         {
-            RemoveEdict(entity);
+            AcceptEntityInput(entity, "Kill");
         }
     }
 
