@@ -256,7 +256,7 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
          * 如果有多个安哥拉，会取推力最大，也就是距离最近的为准
          */
         if (!g_bIsGrappled[client] && !g_bIsStuck[client])
-            ApplyWindPush(client, vel);
+            WindPush(client, vel);
 
         // Bot 自动捡主武器
         if (IsFakeClient(client))
@@ -271,7 +271,6 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
          * 理论上应该写在death事件钩子里，前提是botaddfix普及
          * 或者 fakerespawn 主动创建死亡事件
          */
-        // 
         if (g_iZombieCall[client] != -1)
         {
             g_iZombieCall[client] = -1;         // 防止这里重复执行
@@ -282,15 +281,13 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
             {
                 int zombie = Han_GetZombieByIndex(i);
 
-                if (Han_IsZombie(zombie))
-                {
-                    if (!IsValidEntity(zombie) || GetEntProp(zombie, Prop_Data, "m_iHealth") <= 0)
-                    {
-                        continue;
-                    }
+                if (!Han_IsZombie(zombie))
+                    continue;
 
-                    Han_UnlockZombie(zombie);   // 解除所有僵尸的强制目标（这里对多个安哥拉的考虑欠佳）
-                }
+                if (!IsValidEntity(zombie) || GetEntProp(zombie, Prop_Data, "m_iHealth") <= 0)
+                    continue;
+
+                Han_UnlockZombie(zombie);       // 解除所有僵尸的强制目标（这里对多个安哥拉的考虑欠佳）
             }
         }
     }
@@ -374,7 +371,7 @@ void InitSoundCache()
     PrecacheSound(SFX_WITCH1, true);
     PrecacheSound(SFX_WITCH2, true);
     PrecacheSound(SFX_MYSTERY, true);
-    
+
     // 音频预缓存（BOSS安哥拉）
     PrecacheSound(SFX_CALL, true);
     PrecacheSound(SFX_SMASH, true);

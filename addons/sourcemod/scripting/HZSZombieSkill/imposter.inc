@@ -88,7 +88,7 @@ void KillFakeBody(int zombie)
 // 同步假身动画和朝向
 void SyncFakeBodyAnimation(int zombie, int fake, int target)
 {
-    // 人停→伪人停，人动→恢复
+    // 人停 → 伪人停，人动 → 恢复
     if (IsHumanMoving(target))
     {
         if (g_bImposterPaused[zombie])
@@ -134,7 +134,7 @@ int CreateFakeBody(int zombie, int human)
     DispatchKeyValue(fake, "model", model);
     DispatchSpawn(fake);
 
-    // 禁用客户端自主动画——改为服务端全量同步驱动
+    // 禁用客户端自主动画，改为服务端全量同步驱动
     SetEntProp(fake, Prop_Data, "m_bClientSideAnimation", 0);
 
     SetVariantString("!activator");

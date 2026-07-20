@@ -2,20 +2,25 @@
 // 嗜血女巫技能：致幻（两阶段：接近→灰度，长时间后→致盲致聋+方向键旋转）
 //========================================================================================
 
-// 每只Witch自己的near检查timer
+// 每只 Witch 自己的 near 检查 timer
 public Action Timer_WitchNearThink(Handle timer, int zombie)
 {
     if (!IsValidEntity(zombie) || GetEntProp(zombie, Prop_Data, "m_iHealth") <= 0)
     {
         g_hWitchNear[zombie] = INVALID_HANDLE;
 
-        // 灾变插件可能直接kill所有女巫而不触发死亡事件
-        // 如果没有任何存活的witch，清理所有Phase 1受害者
+        // 灾变插件可能直接 kill 所有女巫而不触发死亡事件
+        // 如果没有任何存活的 Witch，清理所有 Phase 1 受害者
         bool anyAlive;
         for (int i = 1; i <= 2048; i++)
         {
-            if (IsValidEntity(i) && IsSameName(i, ZOMBIE_WITCH)) { anyAlive = true; break; }
+            if (IsValidEntity(i) && IsSameName(i, ZOMBIE_WITCH))
+            {
+                anyAlive = true;
+                break;
+            }
         }
+
         /**
          * 理论上如果有多个女巫在场然后被kill了
          * 这里的清理会重复执行，不过只要不报错就无所谓
@@ -53,7 +58,7 @@ public Action Timer_WitchNearThink(Handle timer, int zombie)
                     StartWitchPhase2(victim);
             }
         }
-        // out-of-range 不在此timer处理，Phase 1/2清理见下方
+        // out-of-range 不在此 timer 处理，Phase 1/2 清理见下方
     }
 
     // 清理失去覆盖的Phase 1玩家（仅首个witch执行，避免重复）
@@ -63,7 +68,11 @@ public Action Timer_WitchNearThink(Handle timer, int zombie)
     int firstWitch = -1;
     for (int i = 1; i <= 2048; i++)
     {
-        if (IsValidEntity(i) && IsSameName(i, ZOMBIE_WITCH)) { firstWitch = i; break; }
+        if (IsValidEntity(i) && IsSameName(i, ZOMBIE_WITCH))
+        {
+            firstWitch = i;
+            break;
+        }
     }
     if (zombie == firstWitch)
         CleanupOrphanedWitchPhase1();
@@ -71,7 +80,7 @@ public Action Timer_WitchNearThink(Handle timer, int zombie)
     return Plugin_Continue;
 }
 
-// 清理失去所有女巫覆盖的Phase 1玩家（可选排除指定实体）
+// 清理失去所有女巫覆盖的 Phase 1 玩家（可选排除指定实体）
 void CleanupOrphanedWitchPhase1(int excludeEntity = -1)
 {
     for (int victim = 1; victim <= MaxClients; victim++)
@@ -110,7 +119,7 @@ void StartWitchPhase1(int victim)
         g_iWitchMildCC[victim] = cc;
 }
 
-// 第二阶段：极端灰度+隐藏模型+按键旋转+音频高切
+// 第二阶段：极端灰度 + 隐藏模型 + 按键旋转 + 音频高切
 void StartWitchPhase2(int victim)
 {
     if (g_iWitchPhase[victim] == 2)
@@ -120,16 +129,16 @@ void StartWitchPhase2(int victim)
     g_bIsBlind[victim] = true;
     g_iWitchKeyRot[victim] = GetRandomInt(0, 2);
 
-    // 关闭第一阶段CC
+    // 关闭第一阶段 CC
     KillWitchCC(victim);
 
-    // 开启第二阶段CC（极端灰度+色阶量化）
+    // 开启第二阶段 CC（极端灰度 + 色阶量化）
     int cc2 = CreateWitchCC(victim, LUT_WITCH_SEVERE);
     if (cc2 != -1)
         g_iWitchSevereCC[victim] = cc2;
 
-    // 高频切除：交替33↔34，每次在1.6s过期前（1.4s）切到另一个
-    // 33和34链路完全相同（DFR + FLT LP 1kHz），切换听不出区别
+    // 高频切除：交替 33↔34，每次在 1.6s 过期前（1.4s）切到另一个
+    // 33 和 34 链路完全相同（DFR + FLT LP 1kHz），切换听不出区别
     g_bWitchDSPFlip[victim] = false;
     ClientCommand(victim, "dsp_player 33");
     if (g_hWitchDSPToggle[victim] != INVALID_HANDLE)
@@ -139,7 +148,7 @@ void StartWitchPhase2(int victim)
     }
     g_hWitchDSPToggle[victim] = CreateTimer(1.4, Timer_WitchDSPToggle, victim, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
 
-    // 致幻音乐（wav自带循环标记才会loop）
+    // 致幻音乐（wav 自带循环标记才会 loop）
     EmitSoundToClient(victim, SFX_WITCH2, _, SNDCHAN_STATIC);
 
     // 提示（好蠢的写法）
@@ -155,7 +164,7 @@ void StartWitchPhase2(int victim)
     CPrintToChat(victim, "{green}[华仔] {red}你被%s的幻术吞噬了！", ZombieName);
     EmitSoundToClient(victim, SFX_WITCH1, _, SNDCHAN_STATIC, SNDLEVEL_NORMAL, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
 
-    // 10秒自毁（先kill旧的防泄露）
+    // 10 秒自毁（先 kill 旧的防泄露）
     if (g_hWitchBlind[victim] != INVALID_HANDLE)
     {
         KillTimer(g_hWitchBlind[victim]);
@@ -164,7 +173,7 @@ void StartWitchPhase2(int victim)
     g_hWitchBlind[victim] = CreateTimer(WITCH_BLIND_TIME, Timer_DeBlind, victim);
 }
 
-// 创建per-player CC实体（通用）
+// 创建 per-player CC 实体（通用）
 int CreateWitchCC(int victim, const char[] lutFile)
 {
     int cc = CreateEntityByName("color_correction");
@@ -201,7 +210,7 @@ int CreateWitchCC(int victim, const char[] lutFile)
     return cc;
 }
 
-// 销毁玩家所有CC实体
+// 销毁玩家所有 CC 实体
 void KillWitchCC(int client)
 {
     int cc1 = g_iWitchMildCC[client];
@@ -230,11 +239,11 @@ void EndWitchBlind(int victim)
     g_iWitchPhase[victim] = 0;
     g_flWitchNearTime[victim] = 0.0;
 
-    // 停止DSP和音乐
+    // 停止 DSP 和音乐
     ClientCommand(victim, "dsp_player 0");
     StopSound(victim, SNDCHAN_STATIC, SFX_WITCH2);
 
-    // 清理timer
+    // 清理 timer
     if (g_hWitchBlind[victim] != INVALID_HANDLE)
     {
         KillTimer(g_hWitchBlind[victim]);
@@ -249,7 +258,7 @@ void EndWitchBlind(int victim)
     // 重置按键映射
     g_iWitchKeyRot[victim] = -1;
 
-    // 杀所有CC
+    // 杀所有 CC
     KillWitchCC(victim);
 }
 
@@ -261,7 +270,7 @@ public Action Timer_DeBlind(Handle timer, int client)
     return Plugin_Stop;
 }
 
-// 交替33↔34防DSP过期（两者DFR+FLT LP 1kHz链路完全相同）
+// 交替 33↔34 防 DSP 过期（两者 DFR + FLT LP 1kHz 链路完全相同）
 public Action Timer_WitchDSPToggle(Handle timer, int victim)
 {
     if (!IsHumanAlive(victim) || !g_bIsBlind[victim])
@@ -275,7 +284,7 @@ public Action Timer_WitchDSPToggle(Handle timer, int victim)
     return Plugin_Continue;
 }
 
-// 致盲状态下的模型隐藏：SetTransmit回调（不隐藏受害者自己）
+// 致盲状态下的模型隐藏：SetTransmit 回调（不隐藏受害者自己）
 public Action OnWitchBlindSetTransmit(int entity, int client)
 {
     if (g_bIsBlind[client] && entity != client)

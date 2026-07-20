@@ -1,6 +1,6 @@
-// ========================================================================================
+//========================================================================================
 // 异形斗兽技能：冲撞
-// ========================================================================================
+//========================================================================================
 
 void StartDash(int zombie, int victim)
 {
@@ -15,13 +15,13 @@ void StartDash(int zombie, int victim)
     Han_SetZombieTarget(zombie, victim, 2.5);
 
     // 冲撞动作
-    Han_SetCustomAnimation(zombie, "run_shoot_knife", 2.5);  // 动作的总持续时间（秒）
+    Han_SetCustomAnimation(zombie, "run_shoot_knife", 2.5);    // 动作的总持续时间（秒）
 
-    // 延时1秒后才开始移动
-    CreateTimer(1.0, Timer_DashMovement, zombie);  // 播放动作1秒起才开始产生冲撞位移
+    // 延时 1 秒后才开始移动
+    CreateTimer(1.0, Timer_DashMovement, zombie);              // 播放动作1秒起才开始产生冲撞位移
 
     // 延时开放技能占位
-    CreateTimer(YIXING_DASH_CD+2.5, Timer_SkillEnd, zombie);
+    CreateTimer(YIXING_DASH_CD + 2.5, Timer_SkillEnd, zombie);
 
     // 音效
     EmitAmbientSound(SFX_DASH1, pos, _, SNDLEVEL_GUNFIRE, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
@@ -88,7 +88,7 @@ public Action Timer_DashThink(Handle timer, int zombie)
 
     // 生成撞飞效果
     DashKnockback(zombie);
-    
+
     return Plugin_Continue;
 }
 
@@ -116,7 +116,7 @@ void DashKnockback(int zombie)
             {
                 // 状态管理
                 g_bIsStuck[victim] = false;
-                
+
                 // 造成伤害
                 SDKHooks_TakeDamage(victim, zombie, zombie, YIXING_DASH_DAMAGE, DMG_SLASH, _, _, _, false);
 
@@ -145,12 +145,12 @@ public Action Timer_Deafness(Handle timer, int client)
     return Plugin_Stop;
 }
 
-// ========================================================================================
+//========================================================================================
 // 异形斗兽技能：震荡波
-// ========================================================================================
+//========================================================================================
 
 void StartShockWave(int zombie)
-{   
+{
     // 基础信息
     float pos[3];
     GetEntPropVector(zombie, Prop_Send, "m_vecOrigin", pos);
@@ -160,11 +160,11 @@ void StartShockWave(int zombie)
     DynamicLight(pos, 75, 75, 255, 10, 500.0, 0.25, 0.0);
 
     // 光圈
-    TE_SetupBeamRingPoint(pos, 10.0, 1000.0, 
-        PrecacheModel("materials/sprites/lgtning.vmt"), 
-        PrecacheModel("materials/sprites/halo01.vmt"), 
-        1, 1, 0.25, 100.0, 1.0, 
-        {75, 75, 255, 255}, 
+    TE_SetupBeamRingPoint(pos, 10.0, 1000.0,
+        PrecacheModel("materials/sprites/lgtning.vmt"),
+        PrecacheModel("materials/sprites/halo01.vmt"),
+        1, 1, 0.25, 100.0, 1.0,
+        {75, 75, 255, 255},
         0, 0);
     TE_SendToAll();
 
@@ -187,14 +187,14 @@ void ShockWaveEffect(int zombie)
             if (GetMeterDistance(zombie, victim) < YIXING_SHOCK_RADIUS)
             {
                 // 护甲扣减固定值
-                SetEntProp(victim, Prop_Send, "m_ArmorValue", 
-                    GetEntProp(victim, Prop_Send, "m_ArmorValue") - YIXING_SHOCK_ARMOR > 0 ? 
-                    GetEntProp(victim, Prop_Send, "m_ArmorValue") - YIXING_SHOCK_ARMOR : 
+                SetEntProp(victim, Prop_Send, "m_ArmorValue",
+                    GetEntProp(victim, Prop_Send, "m_ArmorValue") - YIXING_SHOCK_ARMOR > 0 ?
+                    GetEntProp(victim, Prop_Send, "m_ArmorValue") - YIXING_SHOCK_ARMOR :
                     0
                 );
 
                 // 剥夺当前弹匣
-                int weapon = GetEntPropEnt(victim, Prop_Send, "m_hActiveWeapon");       
+                int weapon = GetEntPropEnt(victim, Prop_Send, "m_hActiveWeapon");
                 if (weapon != -1)
                 {
                     if (HasEntProp(weapon, Prop_Send, "m_iClip1"))

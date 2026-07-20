@@ -165,9 +165,9 @@ public Action Timer_RepeatHealing(Handle timer, int entity)
                 continue;
             }
 
-            SetEntProp(zombie, Prop_Data, "m_iHealth", 
-                GetEntProp(zombie, Prop_Data, "m_iHealth") + HEAL_DAMAGE < g_iMaxHealth[zombie] ? 
-                GetEntProp(zombie, Prop_Data, "m_iHealth") + HEAL_DAMAGE : 
+            SetEntProp(zombie, Prop_Data, "m_iHealth",
+                GetEntProp(zombie, Prop_Data, "m_iHealth") + HEAL_DAMAGE < g_iMaxHealth[zombie] ?
+                GetEntProp(zombie, Prop_Data, "m_iHealth") + HEAL_DAMAGE :
                 g_iMaxHealth[zombie]
             );
         }
@@ -259,25 +259,25 @@ void SetVisible(int zombie)
 
 void GiveHealth(int client, int value)
 {
-    SetEntProp(client, Prop_Data, "m_iHealth", 
-        GetEntProp(client, Prop_Data, "m_iHealth") + value < MAX_HEALTH ? 
-        GetEntProp(client, Prop_Data, "m_iHealth") + value : 
+    SetEntProp(client, Prop_Data, "m_iHealth",
+        GetEntProp(client, Prop_Data, "m_iHealth") + value < MAX_HEALTH ?
+        GetEntProp(client, Prop_Data, "m_iHealth") + value :
         MAX_HEALTH
     );
 }
 
 void GiveArmor(int client, int value)
 {
-    SetEntProp(client, Prop_Send, "m_ArmorValue", 
-        GetEntProp(client, Prop_Send, "m_ArmorValue") + value < 100 ? 
-        GetEntProp(client, Prop_Send, "m_ArmorValue") + value : 
+    SetEntProp(client, Prop_Send, "m_ArmorValue",
+        GetEntProp(client, Prop_Send, "m_ArmorValue") + value < 100 ?
+        GetEntProp(client, Prop_Send, "m_ArmorValue") + value :
         100
     );
 }
 
 void GiveMoney(int client, int value)
 {
-    SetEntProp(client, Prop_Send, "m_iAccount", 
+    SetEntProp(client, Prop_Send, "m_iAccount",
         GetEntProp(client, Prop_Send, "m_iAccount") + value < MAX_MONEY ?
         GetEntProp(client, Prop_Send, "m_iAccount") + value :
         MAX_MONEY

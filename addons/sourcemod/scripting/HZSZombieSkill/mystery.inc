@@ -82,7 +82,7 @@ public Action Timer_SwapPosition(Handle timer, int zombie)
 
     int nearest = FindNearestHuman(portal);
     if (nearest != -1 && GetMeterDistance(portal, nearest) < MYSTERY_PORTAL_RADIUS
-    && !g_bIsGrappled[nearest] 
+    && !g_bIsGrappled[nearest]
     && !g_bIsStuck[nearest]
     )
         SwapPosition(zombie, nearest);

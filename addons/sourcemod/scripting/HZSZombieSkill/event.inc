@@ -81,7 +81,7 @@ public void Han_OnZombieDeath(int zombie, int killer)
     }
     else if (IsSameName(zombie, ZOMBIE_HEAL))
     {
-        // 清理逻辑比较简单，直接裸露出来了
+        // 清理逻辑比较简单，直接内联
         if (g_hHeal[zombie] != INVALID_HANDLE)
         {
             KillTimer(g_hHeal[zombie]);
@@ -163,7 +163,7 @@ public void Han_OnZombieDeath(int zombie, int killer)
 
                 if (g_iDebrisOwner == zombie)
                     RemoveDebrisSystem(zombie);
-                    
+
                 OffsetAnimZ(zombie, false);
             }
         }
@@ -290,7 +290,7 @@ public void Han_OnZombieHurt(int zombie, int attacker)
         }
     }
     else if (IsSameName(zombie, BOSS_YIXING) && !g_bIsSkillUsed[zombie])
-    {        
+    {
         // 冲撞
         if (IsTargetForward(zombie, attacker)                     // 在前方
         && attacker == GetEntDataEnt2(zombie, g_iLeaderOffset))   // 且目标和攻击者是同一个
@@ -322,7 +322,7 @@ public void Han_OnZombieAttack(int zombie, int victim)
     }
     else if (IsSameName(zombie, ZOMBIE_DEIMOS) && !g_bIsSkillUsed[zombie])
     {
-        // 因为逻辑很简短，就直接裸露出来了
+        // 因为逻辑很短，直接内联
         g_bIsSkillUsed[zombie] = true;
         g_bIsStuck[victim] = false;        // 解除憎恶屠夫的控制
         StartKnockback(zombie, victim);

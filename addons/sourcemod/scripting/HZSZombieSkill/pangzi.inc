@@ -92,7 +92,7 @@ public Action Timer_ChargeThink(Handle timer, DataPack pack)
     if (GetMeterDistance(zombie, victim) <= PANGZI_GRAPPLE_RANGE)
     {
         ClearChargeHandles(zombie);
-        
+
         SetEntityMoveType(zombie, MOVETYPE_STEP);
         StartGrapple(zombie, victim);
         return Plugin_Stop;
@@ -101,7 +101,7 @@ public Action Timer_ChargeThink(Handle timer, DataPack pack)
     // 如果不是以上情况，则持续施加向目标的推力
     CreateKnockback(victim, zombie, view_as<float>({-PANGZI_CHARGE_FORCE, -PANGZI_CHARGE_FORCE, 0.0}));
 
-    // // 辅助线（记得删）
+    // 辅助线
     // TE_SetupBeamPoints(pos, fTargetOrigin, g_iBeamSprite, 0, 0, 0, 5.0, 2.0, 2.0, 1, 0.0, {255, 0, 0, 255}, 15);
     // TE_SendToAll();
 
@@ -109,14 +109,14 @@ public Action Timer_ChargeThink(Handle timer, DataPack pack)
     float pos[3];
     GetEntPropVector(zombie, Prop_Send, "m_vecOrigin", pos);
     EmitAmbientSound(SFX_CHARGE2, pos, _, SNDLEVEL_GUNFIRE, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
-    
+
     return Plugin_Continue;
 }
 
 public Action Timer_EndCharge(Handle timer, int zombie)
 {
-    // 没有抱到人，关闭冲锋句柄，进入CD冷却
-    if (g_hCharge[zombie] != INVALID_HANDLE) 
+    // 没有抱到人，关闭冲锋句柄，进入 CD 冷却
+    if (g_hCharge[zombie] != INVALID_HANDLE)
     {
         ClearChargeHandles(zombie);    // 清理计时器和 DataPack
 
@@ -132,10 +132,10 @@ void ClearChargeHandles(int zombie)
     if (g_hCharge[zombie] != INVALID_HANDLE)
     {
         KillTimer(g_hCharge[zombie]);
-        g_hCharge[zombie] = INVALID_HANDLE; 
+        g_hCharge[zombie] = INVALID_HANDLE;
 
         KillTimer(g_hMovetype[zombie]);
-        g_hMovetype[zombie] = INVALID_HANDLE; 
+        g_hMovetype[zombie] = INVALID_HANDLE;
     }
 
     if (g_hChargePack[zombie] != INVALID_HANDLE)
@@ -181,7 +181,7 @@ void StartGrapple(int zombie, int victim)
 
     pack.WriteCell(zombie);
     pack.WriteCell(victim);
-    
+
     g_hGrapple[victim] = CreateTimer(1.0, Timer_GrappleThink, pack, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
 
     // 文字提示
@@ -191,7 +191,7 @@ void StartGrapple(int zombie, int victim)
     }
     else
     {
-        CPrintToChatAll("{green}[华仔] {red}%s擒抱住了%s，快去帮忙掩护！", ZombieName, g_ClientName[victim]);   
+        CPrintToChatAll("{green}[华仔] {red}%s擒抱住了%s，快去帮忙掩护！", ZombieName, g_ClientName[victim]);
     }
 
     // 吼叫音效
@@ -202,7 +202,7 @@ void GrappleFirstView(int zombie, int victim)
 {
     float viewOffset[3] = {150.0, 0.0, 250.0};    // 这个位置决定了“眼睛”在哪里，可以放在僵尸的肩膀或头顶
     float viewAngles[3] = {15.0, 180.0, 0.0};     // 这个角度决定了“眼睛”朝哪里看，{0, 180, 0} 大致是朝向后方，即僵尸的脸
-    
+
     int viewControl = CreateEntityByName("point_viewcontrol");
 
     if (viewControl != -1)
@@ -231,7 +231,7 @@ void GrappleThirdView(int zombie, int victim)
 
     TeleportEntity(victim, viewOffset, viewAngles, NULL_VECTOR);
 
-    SetEntityMoveType(victim, MOVETYPE_NONE);   // 必须要有，不然就闪退
+    SetEntityMoveType(victim, MOVETYPE_NONE);    // 必须要有，不然就闪退
 }
 
 void ClearViewControl(int victim)
@@ -257,7 +257,7 @@ public Action Timer_GrappleThink(Handle timer, DataPack pack)
     pack.Reset();
     int zombie = pack.ReadCell();
     int victim = pack.ReadCell();
-    
+
     if (!IsValidEntity(zombie) || GetEntProp(zombie, Prop_Data, "m_iHealth") <= 0)
     {
         KillTimer(timer);
@@ -292,7 +292,7 @@ void ClearGrappleHandles(int victim)
     if (g_hGrapple[victim] != INVALID_HANDLE)
     {
         KillTimer(g_hGrapple[victim]);
-        g_hGrapple[victim] = INVALID_HANDLE; 
+        g_hGrapple[victim] = INVALID_HANDLE;
     }
 
     if (g_hGrapplePack[victim] != INVALID_HANDLE)
@@ -371,7 +371,7 @@ void StartPickupAndThrow(int pangzi, int victim)
 
             PickupAndThrowZombie(pangzi, zombie, victim);
             g_bIsPickup[zombie] = true;
-            
+
             if (thrownCount >= thrownMax)
             {
                 break;
@@ -388,7 +388,7 @@ void StartPickupAndThrow(int pangzi, int victim)
 
         // 文字提示
         CPrintToChat(victim, "{green}[华仔] {red}%s想抓些什么丢过来！", ZombieName);
-        CreateTimer(PANGZI_THROW_HOLD+PANGZI_THROW_FLYTIME+PANGZI_THROW_CD, Timer_SkillEnd, pangzi);
+        CreateTimer(PANGZI_THROW_HOLD + PANGZI_THROW_FLYTIME + PANGZI_THROW_CD, Timer_SkillEnd, pangzi);
     }
     else
         g_bIsSkillUsed[pangzi] = false;    // 没有投掷任何僵尸，取消技能占位
@@ -410,13 +410,13 @@ void PickupAndThrowZombie(int pangzi, int zombie, int victim)
 void PickupZombie(int pangzi, int zombie)
 {
     float viewOffset[3] = {100.0, 0.0, 150.0};
-    
+
     SetVariantString("!activator");
     AcceptEntityInput(zombie, "SetParent", pangzi);
 
     TeleportEntity(zombie, viewOffset, NULL_VECTOR, NULL_VECTOR);
     SetEntityMoveType(zombie, MOVETYPE_NONE);
-    
+
     Han_SetZombieTarget(zombie, zombie, 0.0);
 }
 
@@ -460,7 +460,7 @@ void ThrowZombie(int zombie, int victim)
     GetEntPropVector(zombie, Prop_Send, "m_vecOrigin", startPos);      // 已经解除父子关系了，理论上是绝对坐标
     GetEntPropVector(victim, Prop_Send, "m_vecOrigin", targetPos);
 
-    // 随即摆动
+    // 随机摆动
     targetPos[0] += GetRandomFloat(-PANGZI_THROW_SPREAD, PANGZI_THROW_SPREAD);
     targetPos[1] += GetRandomFloat(-PANGZI_THROW_SPREAD, PANGZI_THROW_SPREAD);
 
@@ -481,21 +481,21 @@ void ThrowZombie(int zombie, int victim)
          *     SetEntPropVector(dummy, Prop_Send, "m_vecMins", mins);
          *     SetEntPropVector(dummy, Prop_Send, "m_vecMaxs", maxs);
          */
-        // 这里用error模型占位，反正看不见
+        // 这里用 error 模型占位，反正看不见
         SetEntityModel(dummy, "models/error.mdl");
         SetEntityRenderMode(dummy, RENDER_NONE);
 
-        // 生成dummy实体并传送初始位置
+        // 生成 dummy 实体并传送初始位置
         DispatchSpawn(dummy);
         TeleportEntity(dummy, startPos, NULL_VECTOR, NULL_VECTOR);
 
-        // 绑定僵尸到dummy实体上
+        // 绑定僵尸到 dummy 实体上
         SetVariantString("!activator");
         AcceptEntityInput(zombie, "SetParent", dummy);
 
-        // 设置dummy实体的碰撞体积
+        // 设置 dummy 实体的碰撞体积
         SetEntProp(dummy, Prop_Send, "m_CollisionGroup", 9);    // 只和世界有碰撞
-        SetEntProp(dummy, Prop_Send, "m_nSolidType", 2);    // SOLID_BBOX
+        SetEntProp(dummy, Prop_Send, "m_nSolidType", 2);        // SOLID_BBOX
         float mins[] = {-32.0, -32.0, 0.0};
         float maxs[] = {32.0, 32.0, 72.0};
         SetEntPropVector(dummy, Prop_Send, "m_vecMins", mins);
@@ -504,14 +504,14 @@ void ThrowZombie(int zombie, int victim)
         // 计算初始速度（抛物线核心），假设我们希望 1.0 秒飞到
         SetEntityMoveType(dummy, MOVETYPE_FLYGRAVITY);
 
-        float time = PANGZI_THROW_FLYTIME; 
+        float time = PANGZI_THROW_FLYTIME;
         float gravity = GetConVarFloat(FindConVar("sv_gravity"));
         float vel[3];
         vel[0] = (targetPos[0] - startPos[0]) / time;
         vel[1] = (targetPos[1] - startPos[1]) / time;
         vel[2] = (targetPos[2] - startPos[2]) / time + (0.5 * gravity * time);
 
-        // 发射dummy实体
+        // 发射 dummy 实体
         TeleportEntity(dummy, NULL_VECTOR, NULL_VECTOR, vel);
 
         // 延时清理
@@ -541,7 +541,7 @@ public Action Timer_LandZombie(Handle timer, DataPack pack)
         float landPos[3];
         GetEntPropVector(dummy, Prop_Send, "m_vecOrigin", landPos);
 
-        // 子弹僵尸解除父子关系，恢复movetype，重置目标
+        // 子弹僵尸解除父子关系，恢复 movetype，重置目标
         AcceptEntityInput(zombie, "ClearParent");
 
         TeleportEntity(zombie, landPos, NULL_VECTOR, NULL_VECTOR);

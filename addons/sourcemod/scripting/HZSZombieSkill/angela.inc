@@ -7,7 +7,7 @@ void StartSmash(int zombie)
     // 砸地
     Han_SetCustomAnimation(zombie, "Walk_shoot_knife3", 4.5);
     CreateTimer(2.0, Timer_CreateSmashKnock, zombie);       // 这里不能1.5，太短
-    
+
     // 延时开放技能占位
     CreateTimer(5.0, Timer_SkillEnd, zombie);
 }
@@ -49,13 +49,13 @@ public Action Timer_CreateSmashKnock(Handle timer, int zombie)
             // 生成击退
             Shake(victim, 30.0, 10.0, 3.0);
             CreateKnockback(zombie, victim, view_as<float>({400.0, 400.0, 800.0}));
-            
+
             // 生成伤害
             SDKHooks_TakeDamage(victim, zombie, zombie, ANGELA_KNOCK_DAMAGE, DMG_SLASH, _, _, _, false);
 
             // 音效
             EmitSoundToClient(victim, SFX_KNOCKBACK, _, SNDCHAN_STATIC, SNDLEVEL_NORMAL, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
-        }            
+        }
     }
 
     // 环境音效
@@ -64,8 +64,8 @@ public Action Timer_CreateSmashKnock(Handle timer, int zombie)
     EmitAmbientSound(SFX_SMASH, pos, _, SNDLEVEL_GUNFIRE, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
 
     // 特效？试试看————卧槽好帅
-    pos[2]+= 20.0;
-    TE_SetupBeamRingPoint(pos, 10.0, 1000.0, PrecacheModel("materials/sprites/lgtning.vmt"), PrecacheModel("materials/sprites/halo01.vmt"), 1, 1, 0.2, 100.0, 1.0, {255,75,75,255}, 0, 0);
+    pos[2] += 20.0;
+    TE_SetupBeamRingPoint(pos, 10.0, 1000.0, PrecacheModel("materials/sprites/lgtning.vmt"), PrecacheModel("materials/sprites/halo01.vmt"), 1, 1, 0.2, 100.0, 1.0, {255, 75, 75, 255}, 0, 0);
     TE_SendToAll();
 
     return Plugin_Continue;
@@ -94,7 +94,7 @@ public Action Timer_CreateSwingKnock(Handle timer, int zombie)
             {
                 continue;
             }
-            
+
             // 状态管理
             g_bIsStuck[victim] = false;
 
@@ -107,7 +107,7 @@ public Action Timer_CreateSwingKnock(Handle timer, int zombie)
 
             // 音效
             EmitSoundToClient(victim, SFX_KNOCKBACK, _, SNDCHAN_STATIC, SNDLEVEL_NORMAL, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
-        }            
+        }
     }
 
     // 环境音效
@@ -135,7 +135,7 @@ void StartCall(int zombie, int victim)
     g_iZombieCall[victim] = zombie;                    // 如果死了要提前unlock
     CreateTimer(ANGELA_CALL_TIME, Timer_DeCall, victim);
 
-    // 延时开放技能占位    
+    // 延时开放技能占位
     CreateTimer(5.0, Timer_SkillEnd, zombie);
 
     // 发出声音的实体填了1，如果写横线，大灾变插件里的soundhook会报错
@@ -190,8 +190,8 @@ void StartSelfHealing(int zombie)
     // 安哥拉在场上可能自愈多次，所以要初始化数组
     g_iBulletCount[zombie] = 0;
 
-    // 自愈句柄                                                                   
-    Han_SetZombieTarget(zombie, zombie, 0.0);                                                                          // 安哥拉自愈时杵着不动
+    // 自愈句柄
+    Han_SetZombieTarget(zombie, zombie, 0.0);                                                                       // 安哥拉自愈时杵着不动
     g_hHeal[zombie] = CreateTimer(1.0, Timer_RepeatSelfHealing, zombie, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);    // 每秒回一定量血，直到被打断或者满血为止
 
     // 文字提示
@@ -229,9 +229,9 @@ public Action Timer_RepeatSelfHealing(Handle timer, int zombie)
     }
 
     // 自愈过程中
-    SetEntProp(zombie, Prop_Data, "m_iHealth", 
-        GetEntProp(zombie, Prop_Data, "m_iHealth") + ANGELA_HEAL_DAMAGE < g_iMaxHealth[zombie] ? 
-        GetEntProp(zombie, Prop_Data, "m_iHealth") + ANGELA_HEAL_DAMAGE : 
+    SetEntProp(zombie, Prop_Data, "m_iHealth",
+        GetEntProp(zombie, Prop_Data, "m_iHealth") + ANGELA_HEAL_DAMAGE < g_iMaxHealth[zombie] ?
+        GetEntProp(zombie, Prop_Data, "m_iHealth") + ANGELA_HEAL_DAMAGE :
         g_iMaxHealth[zombie]
     );
 
@@ -364,7 +364,7 @@ void OffsetAnimZ(int zombie, bool bFlying)
 }
 
 public Action Timer_FlyThink(Handle timer, int zombie)
-{    
+{
     // 合法性检测
     if (!IsValidEntity(zombie) || GetEntProp(zombie, Prop_Data, "m_iHealth") <= 0)
     {
@@ -373,7 +373,7 @@ public Action Timer_FlyThink(Handle timer, int zombie)
         return Plugin_Stop;
     }
 
-    float currentTime = GetEngineTime();    
+    float currentTime = GetEngineTime();
 
     // 如果当前是地面模式，检查冷却是否结束
     if (g_BossState[zombie] == STATE_GROUND)
@@ -423,9 +423,9 @@ void FlyingLogic(int zombie)
     // 高度与飞行模式
     float dist = GetDistanceToGround(zombie);                  // 根据高度调整力度
     GetFlyingMode(zombie, target);                             // 根据水平距离决定高飞低飞
-    
+
     float FlyForce[3];
-    
+
     // 飞行模式分支
     if (g_Mode[zombie] == FLY_RANDOM)     // 没有目标或目标太远（看的是水平距离），高飞
     {
@@ -434,7 +434,7 @@ void FlyingLogic(int zombie)
             FlyForce[2] = 800.0;
             TeleportEntity(zombie, NULL_VECTOR, NULL_VECTOR, FlyForce);   // 不能理解为速度，更像是力，需要高频给与才有效果
             // PrintToChatAll("高飞模式 +");
-        } 
+        }
         else
         {
             // PrintToChatAll("高飞模式 -");
@@ -454,10 +454,10 @@ void FlyingLogic(int zombie)
         }
     }
 
-    // 扇动翅膀的声音
-    PlayWingSound(zombie);
+    // 扇动翅膀
+    FlapWing(zombie);
 
-    // [DEBUG] 画跟随线: 安哥拉 → m_leader
+    // 调试：画跟随线（安哥拉 → m_leader）
     {
         int leader = GetEntDataEnt2(zombie, g_iLeaderOffset);
         if (leader > 0 && IsClientInGame(leader))
@@ -509,11 +509,11 @@ void GetFlyingMode(int zombie, int target)
     }
     else
     {
-        g_Mode[zombie] = FLY_RANDOM;                    // 没有目标 也设置高飞模式
+        g_Mode[zombie] = FLY_RANDOM;                    // 没有目标，也设置高飞模式
     }
 }
 
-void PlayWingSound(int zombie)
+void FlapWing(int zombie)
 {
     float pos[3];
     GetEntPropVector(zombie, Prop_Send, "m_vecOrigin", pos);
@@ -523,7 +523,7 @@ void PlayWingSound(int zombie)
     if (currentTime - g_flLastFlySound[zombie] >= 0.8)
     {
         g_flLastFlySound[zombie] = currentTime;
-        
+
         Han_SetCustomAnimationEx(zombie, "run_upper_knife", 0.9);
         EmitAmbientSound(SFX_FLY, pos, _, SNDLEVEL_GUNFIRE, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
     }
@@ -603,7 +603,7 @@ void CreatePoisonFog()
         AcceptEntityInput(fog, "SetStartDistLerpTo");
         SetVariantString("1000");
         AcceptEntityInput(fog, "SetEndDistLerpTo");
-        
+
         // 驱动 fogstart/fogend 从当前值（5000/10000）平滑 lerp 到目标值（0/1000）
         AcceptEntityInput(fog, "StartFogTransition");
 
@@ -769,7 +769,7 @@ public Action Timer_PoisonDamage(Handle timer, int client)
 // 安哥拉技能：飞行增强 — 刮风推动玩家
 //========================================================================================
 
-void ApplyWindPush(int client, float vel[3])
+void WindPush(int client, float vel[3])
 {
     float clientPos[3];
     GetClientAbsOrigin(client, clientPos);
