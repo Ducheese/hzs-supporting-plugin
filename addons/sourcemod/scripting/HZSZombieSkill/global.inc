@@ -27,9 +27,9 @@
 #define ZOMBIE_EXPLODE         "自爆僵尸"
 #define ZOMBIE_HEAL            "治疗僵尸"
 #define ZOMBIE_GHOST           "幽灵僵尸"
-#define ZOMBIE_DEIMOS          "恶魔猎手"
-#define ZOMBIE_BUTCHER         "憎恶屠夫"
-#define ZOMBIE_WITCH           "嗜血女巫"
+#define ZOMBIE_DEIMOS          "恶魔僵尸"
+#define ZOMBIE_BUTCHER         "屠夫僵尸"
+#define ZOMBIE_WITCH           "女巫僵尸"
 #define ZOMBIE_IMPOSTER        "伪人僵尸"
 #define ZOMBIE_MYSTERY         "神秘僵尸"
 #define BOSS_ANGELA            "安哥拉"
@@ -250,6 +250,7 @@ Handle g_hHeal[2048] = {INVALID_HANDLE, ...};                    // 实现治疗
 
 // 飞行增强 — 毒雾
 int g_iFlightCount = 0;                                          // 正在飞行的安哥拉数量，用以处理多安哥拉飞行效果冲突
+int g_iFogGeneration = 0;                                        // 毒雾版本号，防止旧清理 timer 错误清除新雾
 int g_iFog = -1;                                                 // 毒雾env_fog_controller实体
 int g_iFogCC = -1;                                               // 毒雾color_correction实体
 char g_sOriginalSky[64];                                         // 原地图天空盒名

@@ -350,6 +350,7 @@ void StartPickupAndThrow(int pangzi, int victim)
             }
 
             if (IsSameName(zombie, ZOMBIE_GHOST)
+            || IsSameName(zombie, ZOMBIE_IMPOSTER)
             || IsSameName(zombie, BOSS_ANGELA)
             || IsSameName(zombie, BOSS_PANGZI)
             || IsSameName(zombie, BOSS_YIXING))

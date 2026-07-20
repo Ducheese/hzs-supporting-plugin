@@ -66,6 +66,7 @@ public void OnPluginStart()
     // 常规Hook
     HookEvent("round_start", Event_RoundStart);
     HookEvent("round_freeze_end", Event_RoundFreezeEnd);
+    HookEvent("player_spawn", Event_PlayerSpawn);
 
     // 每秒采样实体数
     // CreateTimer(1.0, Timer_EntityMonitor, _, TIMER_REPEAT);
@@ -117,6 +118,16 @@ public void Event_RoundFreezeEnd(Event event, const char[] name, bool dontBroadc
 
     // 解锁 Bot 自动捡武器
     g_bBotFindWeapon = true;
+}
+
+public void Event_PlayerSpawn(Event event, const char[] name, bool dontBroadcast)
+{
+    int client = GetClientOfUserId(event.GetInt("userid"));
+
+    if (g_iFog == -1 || !IsValidEntity(g_iFog))
+        return;
+
+    SetEntPropEnt(client, Prop_Send, "m_PlayerFog.m_hCtrl", g_iFog);
 }
 
 //========================================================================================

@@ -165,6 +165,12 @@ void CreateCall(int victim, float dist, float duration)
                 continue;
             }
 
+            // 呼唤对其他 Boss 无效
+            if (IsSameName(zombie, BOSS_ANGELA)
+            || IsSameName(zombie, BOSS_PANGZI)
+            || IsSameName(zombie, BOSS_YIXING))
+                continue;
+
             Han_SetZombieTarget(zombie, victim, duration);   // 不需要特别Han_UnlockZombie
         }
     }
@@ -415,7 +421,7 @@ void FlyingLogic(int zombie)
     if (target != -1)
         SetEntDataEnt2(zombie, g_iLeaderOffset, target);
     else
-        SetEntDataEnt2(zombie, g_iLeaderOffset, zombie);
+        SetEntDataEnt2(zombie, g_iLeaderOffset, -1);
 
     // HAN 受击钩子会设 MOVETYPE_NONE，每帧恢复
     SetEntityMoveType(zombie, MOVETYPE_STEP);
@@ -460,7 +466,7 @@ void FlyingLogic(int zombie)
     // 调试：画跟随线（安哥拉 → m_leader）
     {
         int leader = GetEntDataEnt2(zombie, g_iLeaderOffset);
-        if (leader > 0 && IsClientInGame(leader))
+        if (IsHumanAlive(leader))
         {
             float zEye[3], lPos[3];
             GetEntPropVector(zombie, Prop_Send, "m_vecOrigin", zEye);
@@ -611,7 +617,7 @@ void CreatePoisonFog()
 
         for (int client = 1; client <= MaxClients; client++)
         {
-            if (IsClientInGame(client))
+            if (IsValidClient(client))
                 SetEntPropEnt(client, Prop_Send, "m_PlayerFog.m_hCtrl", fog);
         }
     }
@@ -619,22 +625,33 @@ void CreatePoisonFog()
     g_iFog = fog;
 
     // 全场绿色 color_correction
-    int cc = CreateEntityByName("color_correction");
-    if (cc != -1)
+    if (g_iFogCC != -1 && IsValidEntity(g_iFogCC))
     {
-        DispatchKeyValue(cc, "filename", LUT_ANGELA_GREEN);
-        DispatchKeyValue(cc, "maxweight", "1.0");
-        DispatchKeyValue(cc, "fadeInDuration", "3.0");
-        DispatchKeyValue(cc, "fadeOutDuration", "3.0");
-        DispatchKeyValue(cc, "minfalloff", "-1");
-        DispatchKeyValue(cc, "maxfalloff", "-1");
-        DispatchKeyValue(cc, "StartDisabled", "1");
-        DispatchSpawn(cc);
-        ActivateEntity(cc);
-        AcceptEntityInput(cc, "Enable");
+        // 复用已有实体，避免客户端 LUT handle 冲突
+        AcceptEntityInput(g_iFogCC, "Enable");
+    }
+    else
+    {
+        int cc = CreateEntityByName("color_correction");
+        if (cc != -1)
+        {
+            DispatchKeyValue(cc, "filename", LUT_ANGELA_GREEN);
+            DispatchKeyValue(cc, "maxweight", "1.0");
+            DispatchKeyValue(cc, "fadeInDuration", "3.0");
+            DispatchKeyValue(cc, "fadeOutDuration", "3.0");
+            DispatchKeyValue(cc, "minfalloff", "-1");
+            DispatchKeyValue(cc, "maxfalloff", "-1");
+            DispatchKeyValue(cc, "StartDisabled", "1");
+            DispatchSpawn(cc);
+            ActivateEntity(cc);
+            AcceptEntityInput(cc, "Enable");
+        }
+
+        g_iFogCC = cc;
     }
 
-    g_iFogCC = cc;
+    // 递增代际，使之前的 RemovePoisonFog timer 无法再动 m_PlayerFog
+    g_iFogGeneration++;
 
     // 运行时切绿色天空盒
     if (g_hRLoadNamedSkys != INVALID_HANDLE)
@@ -656,7 +673,7 @@ void RemovePoisonFog()
     // 落地瞬间：停风声（风阻随 STATE_GROUND 自动停）
     for (int i = 1; i <= MaxClients; i++)
     {
-        if (IsClientInGame(i))
+        if (IsValidClient(i))
             StopSound(i, SNDCHAN_STATIC, SFX_WIND);
     }
 
@@ -676,36 +693,43 @@ void RemovePoisonFog()
         AcceptEntityInput(fog, "StartFogTransition");
     }
 
-    // 5s 后 fog+CC fade 完毕，统一 Kill
+    // 5s 后 fog fade 完毕，Kill 旧 fog 实体
+    g_iFogGeneration++;
     DataPack pack = new DataPack();
+    pack.WriteCell(g_iFogGeneration);
     pack.WriteCell(EntIndexToEntRef(fog));
-    pack.WriteCell(EntIndexToEntRef(cc));
     CreateTimer(5.0, Timer_CleanupPoison, pack);
 
     g_iFog = -1;
-    g_iFogCC = -1;
+    // g_iFogCC = -1;
 }
 
 public Action Timer_CleanupPoison(Handle timer, DataPack pack)
 {
     pack.Reset();
+    int gen = pack.ReadCell();
     int fog = EntRefToEntIndex(pack.ReadCell());
-    int cc = EntRefToEntIndex(pack.ReadCell());
     delete pack;
 
     if (fog != INVALID_ENT_REFERENCE && IsValidEntity(fog))
     {
         AcceptEntityInput(fog, "TurnOff");
-        for (int client = 1; client <= MaxClients; client++)
+
+        /**
+         * 只有最新一代的清理 timer 才断开 m_PlayerFog 关联
+         * 旧 timer 只杀实体，不动玩家 fog 控制器——防止打断新雾的显示
+         */
+        if (gen == g_iFogGeneration)
         {
-            if (IsClientInGame(client))
-                SetEntPropEnt(client, Prop_Send, "m_PlayerFog.m_hCtrl", -1);
+            for (int client = 1; client <= MaxClients; client++)
+            {
+                if (IsValidClient(client))
+                    SetEntPropEnt(client, Prop_Send, "m_PlayerFog.m_hCtrl", -1);
+            }
         }
+        
         AcceptEntityInput(fog, "Kill");
     }
-
-    if (cc != INVALID_ENT_REFERENCE && IsValidEntity(cc))
-        AcceptEntityInput(cc, "Kill");
 
     return Plugin_Stop;
 }
