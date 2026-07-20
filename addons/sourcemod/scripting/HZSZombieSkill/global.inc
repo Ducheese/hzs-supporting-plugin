@@ -63,7 +63,7 @@
 #define WITCH_BLIND_TIME        10.0       // 嗜血女巫致盲效果持续时间（秒）
 
 // 技能参数（神秘僵尸）
-#define MYSTERY_PORTAL_RANGE    10.0       // 神秘僵尸能发动传送门的最远距离（米）
+#define MYSTERY_PORTAL_RANGE    15.0       // 神秘僵尸能发动传送门的最远距离（米）
 #define MYSTERY_PORTAL_RADIUS   1.0        // 神秘僵尸传送门有效半径（米）
 #define MYSTERY_PORTAL_TIME     3.0        // 神秘僵尸传送门蓄力时间（秒）
 
@@ -128,7 +128,8 @@
 #define SFX_BUTCHER            "custom/tank_yell_01.wav"                    // 憎恶屠夫鬼手陷阱命中提示音效
 #define SFX_WITCH1             "custom/horrified_4.wav"                     // 嗜血女巫致盲技能命中提示音效
 #define SFX_WITCH2             "custom/pileobile.wav"                       // 嗜血女巫致盲时播放的音乐
-#define SFX_MYSTERY            "ambient/machines/teleport1.wav"             // 神秘僵尸传送门交换音效
+#define SFX_MYSTERY1           "ambient/machines/teleport1.wav"             // 神秘僵尸传送门交换音效
+#define SFX_MYSTERY2           "ambient/wind/wind_hit1.wav"                 // 神秘僵尸传送门环境音
 
 // 音效路径（BOSS安哥拉）
 #define SFX_CALL               "custom/mega_mob_incoming.wav"               // 安哥拉呼唤僵尸集中攻击某个人类的音效

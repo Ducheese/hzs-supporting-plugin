@@ -359,6 +359,53 @@ public bool TraceEntityFilter_NotClient(int entity, int mask, any data)
     return true;
 }
 
+/**
+ * 只排除自身，不过滤其他任何实体
+ */
+public bool TraceEntityFilter_Self(int entity, int mask, any data)
+{
+    return entity != data;
+}
+
+//========================================================================================
+// 传送碰撞保护（防卡人）
+//========================================================================================
+
+/**
+ * 检测实体是否与其他物体重叠
+ * 写法和fakerespawn一样
+ */
+stock int IsEntityStuck(int entity)
+{
+    float vecMin[3], vecMax[3], vecOrigin[3];
+    GetEntPropVector(entity, Prop_Send, "m_vecMins", vecMin);
+    GetEntPropVector(entity, Prop_Send, "m_vecMaxs", vecMax);
+    GetEntPropVector(entity, Prop_Send, "m_vecOrigin", vecOrigin);
+    TR_TraceHullFilter(vecOrigin, vecOrigin, vecMin, vecMax, MASK_PLAYERSOLID, TraceEntityFilter_Self, entity);
+    return TR_GetEntityIndex();
+}
+
+/**
+ * 消除碰撞，每秒检测一次，不卡了自动恢复
+ */
+stock void StartUnstuck(int entity)
+{
+    SetEntProp(entity, Prop_Data, "m_CollisionGroup", 2);    // COLLISION_GROUP_DEBRIS
+    CreateTimer(1.0, Timer_UnstuckThink, EntIndexToEntRef(entity), TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
+}
+
+public Action Timer_UnstuckThink(Handle timer, int ref)
+{
+    int entity = EntRefToEntIndex(ref);
+    if (entity == INVALID_ENT_REFERENCE || !IsValidEntity(entity) || IsEntityStuck(entity) == -1)
+    {
+        if (entity != INVALID_ENT_REFERENCE && IsValidEntity(entity))
+            SetEntProp(entity, Prop_Data, "m_CollisionGroup", 5);    // COLLISION_GROUP_PLAYER
+        return Plugin_Stop;
+    }
+    return Plugin_Continue;
+}
+
 //========================================================================================
 // 检测脚下天空盒并传送至随机 T 复活点
 //========================================================================================

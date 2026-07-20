@@ -47,11 +47,15 @@ void StartPortal(int zombie, int target)
     DispatchKeyValue(portal, "disableshadows", "1");
     DispatchKeyValue(portal, "disableshadowdepth", "1");
     DispatchSpawn(portal);
-    SetVariantString("idle");
+    SetVariantString("fasteridle");
     AcceptEntityInput(portal, "SetAnimation");
 
     // 传送门模型得翻面才能看见
+    groundPos[2] += 5.0;
     TeleportEntity(portal, groundPos, view_as<float>({180.0, 0.0, 0.0}), NULL_VECTOR);
+
+    // 传送门环境音
+    EmitAmbientSound(SFX_MYSTERY2, groundPos, _, SNDLEVEL_GUNFIRE, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
 
     // 有效范围指示
     // DebugDrawRadius(groundPos, MYSTERY_PORTAL_RADIUS / GAMEUNITS_TO_METERS, {255, 0, 0, 255}, MYSTERY_PORTAL_TIME);
@@ -102,7 +106,47 @@ void SwapPosition(int zombie, int human)
     TeleportEntity(zombie, humanPos, NULL_VECTOR, NULL_VECTOR);
     TeleportEntity(human, zombiePos, NULL_VECTOR, NULL_VECTOR);
 
-    EmitSoundToClient(human, SFX_MYSTERY, _, SNDCHAN_STATIC, SNDLEVEL_NORMAL, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
+    // 传送后暂时消除碰撞，避免卡墙
+    StartUnstuck(human);
+
+    // 传送后淡蓝屏
+    Fade(human, 512, 128, 17, {100, 180, 255, 200});
+
+    // 传送位置特斯拉电弧
+    CreateTesla(zombiePos);
+
+    // 传送音效
+    EmitSoundToClient(human, SFX_MYSTERY1, _, SNDCHAN_STATIC, SNDLEVEL_NORMAL, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
+}
+
+void CreateTesla(float pos[3])
+{
+    int tesla = CreateEntityByName("point_tesla");
+    if (tesla == -1)
+        return;
+
+    DispatchKeyValue(tesla, "texture", "sprites/lgtning.vmt");
+    DispatchKeyValue(tesla, "m_Color", "255 255 255 200");     // 不可以删，少了就不渲染电弧，真是奇葩
+    DispatchKeyValue(tesla, "m_SoundName", "ambient/energy/spark2.wav");
+    DispatchKeyValue(tesla, "interval_min", "0.1");
+    DispatchKeyValue(tesla, "interval_max", "0.2");
+    DispatchKeyValue(tesla, "m_flRadius", "50");
+    DispatchSpawn(tesla);
+    ActivateEntity(tesla);
+
+    pos[2] += 5.0;
+    TeleportEntity(tesla, pos, NULL_VECTOR, NULL_VECTOR);
+    AcceptEntityInput(tesla, "TurnOn");
+
+    CreateTimer(1.0, Timer_KillTesla, EntIndexToEntRef(tesla));
+}
+
+public Action Timer_KillTesla(Handle timer, int ref)
+{
+    int entity = EntRefToEntIndex(ref);
+    if (entity != INVALID_ENT_REFERENCE && IsValidEntity(entity))
+        AcceptEntityInput(entity, "Kill");
+    return Plugin_Stop;
 }
 
 void CleanupMysteryPortal(int zombie)

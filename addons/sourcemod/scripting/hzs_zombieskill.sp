@@ -370,7 +370,8 @@ void InitSoundCache()
     PrecacheSound(SFX_BUTCHER, true);
     PrecacheSound(SFX_WITCH1, true);
     PrecacheSound(SFX_WITCH2, true);
-    PrecacheSound(SFX_MYSTERY, true);
+    PrecacheSound(SFX_MYSTERY1, true);
+    PrecacheSound(SFX_MYSTERY2, true);
 
     // 音频预缓存（BOSS安哥拉）
     PrecacheSound(SFX_CALL, true);
