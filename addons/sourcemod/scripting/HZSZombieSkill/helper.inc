@@ -166,6 +166,21 @@ public Action Timer_DeleteParticle(Handle timer, int entity)
 }
 
 //========================================================================================
+// 获取实体碰撞箱上顶中心
+//========================================================================================
+
+stock void GetEntityTopCenter(int entity, float pos[3])
+{
+    float mins[3], maxs[3];
+    GetEntPropVector(entity, Prop_Send, "m_vecOrigin", pos);
+    GetEntPropVector(entity, Prop_Send, "m_vecMins", mins);
+    GetEntPropVector(entity, Prop_Send, "m_vecMaxs", maxs);
+    pos[0] += (mins[0] + maxs[0]) * 0.5;
+    pos[1] += (mins[1] + maxs[1]) * 0.5;
+    pos[2] += maxs[2];
+}
+
+//========================================================================================
 // 计算到地面距离（飞行和冲锋逻辑都会用到）
 //========================================================================================
 
@@ -174,7 +189,7 @@ stock float GetDistanceToGround(int entity)
     float pos[3];
     GetEntPropVector(entity, Prop_Send, "m_vecOrigin", pos);
 
-    Handle trace = TR_TraceRayFilterEx(pos, {90.0, 0.0, 0.0}, MASK_PLAYERSOLID, RayType_Infinite, TraceEntityFilter_NotClient, entity);
+    Handle trace = TR_TraceRayFilterEx(pos, {90.0, 0.0, 0.0}, MASK_SOLID, RayType_Infinite, TraceEntityFilter_World);
 
     if (!TR_DidHit(trace))
     {
@@ -308,14 +323,14 @@ stock void DebugDrawRadius(const float center[3], float radius, int color[4], fl
     float ground[3];
     ground = center;
 
-    Handle tr = TR_TraceRayFilterEx(center, view_as<float>({90.0, 0.0, 0.0}), MASK_SOLID, RayType_Infinite, TraceEntityFilter_Ground);
-    if (TR_DidHit(tr))
+    Handle trace = TR_TraceRayFilterEx(center, {90.0, 0.0, 0.0}, MASK_SOLID, RayType_Infinite, TraceEntityFilter_World);
+    if (TR_DidHit(trace))
     {
         float end[3];
-        TR_GetEndPosition(end, tr);
+        TR_GetEndPosition(end, trace);
         ground[2] = end[2] + 2.0;
     }
-    delete tr;
+    delete trace;
 
     int segments = 24;
     float prev[3];
@@ -341,30 +356,36 @@ stock void DebugDrawRadius(const float center[3], float radius, int color[4], fl
 //========================================================================================
 
 /**
- * 只命中世界几何（entity == 0），忽略所有实体。
+ * 只命中世界几何
  */
-public bool TraceEntityFilter_Ground(int entity, int mask, any data)
+public bool TraceEntityFilter_World(int entity, int mask, any self)
 {
     return (entity == 0);
 }
 
 /**
- * 忽略自身（data）以及所有玩家实体。
+ * 只排除自身
  */
-public bool TraceEntityFilter_NotClient(int entity, int mask, any data)
+public bool TraceEntityFilter_NotSelf(int entity, int mask, any self)
 {
-    if (entity == data || (entity >= 1 && entity <= MaxClients))
-        return false;
-
-    return true;
+    return entity != self;
 }
 
 /**
- * 只排除自身，不过滤其他任何实体
+ * 忽略自己、NPC 僵尸、存活人类（目前只给恶魔僵尸的飞行物用）
  */
-public bool TraceEntityFilter_Self(int entity, int mask, any data)
+public bool TraceEntityFilter_Projectile(int entity, int mask, any self)
 {
-    return entity != data;
+    if (entity == self)
+        return false;
+
+    if (Han_IsZombie(entity))
+        return false;
+
+    if (IsHumanAlive(entity))
+        return false;
+
+    return true;
 }
 
 //========================================================================================
@@ -381,7 +402,7 @@ stock int IsEntityStuck(int entity)
     GetEntPropVector(entity, Prop_Send, "m_vecMins", vecMin);
     GetEntPropVector(entity, Prop_Send, "m_vecMaxs", vecMax);
     GetEntPropVector(entity, Prop_Send, "m_vecOrigin", vecOrigin);
-    TR_TraceHullFilter(vecOrigin, vecOrigin, vecMin, vecMax, MASK_PLAYERSOLID, TraceEntityFilter_Self, entity);
+    TR_TraceHullFilter(vecOrigin, vecOrigin, vecMin, vecMax, MASK_PLAYERSOLID, TraceEntityFilter_NotSelf, entity);
     return TR_GetEntityIndex();
 }
 
@@ -416,16 +437,16 @@ stock bool TeleportOffSkybox(int entity)
     float pos[3];
     GetEntPropVector(entity, Prop_Send, "m_vecOrigin", pos);
 
-    Handle tr = TR_TraceRayFilterEx(pos, view_as<float>({90.0, 0.0, 0.0}), MASK_SOLID, RayType_Infinite, TraceEntityFilter_NotClient, entity);
+    Handle trace = TR_TraceRayFilterEx(pos, {90.0, 0.0, 0.0}, MASK_SOLID, RayType_Infinite, TraceEntityFilter_World);
 
-    bool bHit = TR_DidHit(tr);
+    bool bHit = TR_DidHit(trace);
     bool bSkybox = !bHit;
     if (bHit)
     {
         // 表面属性 76 = sky（CS:S 的天空盒材质）
-        bSkybox = TR_GetSurfaceProps(tr) == 76;
+        bSkybox = TR_GetSurfaceProps(trace) == 76;
     }
-    delete tr;
+    delete trace;
 
     if (!bSkybox)
         return false;
@@ -449,7 +470,7 @@ stock bool TeleportOffSkybox(int entity)
 // 扫描最近存活人类（适用于任意实体，如僵尸、传送门等）
 //========================================================================================
 
-stock int FindNearestHuman(int entity)
+stock int FindNearestHuman(int entity, float maxDist = 0.0)
 {
     int target = -1;
     float origin[3], bestDist = 999999.0;
@@ -462,7 +483,8 @@ stock int FindNearestHuman(int entity)
         float tp[3];
         GetClientEyePosition(i, tp);
         float d = GetVectorDistance(origin, tp);
-        if (d < bestDist) { bestDist = d; target = i; }
+        if (d < bestDist && (maxDist <= 0.0 || d < maxDist))
+        { bestDist = d; target = i; }
     }
 
     return target;

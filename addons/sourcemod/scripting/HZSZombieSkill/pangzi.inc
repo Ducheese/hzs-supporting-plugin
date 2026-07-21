@@ -101,10 +101,6 @@ public Action Timer_ChargeThink(Handle timer, DataPack pack)
     // 如果不是以上情况，则持续施加向目标的推力
     CreateKnockback(victim, zombie, view_as<float>({-PANGZI_CHARGE_FORCE, -PANGZI_CHARGE_FORCE, 0.0}));
 
-    // 辅助线
-    // TE_SetupBeamPoints(pos, fTargetOrigin, g_iBeamSprite, 0, 0, 0, 5.0, 2.0, 2.0, 1, 0.0, {255, 0, 0, 255}, 15);
-    // TE_SendToAll();
-
     // 震地音效
     float pos[3];
     GetEntPropVector(zombie, Prop_Send, "m_vecOrigin", pos);

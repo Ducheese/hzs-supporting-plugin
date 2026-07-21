@@ -19,8 +19,9 @@
 #include "HZSZombieSkill/event"        // 僵尸事件
 #include "HZSZombieSkill/helper"       // 杂项功能函数
 #include "HZSZombieSkill/zskill"       // 特殊僵尸技能函数（综合）
-#include "HZSZombieSkill/butcher"      // 特殊僵尸技能函数（憎恶屠夫）
-#include "HZSZombieSkill/witch"        // 特殊僵尸技能函数（嗜血女巫）
+#include "HZSZombieSkill/butcher"      // 特殊僵尸技能函数（屠夫僵尸）
+#include "HZSZombieSkill/witch"        // 特殊僵尸技能函数（女巫僵尸）
+#include "HZSZombieSkill/deimos"       // 特殊僵尸技能函数（恶魔僵尸）
 #include "HZSZombieSkill/imposter"     // 特殊僵尸技能函数（伪人僵尸）
 #include "HZSZombieSkill/mystery"      // 特殊僵尸技能函数（神秘僵尸）
 #include "HZSZombieSkill/angela"       // BOSS技能函数（安哥拉）
@@ -271,6 +272,10 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
         if (IsFakeClient(client))
             BotFindWeapon(client);
 
+        // 远程攻击弹反检测
+        if (!g_bIsGrappled[client])
+            CheckProjParry(client);
+
         g_iLastButtons[client] = buttons;       // 虽然多了个数组，但这样写确实简洁
     }
     else
@@ -312,11 +317,11 @@ void InitHumanState()
     // 玩家相关数组初始化
     for (int i = 1; i <= MaxClients; i++)
     {
-        // 憎恶屠夫 — 鬼手陷阱
+        // 屠夫僵尸 — 鬼手陷阱
         g_bIsStuck[i] = false;
         g_iUsePressStep[i] = 0;       // 实际多僵尸共享
 
-        // 嗜血女巫 — 致盲
+        // 女巫僵尸 — 致盲
         g_bIsBlind[i] = false;
         g_iWitchPhase[i] = 0;
         g_flWitchNearTime[i] = 0.0;
@@ -348,6 +353,7 @@ void InitModelCache()
     // 模型预缓存
     PrecacheModel(MODEL_HL2PORTAL, true);    // 传送门
     PrecacheModel(MODEL_ZOMBIETRAP, true);   // 鬼手陷阱
+    PrecacheModel(MODEL_ZOMBIEPROJ, true);   // 僵尸投掷物
     PrecacheModel(TOOL_BEAMSPRITE, true);	 // 辅助线
     PrecacheModel(TOOL_TRAPPHYS, true);      // 受击体
 
@@ -380,6 +386,8 @@ void InitSoundCache()
     PrecacheSound(SFX_WITCH2, true);
     PrecacheSound(SFX_MYSTERY1, true);
     PrecacheSound(SFX_MYSTERY2, true);
+    PrecacheSound(SFX_DEIMOS1, true);
+    PrecacheSound(SFX_DEIMOS2, true);
 
     // 音频预缓存（BOSS安哥拉）
     PrecacheSound(SFX_CALL, true);

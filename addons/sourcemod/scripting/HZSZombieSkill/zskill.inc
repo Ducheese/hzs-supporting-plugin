@@ -192,7 +192,7 @@ void StartKnockback(int zombie, int victim)
     Han_GetZombieName(zombie, ZombieName, sizeof(ZombieName));
 
     // 生成击退
-    Shake(victim, 30.0, 10.0, 3.0);
+    Shake(victim, 10.0, 10.0, 1.0);
     CreateKnockback(zombie, victim, view_as<float>({DEIMOS_KNOCK_POWER, DEIMOS_KNOCK_POWER, DEIMOS_KNOCK_POWER}));
 
     // 击退音效

@@ -11,6 +11,7 @@
 // 模型路径
 #define MODEL_HL2PORTAL        "models/props_combine/combine_citadelcloudcenter.mdl"    // 半条命2第二章天空大漩涡模型
 #define MODEL_ZOMBIETRAP       "models/heavyzombietrap/zombitrap.mdl"       // 陷阱视觉模型
+#define MODEL_ZOMBIEPROJ       "models/error.mdl"                           // 僵尸投掷物
 #define TOOL_TRAPPHYS          "models/props/de_nuke/crate_small.mdl"       // 陷阱受击体模型（木头受击音效来源）
 #define TOOL_BEAMSPRITE        "materials/sprites/physbeam.vmt"             // 可视化辅助线（比如碰撞箱、实体连线）
 
@@ -45,22 +46,30 @@
 #define HEAL_DAMAGE             50         // 巫蛊术尸群疗时恢复的个体血量
 #define HEAL_RADIUS             5.0        // 巫蛊术尸群疗的作用范围（单位：米）
 #define HEAL_INTERVAL           3.0        // 巫蛊术尸群疗的时间间隔（秒）
-#define DEIMOS_KNOCK_POWER      300.0      // 恶魔猎手击飞玩家的力度（水平和垂直同力度）
-#define DEIMOS_KNOCK_CD         5.0        // 恶魔猎手击飞技能的冷却时间（秒）
+#define DEIMOS_KNOCK_POWER      300.0      // 恶魔僵尸击飞玩家的力度（水平和垂直同力度）
+#define DEIMOS_KNOCK_CD         5.0        // 恶魔僵尸击飞技能的冷却时间（秒）
 
-// 技能参数（憎恶屠夫）
-#define BUTCHER_TRAP_HEALTH     300        // 憎恶屠夫鬼手陷阱的血量
+// 技能参数（恶魔僵尸）
+#define DEIMOS_PROJ_AIMTIME     3.0        // 
+#define DEIMOS_PROJ_FLYTIME     1.0        // 
+#define DEIMOS_PROJ_CD          10.0       // 
+#define DEIMOS_PROJ_FAIL_CD     5.0        // 
+#define DEIMOS_PROJ_RANGE       1.0        // 
+#define DEIMOS_PARRY_RANGE      175.0      // 
+
+// 技能参数（屠夫僵尸）
+#define BUTCHER_TRAP_HEALTH     300        // 屠夫僵尸鬼手陷阱的血量
 #define BUTCHER_TRAP_LIFETIME   30.0       // 无人踩踏时鬼手陷阱的存在时间（秒）
 #define BUTCHER_TRAP_STUCKTIME  8.0        // 鬼手陷阱被踩中后的剩余存在时间（秒），trap动画最长也是8秒
 #define BUTCHER_TRAP_DAMAGE     5.0        // 踩中鬼手陷阱时造成的一次性伤害
 #define BUTCHER_TRAP_KEYRATE    2          // 真人玩家挣脱鬼手陷阱所需的每秒交替按AD键轮数
-#define BUTCHER_TRAP_CHANCE     0.8        // 憎恶屠夫死后生成鬼手陷阱的概率
+#define BUTCHER_TRAP_CHANCE     0.8        // 屠夫僵尸死后生成鬼手陷阱的概率
 #define BUTCHER_TRAP_MAX        10         // 场内鬼手陷阱的最大数量上限
 
-// 技能参数（嗜血女巫）
-#define WITCH_NEAR_RADIUS       3.0        // 嗜血女巫致幻触发距离（单位：米）
-#define WITCH_NEAR_TIME         8.0        // 嗜血女巫近距离停留时间累积多久后触发致盲（秒）
-#define WITCH_BLIND_TIME        10.0       // 嗜血女巫致盲效果持续时间（秒）
+// 技能参数（女巫僵尸）
+#define WITCH_NEAR_RADIUS       3.0        // 女巫僵尸致幻触发距离（单位：米）
+#define WITCH_NEAR_TIME         8.0        // 女巫僵尸近距离停留时间累积多久后触发致盲（秒）
+#define WITCH_BLIND_TIME        10.0       // 女巫僵尸致盲效果持续时间（秒）
 
 // 技能参数（神秘僵尸）
 #define MYSTERY_PORTAL_RANGE    15.0       // 神秘僵尸能发动传送门的最远距离（米）
@@ -124,12 +133,14 @@
 #define SFX_SMOKE2             "custom/explosivegasleak.wav"                // 迷雾僵尸吐烟时的音效2（吐烟声）
 #define SFX_EXPLODE1           "custom/male_zombie10_growl1.wav"            // 自爆僵尸死亡时的音效
 #define SFX_EXPLODE2           "custom/smoker_explode_01.wav"               // 自爆僵尸爆炸时的音效
-#define SFX_KNOCKBACK          "custom/loud_chargerimpact_04.wav"           // 恶魔猎手或安哥拉击飞玩家的音效
-#define SFX_BUTCHER            "custom/tank_yell_01.wav"                    // 憎恶屠夫鬼手陷阱命中提示音效
-#define SFX_WITCH1             "custom/horrified_4.wav"                     // 嗜血女巫致盲技能命中提示音效
-#define SFX_WITCH2             "custom/pileobile.wav"                       // 嗜血女巫致盲时播放的音乐
+#define SFX_KNOCKBACK          "custom/loud_chargerimpact_04.wav"           // 恶魔僵尸或安哥拉击飞玩家的音效
+#define SFX_BUTCHER            "custom/tank_yell_01.wav"                    // 屠夫僵尸鬼手陷阱命中提示音效
+#define SFX_WITCH1             "custom/horrified_4.wav"                     // 女巫僵尸致盲技能命中提示音效
+#define SFX_WITCH2             "custom/pileobile.wav"                       // 女巫僵尸致盲时播放的音乐
 #define SFX_MYSTERY1           "ambient/machines/teleport1.wav"             // 神秘僵尸传送门交换音效
 #define SFX_MYSTERY2           "ambient/wind/wind_hit1.wav"                 // 神秘僵尸传送门环境音
+#define SFX_DEIMOS1            "weapons/hegrenade/explode5.wav"             // 飞行物爆炸音效
+#define SFX_DEIMOS2            "weapons/knife/knife_hitwall1.wav"           // 弹反音效
 
 // 音效路径（BOSS安哥拉）
 #define SFX_CALL               "custom/mega_mob_incoming.wav"               // 安哥拉呼唤僵尸集中攻击某个人类的音效
@@ -176,10 +187,10 @@ int g_iMaxHealth[2048];                   // 记住每个僵尸的最大血量
 bool g_bIsSkillUsed[2048];                // 技能是否使用过，或者是否正在使用某个技能（有些是一次性技能，有些可以重复使用）
 
 //========================================================================================
-// 技能状态管理（憎恶屠夫）
+// 技能状态管理（屠夫僵尸）
 //========================================================================================
 
-bool g_bIsStuck[MAXPLAYERS+1];            // 玩家是否中了憎恶屠夫的鬼手控制
+bool g_bIsStuck[MAXPLAYERS+1];            // 玩家是否中了屠夫僵尸的鬼手控制
 
 int g_iTrapVictim[2048];                  // 鬼手陷阱当前控制的玩家（phys→玩家映射）
 int g_iTrapVisual[2048];                  // phys（受击区域） → prop_dynamic（视觉模型）
@@ -192,7 +203,7 @@ int g_iTrapCount = 0;                                         // 场内鬼手陷
 Handle g_hTrapLifetime[2048] = {INVALID_HANDLE, ...};         // 鬼手陷阱自毁所用的timer（陷阱被踩中时要提前 kill 这个 timer）
 
 //========================================================================================
-// 技能状态管理（恶魔猎手）
+// 技能状态管理（恶魔僵尸）
 //========================================================================================
 
 Handle g_hHideCall;                       // SDKCall: CCSBot_Hide
@@ -200,8 +211,15 @@ Handle g_hGetWeaponSlot;                  // SDKCall: GetWeaponSlot
 bool g_bBotFindWeapon;                    // Bot捡武器状态锁（freeze_end后启用，避免开局买武器时无意义的触发）
 float g_flBotFindThrottle[MAXPLAYERS+1];  // Bot捡武器扫描节流
 
+float g_flDeimosAimStart[2048];
+int g_iDeimosAimTarget[2048];
+int g_iDeimosProjectile[2048];
+int g_iDeimosProjOwner[2048];
+Handle g_hDeimosAim[2048] = {INVALID_HANDLE, ...};
+Handle g_hDeimosProj[2048] = {INVALID_HANDLE, ...};
+
 //========================================================================================
-// 技能状态管理（嗜血女巫）
+// 技能状态管理（女巫僵尸）
 //========================================================================================
 
 bool g_bIsBlind[MAXPLAYERS+1];            // 玩家是否处于致盲状态（看不到其他模型）

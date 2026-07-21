@@ -10,7 +10,7 @@ void StartTrap(int zombie)
 
     // 射线检测地面坐标（z坐标可能不可信，如半空中死亡）
     float groundPos[3];
-    Handle trace = TR_TraceRayFilterEx(deathPos, {90.0, 0.0, 0.0}, MASK_SOLID, RayType_Infinite, TraceEntityFilter_Ground, 0);
+    Handle trace = TR_TraceRayFilterEx(deathPos, {90.0, 0.0, 0.0}, MASK_SOLID, RayType_Infinite, TraceEntityFilter_World);
     TR_GetEndPosition(groundPos, trace);
     delete trace;
 

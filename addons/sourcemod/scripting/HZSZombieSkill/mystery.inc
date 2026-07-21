@@ -33,7 +33,7 @@ void StartPortal(int zombie, int target)
     float targetPos[3], groundPos[3];
     GetEntPropVector(target, Prop_Send, "m_vecOrigin", targetPos);
 
-    Handle trace = TR_TraceRayFilterEx(targetPos, {90.0, 0.0, 0.0}, MASK_SOLID, RayType_Infinite, TraceEntityFilter_Ground, 0);
+    Handle trace = TR_TraceRayFilterEx(targetPos, {90.0, 0.0, 0.0}, MASK_SOLID, RayType_Infinite, TraceEntityFilter_World);
     TR_GetEndPosition(groundPos, trace);
     delete trace;
 

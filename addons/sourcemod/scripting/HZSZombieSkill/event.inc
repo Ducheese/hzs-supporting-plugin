@@ -90,7 +90,7 @@ public void Han_OnZombieDeath(int zombie, int killer)
     }
     else if (IsSameName(zombie, ZOMBIE_DEIMOS))
     {
-        // 什么都不做
+        CleanupProjectile(zombie);
     }
     else if (IsSameName(zombie, ZOMBIE_BUTCHER)
     && GetRandomFloat(0.0, 1.0) <= BUTCHER_TRAP_CHANCE
@@ -215,9 +215,13 @@ public void Han_OnZombieHurt(int zombie, int attacker)
     {
         // 什么都不做
     }
-    else if (IsSameName(zombie, ZOMBIE_DEIMOS))
+    else if (IsSameName(zombie, ZOMBIE_DEIMOS) && !g_bIsSkillUsed[zombie])
     {
-        // 跳跃技能已移除
+        if (IsTargetForward(zombie, attacker))
+        {
+            g_bIsSkillUsed[zombie] = true;
+            StartProjectile(zombie, attacker);
+        }
     }
     else if (IsSameName(zombie, ZOMBIE_BUTCHER))
     {
@@ -421,6 +425,13 @@ void InitZombieState(int zombie)
     g_hMysteryNear[zombie] = INVALID_HANDLE;
     g_hMysterySwap[zombie] = INVALID_HANDLE;
     g_iPortal[zombie] = -1;
+
+    // 恶魔僵尸 — 投掷物
+    g_flDeimosAimStart[zombie] = 0.0;
+    g_iDeimosAimTarget[zombie] = -1;
+    g_iDeimosProjectile[zombie] = -1;
+    g_hDeimosAim[zombie] = INVALID_HANDLE;
+    g_hDeimosProj[zombie] = INVALID_HANDLE;
 
     // BOSS 安哥拉 — 飞行
     g_hFly[zombie] = INVALID_HANDLE;
