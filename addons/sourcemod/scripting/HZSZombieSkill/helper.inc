@@ -570,10 +570,21 @@ stock void FindNearestWeapon(int client, int slot)
     GetEntPropVector(bestEnt, Prop_Send, "m_vecOrigin", targetPos);
     SDKCall(g_hHideCall, client, targetPos, 0, false);
 
-    // 画辅助线（到目标武器）
+    // debug 输出
     float zEye[3], wPos[3];
     GetClientEyePosition(client, zEye);
     wPos = targetPos;
     TE_SetupBeamPoints(zEye, wPos, PrecacheModel(TOOL_BEAMSPRITE), 0, 0, 0, 0.15, 1.5, 1.5, 0, 0.0, {0, 255, 255, 255}, 0);
     TE_SendToAll();
+}
+
+//========================================================================================
+// 强制缴械（不缴刀）
+//========================================================================================
+
+stock void DropActiveWeapon(int client)
+{
+    int weapon = GetEntPropEnt(client, Prop_Data, "m_hActiveWeapon");
+    if (weapon != -1 && weapon != GetPlayerWeaponSlot(client, 2))
+        CS_DropWeapon(client, weapon, true, true);
 }

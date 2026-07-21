@@ -116,7 +116,7 @@ public Action Timer_CreateExplosion(Handle timer, DataPack pack)
 
         DispatchKeyValue(ent, "Origin", Origin);
         DispatchKeyValue(ent, "iMagnitude", EXPLODE_DAMAGE);
-        DispatchKeyValue(ent, "iRadiusOverride", EXPLODE_RANGE);
+        DispatchKeyValue(ent, "iRadiusOverride", EXPLODE_RADIUS);
         DispatchSpawn(ent);
 
         AcceptEntityInput(ent, "Explode");                                // 实体会自己删除，不需要特别去kill
@@ -160,7 +160,7 @@ public Action Timer_RepeatHealing(Handle timer, int entity)
                 continue;
             }
 
-            if (GetMeterDistance(zombie, entity) > HEAL_RANGE)
+            if (GetMeterDistance(zombie, entity) > HEAL_RADIUS)
             {
                 continue;
             }
@@ -194,11 +194,6 @@ void StartKnockback(int zombie, int victim)
     // 生成击退
     Shake(victim, 30.0, 10.0, 3.0);
     CreateKnockback(zombie, victim, view_as<float>({DEIMOS_KNOCK_POWER, DEIMOS_KNOCK_POWER, DEIMOS_KNOCK_POWER}));
-
-    // 击落武器（不包括刀）
-    int weapon = GetEntPropEnt(victim, Prop_Data, "m_hActiveWeapon");
-    if (weapon != -1 && weapon != GetPlayerWeaponSlot(victim, 2))
-        CS_DropWeapon(victim, weapon, true, true);
 
     // 击退音效
     EmitSoundToClient(victim, SFX_KNOCKBACK, _, SNDCHAN_STATIC, SNDLEVEL_NORMAL, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);

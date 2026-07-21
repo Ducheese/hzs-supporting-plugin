@@ -203,13 +203,13 @@ void ShockWaveEffect(int zombie)
                     }
                 }
 
+                // 缴械（BOT很蠢，切武器约等于剥夺武器）
+                DropActiveWeapon(victim);
+
                 // 状态管理
                 g_bIsStuck[victim] = false;
                 if (g_bIsBlind[victim])
                     EndWitchBlind(victim);
-
-                // 记住当前方向
-                GetClientEyeAngles(victim, g_flAng[victim]);
 
                 // 延时结束影响
                 g_bIsShock[victim] = true;
@@ -217,21 +217,6 @@ void ShockWaveEffect(int zombie)
 
                 // 音效（其实想做tesla电弧效果）
                 EmitSoundToClient(victim, SFX_SHOCK2, _, SNDCHAN_STATIC, SNDLEVEL_NORMAL, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
-
-                // // 剥夺所有clip（个人感觉堪比护甲减半）
-                // for (int j = 0; j < 48; j++)
-                // {
-                //     int weapon = GetEntPropEnt(i, Prop_Data, "m_hMyWeapons", j);
-                //     if (weapon != -1)
-                //     {
-                //         if (HasEntProp(weapon, Prop_Send, "m_iClip1"))
-                //         {
-                //             SetEntProp(weapon, Prop_Send, "m_iClip1", 0);
-                //         }
-                //     }
-                // }
-
-                // BOT很蠢，切武器约等于剥夺武器
             }
         }
     }

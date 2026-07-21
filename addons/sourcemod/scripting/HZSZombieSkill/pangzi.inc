@@ -349,8 +349,9 @@ void StartPickupAndThrow(int pangzi, int victim)
                 continue;
             }
 
-            if (IsSameName(zombie, ZOMBIE_GHOST)
-            || IsSameName(zombie, ZOMBIE_IMPOSTER)
+            if (IsSameName(zombie, ZOMBIE_GHOST)     // 僵尸自己也看不见的存在
+            || IsSameName(zombie, ZOMBIE_IMPOSTER)   // 被当子弹僵尸就没办法伪装了
+            || IsSameName(zombie, ZOMBIE_MYSTERY)    // 神秘僵尸本就是远距离技能，而且传送坐标在有父子关系的情况下不可靠
             || IsSameName(zombie, BOSS_ANGELA)
             || IsSameName(zombie, BOSS_PANGZI)
             || IsSameName(zombie, BOSS_YIXING))

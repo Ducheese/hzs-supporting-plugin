@@ -206,15 +206,13 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
                 }
             }
         }
-        else if (g_bIsShock[client])            // 异形斗兽震荡波：麻痹视角，移动减速
+        else if (g_bIsShock[client])            // 异形斗兽震荡波：移动减速
         {
             vel[0] = 0.1 * vel[0];
             vel[1] = 0.1 * vel[1];
 
             buttons &= ~IN_JUMP;
             buttons &= ~IN_DUCK;     // 也没法蹲
-
-            TeleportEntity(client, NULL_VECTOR, g_flAng[client], NULL_VECTOR);
         }
         else if (g_bIsBlind[client])            // 女巫致盲：WASD旋转映射
         {
@@ -342,7 +340,6 @@ void InitHumanState()
 
         // BOSS 异形斗兽 — 震荡波
         g_bIsShock[i] = false;
-        // g_flAng[]                  // 在使用前赋值的
     }
 }
 

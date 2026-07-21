@@ -38,7 +38,7 @@ public Action Timer_CreateSmashKnock(Handle timer, int zombie)
     {
         if (IsHumanAlive(victim))
         {
-            if (GetMeterDistance(zombie, victim) > ANGELA_KNOCK_RANGE)
+            if (GetMeterDistance(zombie, victim) > ANGELA_KNOCK_RADIUS)
             {
                 continue;
             }
@@ -85,7 +85,7 @@ public Action Timer_CreateSwingKnock(Handle timer, int zombie)
     {
         if (IsHumanAlive(victim))
         {
-            if (GetMeterDistance(zombie, victim) > ANGELA_KNOCK_RANGE)
+            if (GetMeterDistance(zombie, victim) > ANGELA_KNOCK_RADIUS)
             {
                 continue;
             }
@@ -463,30 +463,30 @@ void FlyingLogic(int zombie)
     // 扇动翅膀
     FlapWing(zombie);
 
-    // 调试：画跟随线（安哥拉 → m_leader）
-    {
-        int leader = GetEntDataEnt2(zombie, g_iLeaderOffset);
-        if (IsHumanAlive(leader))
-        {
-            float zEye[3], lPos[3];
-            GetEntPropVector(zombie, Prop_Send, "m_vecOrigin", zEye);
-            zEye[2] += 55.0;
-            GetClientAbsOrigin(leader, lPos);
-            lPos[2] += 36.0;
-            TE_SetupBeamPoints(zEye, lPos, PrecacheModel(TOOL_BEAMSPRITE), 0, 0, 0, 0.15, 1.5, 1.5, 0, 0.0, {0, 255, 255, 255}, 0);
-            TE_SendToAll();
-        }
-        else
-        {
-            static float lastWarn;
-            float now = GetEngineTime();
-            if (now - lastWarn > 2.0)
-            {
-                lastWarn = now;
-                PrintToChatAll("[Angela] ⚠ m_leader = -1 (丢失跟随目标)");
-            }
-        }
-    }
+    // debug 输出
+    // {
+    //     int leader = GetEntDataEnt2(zombie, g_iLeaderOffset);
+    //     if (IsHumanAlive(leader))
+    //     {
+    //         float zEye[3], lPos[3];
+    //         GetEntPropVector(zombie, Prop_Send, "m_vecOrigin", zEye);
+    //         zEye[2] += 55.0;
+    //         GetClientAbsOrigin(leader, lPos);
+    //         lPos[2] += 36.0;
+    //         TE_SetupBeamPoints(zEye, lPos, PrecacheModel(TOOL_BEAMSPRITE), 0, 0, 0, 0.15, 1.5, 1.5, 0, 0.0, {0, 255, 255, 255}, 0);
+    //         TE_SendToAll();
+    //     }
+    //     else
+    //     {
+    //         static float lastWarn;
+    //         float now = GetEngineTime();
+    //         if (now - lastWarn > 2.0)
+    //         {
+    //             lastWarn = now;
+    //             PrintToChatAll("[Angela] ⚠ m_leader = -1 (丢失跟随目标)");
+    //         }
+    //     }
+    // }
 }
 
 void GetFlyingMode(int zombie, int target)
@@ -556,27 +556,27 @@ public Action OnFlyTakeDamage(int zombie, int &attacker, int &inflictor, float &
     float groundDist = GetDistanceToGround(zombie);
     float factor = 1.0 - (groundDist / 800.0);
     if (factor < 0.0) factor = 0.0;
-    float original = damage;
+    // float original = damage;
     damage *= factor;
 
     // debug 输出
-    if (IsValidClient(attacker))
-    {
-        int target = GetEntDataEnt2(zombie, g_iLeaderOffset);
-        float targetDist = -1.0;
-        if (target > 0)
-        {
-            float zPos[3], tPos[3];
-            GetEntPropVector(zombie, Prop_Send, "m_vecOrigin", zPos);
-            GetEntPropVector(target, Prop_Send, "m_vecOrigin", tPos);
-            zPos[2] = 0.0;
-            tPos[2] = 0.0;
-            // 只看水平距离，没法用公共距离函数
-            targetDist = GetVectorDistance(zPos, tPos) * GAMEUNITS_TO_METERS;
-        }
-        PrintToChat(attacker, "高度: %.0f | 衰减: %.0f%% | 伤害: %.0f -> %.0f | 子弹: %d | 目标距离: %.1fm",
-            groundDist, factor * 100, original, damage, g_iBulletCount[zombie] + 1, targetDist);
-    }
+    // if (IsValidClient(attacker))
+    // {
+    //     int target = GetEntDataEnt2(zombie, g_iLeaderOffset);
+    //     float targetDist = -1.0;
+    //     if (target > 0)
+    //     {
+    //         float zPos[3], tPos[3];
+    //         GetEntPropVector(zombie, Prop_Send, "m_vecOrigin", zPos);
+    //         GetEntPropVector(target, Prop_Send, "m_vecOrigin", tPos);
+    //         zPos[2] = 0.0;
+    //         tPos[2] = 0.0;
+    //         // 只看水平距离，没法用公共距离函数
+    //         targetDist = GetVectorDistance(zPos, tPos) * GAMEUNITS_TO_METERS;
+    //     }
+    //     PrintToChat(attacker, "高度: %.0f | 衰减: %.0f%% | 伤害: %.0f -> %.0f | 子弹: %d | 目标距离: %.1fm",
+    //         groundDist, factor * 100, original, damage, g_iBulletCount[zombie] + 1, targetDist);
+    // }
 
     g_iBulletCount[zombie]++;
 
@@ -812,9 +812,9 @@ void WindPush(int client, float vel[3])
         GetEntPropVector(zombie, Prop_Send, "m_vecOrigin", angelaPos);
 
         float dist = GetVectorDistance(clientPos, angelaPos) * GAMEUNITS_TO_METERS;
-        if (dist > ANGELA_FLY_PUSH_RANGE) continue;
+        if (dist > ANGELA_FLY_PUSH_RADIUS) continue;
 
-        float strength = ANGELA_FLY_PUSH_POWER * (1.0 - dist / ANGELA_FLY_PUSH_RANGE);
+        float strength = ANGELA_FLY_PUSH_POWER * (1.0 - dist / ANGELA_FLY_PUSH_RADIUS);
         if (strength <= maxStrength) continue;
 
         maxStrength = strength;

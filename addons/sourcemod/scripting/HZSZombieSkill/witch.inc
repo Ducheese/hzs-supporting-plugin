@@ -42,7 +42,7 @@ public Action Timer_WitchNearThink(Handle timer, int zombie)
 
         float dist = GetMeterDistance(zombie, victim);
 
-        if (dist <= WITCH_NEAR_RANGE)
+        if (dist <= WITCH_NEAR_RADIUS)
         {
             if (g_iWitchPhase[victim] == 0)
             {
@@ -91,7 +91,9 @@ void CleanupOrphanedWitchPhase1(int excludeEntity = -1)
         bool anyNear;
         for (int i = 1; i <= 2048; i++)
         {
-            if (i != excludeEntity && IsValidEntity(i) && IsSameName(i, ZOMBIE_WITCH) && GetMeterDistance(i, victim) <= WITCH_NEAR_RANGE)
+            if (i != excludeEntity && IsValidEntity(i)
+            && IsSameName(i, ZOMBIE_WITCH)
+            && GetMeterDistance(i, victim) <= WITCH_NEAR_RADIUS)
             {
                 anyNear = true;
                 break;

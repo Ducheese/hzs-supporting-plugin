@@ -84,39 +84,46 @@ public Action Timer_SwapPosition(Handle timer, int zombie)
         return Plugin_Stop;
     }
 
-    int nearest = FindNearestHuman(portal);
-    if (nearest != -1 && GetMeterDistance(portal, nearest) < MYSTERY_PORTAL_RADIUS
-    && !g_bIsGrappled[nearest]
-    && !g_bIsStuck[nearest]
-    )
-        SwapPosition(zombie, nearest);
+    float zombiePos[3], portalPos[3];
+    GetEntPropVector(zombie, Prop_Send, "m_vecOrigin", zombiePos);
+    GetEntPropVector(portal, Prop_Send, "m_vecOrigin", portalPos);
+
+    // 找传送门范围内可传送的人类
+    bool anyValid = false;
+    for (int i = 1; i <= MaxClients; i++)
+    {
+        if (!IsHumanAlive(i))
+            continue;
+        if (g_bIsGrappled[i] || g_bIsStuck[i])
+            continue;
+        if (GetMeterDistance(portal, i) >= MYSTERY_PORTAL_RADIUS)
+            continue;
+
+        anyValid = true;
+
+        // 人类传到僵尸位置
+        TeleportEntity(i, zombiePos, NULL_VECTOR, NULL_VECTOR);
+        StartUnstuck(i);
+        Fade(i, 512, 128, 17, {100, 180, 255, 200});
+        EmitSoundToClient(i, SFX_MYSTERY1, _, SNDCHAN_STATIC, SNDLEVEL_NORMAL, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
+    }
+
+    if (!anyValid)
+    {
+        // 范围内无人（或被控），不清除技能占位，重新开始检测
+        CleanupMysteryPortal(zombie);
+        g_hMysteryNear[zombie] = CreateTimer(0.1, Timer_MysteryNearThink, zombie, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
+        return Plugin_Stop;
+    }
+
+    // 僵尸传到传送门位置
+    TeleportEntity(zombie, portalPos, NULL_VECTOR, NULL_VECTOR);
+
+    // 电弧
+    CreateTesla(zombiePos);
 
     CleanupMysteryPortal(zombie);
     return Plugin_Stop;
-}
-
-void SwapPosition(int zombie, int human)
-{
-    float zombiePos[3];
-    GetEntPropVector(zombie, Prop_Send, "m_vecOrigin", zombiePos);
-
-    float humanPos[3];
-    GetEntPropVector(human, Prop_Send, "m_vecOrigin", humanPos);
-
-    TeleportEntity(zombie, humanPos, NULL_VECTOR, NULL_VECTOR);
-    TeleportEntity(human, zombiePos, NULL_VECTOR, NULL_VECTOR);
-
-    // 传送后暂时消除碰撞，避免卡墙
-    StartUnstuck(human);
-
-    // 传送后淡蓝屏
-    Fade(human, 512, 128, 17, {100, 180, 255, 200});
-
-    // 传送位置特斯拉电弧
-    CreateTesla(zombiePos);
-
-    // 传送音效
-    EmitSoundToClient(human, SFX_MYSTERY1, _, SNDCHAN_STATIC, SNDLEVEL_NORMAL, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
 }
 
 void CreateTesla(float pos[3])
