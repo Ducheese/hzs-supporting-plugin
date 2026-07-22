@@ -66,7 +66,7 @@ void DrawAimLaser(int zombie, int target, bool blocked)
 {
     float start[3], end[3];
     GetEntityTopCenter(zombie, start);
-    GetClientEyePosition(target, end);
+    GetEntityTopCenter(target, end);
 
     int color[4];
     if (blocked)
@@ -102,7 +102,7 @@ bool IsAimClear(int zombie, int target)
 {
     float start[3], end[3];
     GetEntityTopCenter(zombie, start);
-    GetClientEyePosition(target, end);
+    GetEntityTopCenter(target, end);
 
     /**
      * 和其他地方TR_TraceRayFilterEx参数不一样
@@ -123,7 +123,7 @@ void LaunchProjectile(int zombie, int target)
 {
     float startPos[3], targetPos[3];
     GetEntityTopCenter(zombie, startPos);
-    GetClientEyePosition(target, targetPos);
+    GetEntityTopCenter(target, targetPos);
 
     // 创建飞行物模型
     int proj = CreateEntityByName("prop_dynamic");
@@ -137,16 +137,8 @@ void LaunchProjectile(int zombie, int target)
     g_iDeimosProjectile[zombie] = proj;
     g_iDeimosProjOwner[proj] = zombie;
 
-    // 碰撞边界
-    SetEntProp(proj, Prop_Send, "m_CollisionGroup", 9);
-    SetEntProp(proj, Prop_Send, "m_nSolidType", 2);
-    float mins[] = {-8.0, -8.0, 0.0};
-    float maxs[] = {8.0, 8.0, 16.0};
-    SetEntPropVector(proj, Prop_Send, "m_vecMins", mins);
-    SetEntPropVector(proj, Prop_Send, "m_vecMaxs", maxs);
-
-    // 抛物线
-    SetEntityMoveType(proj, MOVETYPE_FLYGRAVITY);
+    // 用实体闲置属性暂存起点和初速度
+    SetEntPropVector(proj, Prop_Send, "m_vecMins", startPos);
 
     float time = DEIMOS_PROJ_FLYTIME;
     float gravity = GetConVarFloat(FindConVar("sv_gravity"));
@@ -155,20 +147,20 @@ void LaunchProjectile(int zombie, int target)
     vel[1] = (targetPos[1] - startPos[1]) / time;
     vel[2] = (targetPos[2] - startPos[2]) / time + (0.5 * gravity * time);
 
-    TeleportEntity(proj, NULL_VECTOR, NULL_VECTOR, vel);
+    SetEntPropVector(proj, Prop_Send, "m_vecMaxs", vel);
 
-    // 飞行think
-    g_hDeimosProj[zombie] = CreateTimer(0.0, Timer_DeimosProjThink, proj, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
+    // 复用 g_flDeimosAimStart 存发射时间
+    g_flDeimosAimStart[zombie] = GetEngineTime();
 
-    // 如果没有碰到任何人，靠这个摧毁实体，引发think内部的清理逻辑
-    CreateTimer(DEIMOS_PROJ_FLYTIME, Timer_DeimosProjExpire, proj);
+    // 飞行think（离散teleport，同时负责超时判断）
+    g_hDeimosProj[zombie] = CreateTimer(0.01, Timer_DeimosProjThink, proj, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
 }
 
 public Action Timer_DeimosProjThink(Handle timer, int proj)
 {
     int zombie = g_iDeimosProjOwner[proj];
     if (zombie == -1)
-        return Plugin_Stop;
+        return Plugin_Stop;       // 如果zombie都获取不到，那什么清理也做不了
 
     if (!IsValidEntity(proj))
     {
@@ -177,6 +169,29 @@ public Action Timer_DeimosProjThink(Handle timer, int proj)
         return Plugin_Stop;
     }
 
+    // 超时判断
+    float elapsed = GetEngineTime() - g_flDeimosAimStart[zombie];
+    if (elapsed >= DEIMOS_PROJ_FLYTIME)
+    {
+        CleanupProjectile(zombie);
+        CreateTimer(DEIMOS_PROJ_FAIL_CD, Timer_SkillEnd, zombie);
+        return Plugin_Stop;
+    }
+
+    // 离散抛物线：pos = start + vel*t + ½g*t²
+    float startPos[3], vel[3];
+    GetEntPropVector(proj, Prop_Send, "m_vecMins", startPos);
+    GetEntPropVector(proj, Prop_Send, "m_vecMaxs", vel);
+    float gravity = GetConVarFloat(FindConVar("sv_gravity"));
+
+    float pos[3];
+    pos[0] = startPos[0] + vel[0] * elapsed;
+    pos[1] = startPos[1] + vel[1] * elapsed;
+    pos[2] = startPos[2] + vel[2] * elapsed - 0.5 * gravity * elapsed * elapsed;
+
+    TeleportEntity(proj, pos, NULL_VECTOR, NULL_VECTOR);
+
+    // 命中检测
     int target = FindNearestHuman(proj, DEIMOS_PROJ_RANGE / GAMEUNITS_TO_METERS);
     if (target != -1)
     {
@@ -203,18 +218,6 @@ public Action Timer_DeimosProjThink(Handle timer, int proj)
     return Plugin_Continue;
 }
 
-public Action Timer_DeimosProjExpire(Handle timer, int proj)
-{
-    if (IsValidEntity(proj))
-        AcceptEntityInput(proj, "Kill");
-
-    int zombie = g_iDeimosProjOwner[proj];
-    if (zombie != -1)
-        g_iDeimosProjectile[zombie] = -1;
-
-    return Plugin_Stop;
-}
-
 //========================================================================================
 // 恶魔僵尸技能：人类弹反机制
 //========================================================================================
@@ -239,12 +242,20 @@ void CheckProjParry(int client)
             continue;
 
         // 距离检查
-        if (GetMeterDistance(client, proj) > DEIMOS_PARRY_RANGE / GAMEUNITS_TO_METERS)
+        float parryPos[3], projPos[3];
+        GetEntityTopCenter(client, parryPos);
+        GetEntPropVector(proj, Prop_Send, "m_vecOrigin", projPos);
+        if (GetVectorDistance(parryPos, projPos) * GAMEUNITS_TO_METERS > DEIMOS_PARRY_RANGE)
             continue;
 
         // 朝向检查
         if (!IsTargetForward(client, proj))
             continue;
+
+        // 弹反火花
+        float sparkDir[3] = {0.0, 0.0, 1.0};
+        TE_SetupSparks(projPos, sparkDir, 2, 2);
+        TE_SendToAll();
 
         // 弹反音效
         EmitSoundToClient(client, SFX_DEIMOS2, _, SNDCHAN_STATIC, SNDLEVEL_NORMAL, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);

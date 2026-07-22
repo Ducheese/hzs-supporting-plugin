@@ -386,7 +386,7 @@ void StartPickupAndThrow(int pangzi, int victim)
 
         // 文字提示
         CPrintToChat(victim, "{green}[华仔] {red}%s想抓些什么丢过来！", ZombieName);
-        CreateTimer(PANGZI_THROW_HOLD + PANGZI_THROW_FLYTIME + PANGZI_THROW_CD, Timer_SkillEnd, pangzi);
+        CreateTimer(PANGZI_THROW_HOLDTIME + PANGZI_THROW_FLYTIME + PANGZI_THROW_CD, Timer_SkillEnd, pangzi);
     }
     else
         g_bIsSkillUsed[pangzi] = false;    // 没有投掷任何僵尸，取消技能占位
@@ -402,7 +402,7 @@ void PickupAndThrowZombie(int pangzi, int zombie, int victim)
     pack.WriteCell(pangzi);
     pack.WriteCell(zombie);
     pack.WriteCell(victim);
-    CreateTimer(PANGZI_THROW_HOLD, Timer_ThrowZombie, pack);
+    CreateTimer(PANGZI_THROW_HOLDTIME, Timer_ThrowZombie, pack);
 }
 
 void PickupZombie(int pangzi, int zombie)

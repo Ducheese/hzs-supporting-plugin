@@ -309,6 +309,11 @@ void EnterFlyingMode(int zombie)
     {
         CreatePoisonFog();                                   // 全场绿雾 + CC + 更换天空盒
         CreatePoisonDamage();                                // 每玩家独立毒伤 timer
+
+        // 文字提示
+        char ZombieName[32];
+        Han_GetZombieName(zombie, ZombieName, sizeof(ZombieName));
+        CPrintToChatAll("{green}[华仔] {red}雾气有毒！快把飞行中的%s打下来！", ZombieName);
     }
     g_iFlightCount++;
 

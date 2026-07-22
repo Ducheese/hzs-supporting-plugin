@@ -65,6 +65,11 @@ void StartPortal(int zombie, int target)
 
     // 延时起效
     g_hMysterySwap[zombie] = CreateTimer(MYSTERY_PORTAL_TIME, Timer_SwapPosition, zombie);
+
+    // 文字提示
+    char ZombieName[32];
+    Han_GetZombieName(zombie, ZombieName, sizeof(ZombieName));
+    CPrintToChat(target, "{green}[华仔] {red}脚下有%s的传送门！", ZombieName);
 }
 
 public Action Timer_SwapPosition(Handle timer, int zombie)
