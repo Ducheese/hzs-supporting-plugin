@@ -152,8 +152,42 @@ void LaunchProjectile(int zombie, int target)
     // 复用 g_flDeimosAimStart 存发射时间
     g_flDeimosAimStart[zombie] = GetEngineTime();
 
+    // 后续用 SND_CHANGEVOL|SND_CHANGEPITCH 原地改参数，复用同一声道而非重建
+    EmitSoundToAll(SFX_DEIMOS3, proj, SNDCHAN_STATIC, SNDLEVEL_NORMAL, SND_LOOPING, SNDVOL_NORMAL, SNDPITCH_NORMAL);
+
     // 飞行think（离散teleport，同时负责超时判断）
     g_hDeimosProj[zombie] = CreateTimer(0.01, Timer_DeimosProjThink, proj, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
+}
+
+// vel 为发射初速度常量（取自 proj 的 m_vecMaxs），elapsed 为已飞行时间，函数内自行推导瞬时速度，不依赖跨帧状态
+void UpdateDeimosWind(int proj, float vel[3], float gravity, float elapsed)
+{
+    // 瞬时速度 = 初速度 - 重力·t（竖直分量衰减），抛物线真实速度大小
+    float curVel[3];
+    curVel[0] = vel[0];
+    curVel[1] = vel[1];
+    curVel[2] = vel[2] - gravity * elapsed;
+
+    // 照搬 GMod：speed 取三轴绝对值平均（非矢量长度）；实测飞行速度 475~725，均<1000
+    float speed = (FloatAbs(curVel[0]) + FloatAbs(curVel[1]) + FloatAbs(curVel[2])) / 3.0;
+    // 照搬 GMod 线性映射：[100,1000] → [0,1]，loudness 默认 1.0
+    float speedClamped = speed;
+    if (speedClamped < 100.0) speedClamped = 100.0;
+    if (speedClamped > 1000.0) speedClamped = 1000.0;
+    float vol = (speedClamped - 100.0) / (1000.0 - 100.0);
+
+    // 照搬 GMod pitch 策略：仅尺寸项（物体越大越低沉）。距离衰减由引擎 3D 空间化负责，不照搬 dist 项。
+    // 投掷物尺寸恒定，固定 shapevolume（GMod 对玩家档取 125，典型小物体）；此 SourcePawn 无 GetCollisionBounds
+    float shapeClamped = 150.0;
+    if (shapeClamped < 1.0)   shapeClamped = 1.0;     // minshapevolume
+    if (shapeClamped > 300.0) shapeClamped = 300.0;   // maxshapevolume
+    int pitch = RoundToNearest((1.0 - (shapeClamped - 1.0) / (300.0 - 1.0)) * 200.0);
+    if (pitch < 10) pitch = 10;
+
+    // PrintToServer("vol:%f pitch:%i", vol, pitch);
+
+    EmitSoundToAll(SFX_DEIMOS3, proj, SNDCHAN_STATIC, SNDLEVEL_NORMAL,
+        SND_CHANGEVOL | SND_CHANGEPITCH, vol, pitch);
 }
 
 public Action Timer_DeimosProjThink(Handle timer, int proj)
@@ -171,7 +205,7 @@ public Action Timer_DeimosProjThink(Handle timer, int proj)
 
     // 超时判断
     float elapsed = GetEngineTime() - g_flDeimosAimStart[zombie];
-    if (elapsed >= DEIMOS_PROJ_FLYTIME)
+    if (elapsed >= DEIMOS_PROJ_FLYTIME + 0.5)     // 多飞行一段时间
     {
         CleanupProjectile(zombie);
         CreateTimer(DEIMOS_PROJ_FAIL_CD, Timer_SkillEnd, zombie);
@@ -191,6 +225,9 @@ public Action Timer_DeimosProjThink(Handle timer, int proj)
 
     TeleportEntity(proj, pos, NULL_VECTOR, NULL_VECTOR);
 
+    // 飞行风声调制
+    UpdateDeimosWind(proj, vel, gravity, elapsed);
+
     // 命中检测
     int target = FindNearestHuman(proj, DEIMOS_PROJ_RANGE / GAMEUNITS_TO_METERS);
     if (target != -1)
@@ -198,16 +235,16 @@ public Action Timer_DeimosProjThink(Handle timer, int proj)
         // 屏幕震动
         Shake(target, 10.0, 10.0, 1.0);
 
-        // 强制缴械
-        DropActiveWeapon(target);
-
         // 命中音效
         EmitSoundToClient(target, SFX_DEIMOS1, _, SNDCHAN_STATIC, SNDLEVEL_NORMAL, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
 
-        // 文字提示
-        char ZombieName[32];
-        Han_GetZombieName(zombie, ZombieName, sizeof(ZombieName));
-        CPrintToChat(target, "{green}[华仔] {red}你被%s恶魔僵尸的投掷物击落了武器！", ZombieName);
+        // 强制缴械 + 文字提示
+        if (DropActiveWeapon(target))
+        {
+            char ZombieName[32];
+            Han_GetZombieName(zombie, ZombieName, sizeof(ZombieName));
+            CPrintToChat(target, "{green}[华仔] {red}你被%s的投掷物击落了武器！", ZombieName);
+        }
 
         // 成功后的清理
         CleanupProjectile(zombie);
@@ -260,6 +297,9 @@ void CheckProjParry(int client)
         // 弹反音效
         EmitSoundToClient(client, SFX_DEIMOS2, _, SNDCHAN_STATIC, SNDLEVEL_NORMAL, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
 
+        // 停风声
+        StopDeimosWind(proj);
+
         AcceptEntityInput(proj, "Kill");
         g_iDeimosProjectile[i] = -1;          // 就是i索引没错
     }
@@ -268,6 +308,13 @@ void CheckProjParry(int client)
 //========================================================================================
 // 恶魔僵尸技能：集中清理
 //========================================================================================
+
+// 注意：引擎不会在实体销毁时自动停此loop，各销毁路径必须在 Kill 之前显式调用本函数
+void StopDeimosWind(int proj)
+{
+    if (IsValidEntity(proj))
+        EmitSoundToAll(SFX_DEIMOS3, proj, SNDCHAN_STATIC, SNDLEVEL_NORMAL, SND_STOPLOOPING);
+}
 
 void CleanupProjectile(int zombie)
 {
@@ -290,7 +337,10 @@ void CleanupProjectile(int zombie)
     // 清理飞行物实体
     int proj = g_iDeimosProjectile[zombie];
     if (IsValidEntity(proj))
+    {
+        StopDeimosWind(proj);
         AcceptEntityInput(proj, "Kill");
+    }
         
     g_iDeimosProjectile[zombie] = -1;
     if (proj != -1)

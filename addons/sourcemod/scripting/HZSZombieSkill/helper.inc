@@ -604,9 +604,14 @@ stock void FindNearestWeapon(int client, int slot)
 // 强制缴械（不缴刀）
 //========================================================================================
 
-stock void DropActiveWeapon(int client)
+stock bool DropActiveWeapon(int client)
 {
     int weapon = GetEntPropEnt(client, Prop_Data, "m_hActiveWeapon");
     if (weapon != -1 && weapon != GetPlayerWeaponSlot(client, 2))
+    {
         CS_DropWeapon(client, weapon, true, true);
+        return true;
+    }
+
+    return false;
 }

@@ -273,7 +273,7 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
             BotFindWeapon(client);
 
         // 远程攻击弹反检测
-        if (!g_bIsGrappled[client])
+        if (!g_bIsGrappled[client] && (buttons & IN_ATTACK || buttons & IN_ATTACK2))
             CheckProjParry(client);
 
         g_iLastButtons[client] = buttons;       // 虽然多了个数组，但这样写确实简洁
@@ -388,6 +388,7 @@ void InitSoundCache()
     PrecacheSound(SFX_MYSTERY2, true);
     PrecacheSound(SFX_DEIMOS1, true);
     PrecacheSound(SFX_DEIMOS2, true);
+    PrecacheSound(SFX_DEIMOS3, true);
 
     // 音频预缓存（BOSS安哥拉）
     PrecacheSound(SFX_CALL, true);

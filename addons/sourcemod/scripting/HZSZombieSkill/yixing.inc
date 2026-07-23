@@ -204,7 +204,12 @@ void ShockWaveEffect(int zombie)
                 }
 
                 // 缴械（BOT很蠢，切武器约等于剥夺武器）
-                DropActiveWeapon(victim);
+                if (DropActiveWeapon(victim))
+                {
+                    char ZombieName[32];
+                    Han_GetZombieName(zombie, ZombieName, sizeof(ZombieName));
+                    CPrintToChat(victim, "{green}[华仔] {red}你被%s的震荡波击落了武器！", ZombieName);
+                }
 
                 // 状态管理
                 g_bIsStuck[victim] = false;

@@ -49,7 +49,7 @@
 
 // 技能参数（恶魔僵尸）
 #define DEIMOS_KNOCK_POWER      300.0      // 恶魔僵尸击飞玩家的力度（水平和垂直同力度）
-#define DEIMOS_KNOCK_CD         5.0        // 恶魔僵尸击飞技能的冷却时间（秒）
+#define DEIMOS_KNOCK_CD         15.0       // 恶魔僵尸击飞技能的冷却时间（秒）
 #define DEIMOS_PROJ_AIMTIME     3.0        // 恶魔僵尸投掷预瞄持续时间（秒）
 #define DEIMOS_PROJ_FLYTIME     1.0        // 恶魔僵尸投掷物飞行时间（秒）
 #define DEIMOS_PROJ_CD          10.0       // 恶魔僵尸投掷物命中CD（秒）
@@ -107,7 +107,7 @@
 #define PANGZI_GRAPPLE_RANGE    3.0        // 巨型狂暴形态僵尸触发擒抱的范围（单位：米）
 #define PANGZI_GRAPPLE_DAMAGE   10.0       // 巨型狂暴形态僵尸擒抱每秒造成的伤害
 #define PANGZI_GRAPPLE_CD       30.0       // 巨型狂暴形态僵尸冲锋且成功擒抱后的冷却时间（秒）
-#define PANGZI_GRAPPLE_KEYRATE  4          // 真人玩家挣脱擒抱所需的每秒按E键次数
+#define PANGZI_GRAPPLE_KEYRATE  7          // 真人玩家挣脱擒抱所需的每秒按E键次数
 // 擒抱视角是按照 "hitbox_size" "3.2", "anime_size" "1.5" 做的
 #define PANGZI_THROW_MAX        5          // 巨型狂暴形态僵尸获取子弹僵尸的最大数量
 #define PANGZI_THROW_MIN        3          // 巨型狂暴形态僵尸获取子弹僵尸的最小数量
@@ -141,6 +141,7 @@
 #define SFX_MYSTERY2           "ambient/wind/wind_hit1.wav"                 // 神秘僵尸传送门环境音
 #define SFX_DEIMOS1            "physics/body/body_medium_break3.wav"        // 飞行物爆炸音效
 #define SFX_DEIMOS2            "custom/melee_parry_success.wav"             // 弹反音效
+#define SFX_DEIMOS3            "custom/fast_windloop1-louder.wav"           // 投掷物飞行风声
 
 // 音效路径（BOSS安哥拉）
 #define SFX_CALL               "custom/mega_mob_incoming.wav"               // 安哥拉呼唤僵尸集中攻击某个人类的音效
@@ -167,6 +168,11 @@
 #define SFX_DASH4              "custom/body_medium_break2.wav"              // 玩家被冲撞命中时的骨折音效
 #define SFX_SHOCK1             "custom/electra_blast1.wav"                  // 异形斗兽震荡波释放时的音效
 #define SFX_SHOCK2             "custom/electra_hit.wav"                     // 玩家被震荡波命中时的电流音效
+
+// 声音 flag 兼容：此版 SourceMod include 未暴露 SND_LOOPING，引擎原生值 = 0x0008
+#if !defined SND_LOOPING
+    #define SND_LOOPING 8
+#endif
 
 //========================================================================================
 // HANDLES & VARIABLES
