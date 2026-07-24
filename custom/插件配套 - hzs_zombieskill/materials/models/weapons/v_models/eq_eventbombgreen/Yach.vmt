@@ -1,0 +1,5 @@
+"VertexLitGeneric"
+{
+	"$baseTexture" "models\weapons\v_models\eq_eventbombgreen\Yach"
+	"$Translucent" "1"
+}

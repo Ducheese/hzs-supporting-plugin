@@ -125,12 +125,14 @@ void LaunchProjectile(int zombie, int target)
     GetEntityTopCenter(zombie, startPos);
     GetEntityTopCenter(target, targetPos);
 
-    // 创建飞行物模型
-    int proj = CreateEntityByName("prop_dynamic");
+    // 创建投掷物模型
+    int proj = CreateEntityByName(DEIMOS_PROJ_PROP);
     if (proj == -1)
         return;
 
     DispatchKeyValue(proj, "model", MODEL_ZOMBIEPROJ);
+    DispatchKeyValue(proj, "skin", DEIMOS_PROJ_SKIN);
+    DispatchKeyValue(proj, "modelscale", DEIMOS_PROJ_SCALE);
     DispatchSpawn(proj);
     TeleportEntity(proj, startPos, NULL_VECTOR, NULL_VECTOR);
 
@@ -223,9 +225,15 @@ public Action Timer_DeimosProjThink(Handle timer, int proj)
     pos[1] = startPos[1] + vel[1] * elapsed;
     pos[2] = startPos[2] + vel[2] * elapsed - 0.5 * gravity * elapsed * elapsed;
 
-    TeleportEntity(proj, pos, NULL_VECTOR, NULL_VECTOR);
+    // 自旋
+    float angles[3];
+    angles[0] = 180.0 * elapsed;
+    angles[1] = 180.0 * elapsed;
+    angles[2] = 180.0 * elapsed;
 
-    // 飞行风声调制
+    TeleportEntity(proj, pos, angles, NULL_VECTOR);
+
+    // 飞行风阻声调制
     UpdateDeimosWind(proj, vel, gravity, elapsed);
 
     // 命中检测
@@ -235,8 +243,11 @@ public Action Timer_DeimosProjThink(Handle timer, int proj)
         // 屏幕震动
         Shake(target, 10.0, 10.0, 1.0);
 
-        // 命中音效
-        EmitSoundToClient(target, SFX_DEIMOS1, _, SNDCHAN_STATIC, SNDLEVEL_NORMAL, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
+        // 爆炸音效
+        EmitAmbientSound(SFX_DEIMOS1, pos, _, SNDLEVEL_GUNFIRE, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
+
+        // 造成伤害
+        SDKHooks_TakeDamage(target, proj, proj, DEIMOS_PROJ_DAMAGE, DMG_SLASH, _, _, _, false);
 
         // 强制缴械 + 文字提示
         if (DropActiveWeapon(target))
@@ -297,7 +308,7 @@ void CheckProjParry(int client)
         // 弹反音效
         EmitSoundToClient(client, SFX_DEIMOS2, _, SNDCHAN_STATIC, SNDLEVEL_NORMAL, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
 
-        // 停风声
+        // 停风阻声
         StopDeimosWind(proj);
 
         AcceptEntityInput(proj, "Kill");

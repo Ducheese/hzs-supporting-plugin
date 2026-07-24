@@ -11,7 +11,7 @@
 // 模型路径
 #define MODEL_HL2PORTAL        "models/props_combine/combine_citadelcloudcenter.mdl"    // 半条命2第二章天空大漩涡模型
 #define MODEL_ZOMBIETRAP       "models/heavyzombietrap/zombitrap.mdl"       // 陷阱视觉模型
-#define MODEL_ZOMBIEPROJ       "models/error.mdl"                           // 僵尸投掷物
+#define MODEL_ZOMBIEPROJ       "models/weapons/HanNewWeapon/shoudantoulu/w_eq_fraggrenade.mdl"   // 僵尸投掷物（爆弹兽颅）
 #define TOOL_TRAPPHYS          "models/props/de_nuke/crate_small.mdl"       // 陷阱受击体模型（木头受击音效来源）
 #define TOOL_BEAMSPRITE        "materials/sprites/physbeam.vmt"             // 可视化辅助线（比如碰撞箱、实体连线）
 
@@ -41,7 +41,7 @@
 #define SMOKE_FADETIME          5.0        // 几秒后迷雾僵尸的烟开始消散（秒）
 #define SMOKE_KILLTIME          10.0       // 几秒后迷雾僵尸的烟彻底消散（秒）
 #define EXPLODE_TIME            1.5        // 延时1.5秒自爆，最好把自爆僵尸的"death_anim"改成"ragdoll:1.5"，这样才能站着自爆
-#define EXPLODE_DAMAGE         "50"        // 自爆僵尸爆炸的伤害震级，和伤害大小正相关（字符）
+#define EXPLODE_DAMAGE         "80"        // 自爆僵尸爆炸的伤害震级，和伤害大小正相关（字符）
 #define EXPLODE_RADIUS         "300"       // 自爆僵尸爆炸的伤害范围（字符）
 #define HEAL_DAMAGE             100        // 巫蛊术尸群疗时恢复的个体血量
 #define HEAL_RADIUS             5.0        // 巫蛊术尸群疗的作用范围（单位：米）
@@ -55,13 +55,17 @@
 #define DEIMOS_PROJ_CD          10.0       // 恶魔僵尸投掷物命中CD（秒）
 #define DEIMOS_PROJ_FAIL_CD     5.0        // 恶魔僵尸投掷物未命中CD（秒）
 #define DEIMOS_PROJ_RANGE       1.75       // 恶魔僵尸投掷物命中半径（单位：米）
+#define DEIMOS_PROJ_DAMAGE      8.0        // 恶魔僵尸投掷物砸中造成伤害
+#define DEIMOS_PROJ_PROP       "prop_dynamic_override" // 恶魔僵尸投掷物实体类型（字符），有物理参数的模型如果还用普通prop_dynamic会直接不渲染
+#define DEIMOS_PROJ_SKIN       "1"         // 恶魔僵尸投掷物皮肤组索引号（字符），1普通，2绿，3紫，0紫黑格子
+#define DEIMOS_PROJ_SCALE      "5.0"       // 恶魔僵尸投掷物模型体积倍数（字符）
 #define DEIMOS_PARRY_RANGE      3.0        // 人类弹反投掷物的最大范围（单位：米）
 
 // 技能参数（屠夫僵尸）
 #define BUTCHER_TRAP_HEALTH     300        // 屠夫僵尸鬼手陷阱的血量
 #define BUTCHER_TRAP_LIFETIME   30.0       // 无人踩踏时鬼手陷阱的存在时间（秒）
 #define BUTCHER_TRAP_STUCKTIME  8.0        // 鬼手陷阱被踩中后的剩余存在时间（秒），trap动画最长也是8秒
-#define BUTCHER_TRAP_DAMAGE     5.0        // 踩中鬼手陷阱时造成的一次性伤害
+#define BUTCHER_TRAP_DAMAGE     10.0       // 踩中鬼手陷阱时造成的一次性伤害
 #define BUTCHER_TRAP_KEYRATE    2          // 真人玩家挣脱鬼手陷阱所需的每秒交替按AD键轮数
 #define BUTCHER_TRAP_CHANCE     0.8        // 屠夫僵尸死后生成鬼手陷阱的概率
 #define BUTCHER_TRAP_MAX        10         // 场内鬼手陷阱的最大数量上限
@@ -139,9 +143,9 @@
 #define SFX_WITCH2             "custom/pileobile.wav"                       // 女巫僵尸致盲时播放的音乐
 #define SFX_MYSTERY1           "ambient/machines/teleport1.wav"             // 神秘僵尸传送门交换音效
 #define SFX_MYSTERY2           "ambient/wind/wind_hit1.wav"                 // 神秘僵尸传送门环境音
-#define SFX_DEIMOS1            "physics/body/body_medium_break3.wav"        // 飞行物爆炸音效
-#define SFX_DEIMOS2            "custom/melee_parry_success.wav"             // 弹反音效
-#define SFX_DEIMOS3            "custom/fast_windloop1-louder.wav"           // 投掷物飞行风声
+#define SFX_DEIMOS1            "custom/zombi_bomb_exp.wav"                  // 恶魔僵尸投掷物爆炸音效
+#define SFX_DEIMOS2            "custom/melee_parry_success.wav"             // 弹反投掷物音效
+#define SFX_DEIMOS3            "custom/fast_windloop1-louder.wav"           // 恶魔僵尸投掷物飞行风阻声
 
 // 音效路径（BOSS安哥拉）
 #define SFX_CALL               "custom/mega_mob_incoming.wav"               // 安哥拉呼唤僵尸集中攻击某个人类的音效
