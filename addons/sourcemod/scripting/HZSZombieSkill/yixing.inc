@@ -114,8 +114,13 @@ void DashKnockback(int zombie)
         {
             if (GetMeterDistance(zombie, victim) < YIXING_DASH_RADIUS)
             {
+                if (g_bIsGrappled[victim])
+                    continue;
+
                 // 状态管理
                 g_bIsStuck[victim] = false;
+                if (g_bIsBlind[victim])
+                    EndWitchBlind(victim);
 
                 // 造成伤害
                 SDKHooks_TakeDamage(victim, zombie, zombie, YIXING_DASH_DAMAGE, DMG_SLASH, _, _, _, false);
@@ -157,7 +162,7 @@ void StartShockWave(int zombie)
     pos[2] += 20.0;
 
     // 瞬间闪光
-    DynamicLight(pos, 75, 75, 255, 10, 500.0, 0.25, 0.0);
+    DynamicLight(pos, 75, 75, 255, 10, 500.0, 0.5, 0.0);
 
     // 光圈
     TE_SetupBeamRingPoint(pos, 10.0, 1000.0,
@@ -220,8 +225,11 @@ void ShockWaveEffect(int zombie)
                 g_bIsShock[victim] = true;
                 CreateTimer(YIXING_SHOCK_TIME, Timer_DeShock, victim);
 
+                // 低频的摇晃
+                Shake(victim, 10.0, 0.5, 10.0);
+
                 // 音效（其实想做tesla电弧效果）
-                EmitSoundToClient(victim, SFX_SHOCK2, _, SNDCHAN_STATIC, SNDLEVEL_NORMAL, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
+                EmitSoundToClient(victim, SFX_SHOCK2, _, SNDCHAN_STATIC, SNDLEVEL_GUNFIRE, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
             }
         }
     }

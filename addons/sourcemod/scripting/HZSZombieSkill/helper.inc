@@ -233,6 +233,13 @@ stock void Shake(int client, float flAmplitude, float flFrequency, float flDurat
  * @param duration 渐入时长（ms）
  * @param holdtime 保持时长（ms）
  * @param flags    渐变标志（FFADE_IN / FFADE_OUT 等）
+ * 
+ * FFADE_IN            0x0001=1        // 渐入：颜色从透明慢慢变实（从无到有）
+ * FFADE_OUT           0x0002=2        // 渐出：颜色从实慢慢变透明（从有到无）
+ * FFADE_MODULATE      0x0004=4        // 调制模式：不是alpha混合，而是颜色乘法
+ * FFADE_STAYOUT       0x0008=8        // 忽略holdtime，一直保持fade状态
+ * FFADE_PURGE         0x0010=16       // 丢掉所有现有的fade效果，只留这一个
+ * 
  * @param color    RGBA 颜色
  */
 stock void Fade(int client, int duration, int holdtime, int flags, int color[4])    // 对已经死了的玩家也有效

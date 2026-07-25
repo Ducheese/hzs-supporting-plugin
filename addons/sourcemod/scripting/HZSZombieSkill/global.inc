@@ -54,12 +54,12 @@
 #define DEIMOS_PROJ_FLYTIME     1.0        // 恶魔僵尸投掷物飞行时间（秒）
 #define DEIMOS_PROJ_CD          10.0       // 恶魔僵尸投掷物命中CD（秒）
 #define DEIMOS_PROJ_FAIL_CD     5.0        // 恶魔僵尸投掷物未命中CD（秒）
-#define DEIMOS_PROJ_RANGE       1.75       // 恶魔僵尸投掷物命中半径（单位：米）
+#define DEIMOS_PROJ_RANGE       1.5        // 恶魔僵尸投掷物命中半径（单位：米）
 #define DEIMOS_PROJ_DAMAGE      8.0        // 恶魔僵尸投掷物砸中造成伤害
 #define DEIMOS_PROJ_PROP       "prop_dynamic_override" // 恶魔僵尸投掷物实体类型（字符），有物理参数的模型如果还用普通prop_dynamic会直接不渲染
 #define DEIMOS_PROJ_SKIN       "1"         // 恶魔僵尸投掷物皮肤组索引号（字符），1普通，2绿，3紫，0紫黑格子
 #define DEIMOS_PROJ_SCALE      "5.0"       // 恶魔僵尸投掷物模型体积倍数（字符）
-#define DEIMOS_PARRY_RANGE      3.0        // 人类弹反投掷物的最大范围（单位：米）
+#define DEIMOS_PARRY_RANGE      2.5        // 人类弹反投掷物的最大范围（单位：米）
 
 // 技能参数（屠夫僵尸）
 #define BUTCHER_TRAP_HEALTH     300        // 屠夫僵尸鬼手陷阱的血量
@@ -85,7 +85,7 @@
 #define ANGELA_HEAL_DAMAGE      200        // 安哥拉自愈时每秒恢复的血量
 #define ANGELA_HEAL_BULLET      100        // 打断安哥拉自愈所需的累计子弹数
 #define ANGELA_KNOCK_DAMAGE     20.0       // 安哥拉群体击飞造成的伤害值（两种群体击飞共用）
-#define ANGELA_KNOCK_RADIUS     10.0       // 安哥拉群体击飞的作用范围（单位：米）
+#define ANGELA_KNOCK_RADIUS     8.0        // 安哥拉群体击飞的作用范围（单位：米）
 // 两种群体击飞在水平和垂直方向上有力度区别，不方便在这里修改值
 #define ANGELA_FLY_TIME         30.0       // 安哥拉飞行的持续时间（秒）
 #define ANGELA_FLY_CD           60.0       // 安哥拉飞行的冷却时间（秒）
@@ -129,7 +129,8 @@
 #define YIXING_DASH_CD          30.0       // 异形斗兽冲撞的冷却时间（秒）
 #define YIXING_SHOCK_ARMOR      10         // 异形斗兽震荡波所扣减的护甲值
 #define YIXING_SHOCK_TIME       3.0        // 异形斗兽震荡波副作用的持续时间（秒）
-#define YIXING_SHOCK_RADIUS     10.0       // 异形斗兽震荡波的作用半径（单位：米）
+#define YIXING_SHOCK_RADIUS     8.0        // 异形斗兽震荡波的作用半径（单位：米）
+#define YIXING_SHOCK_MIN        5          // 异形斗兽震荡波的触发人数阈值
 #define YIXING_SHOCK_CD         30.0       // 异形斗兽震荡波的冷却时间（秒）
 
 // 音效路径（非BOSS特殊僵尸）

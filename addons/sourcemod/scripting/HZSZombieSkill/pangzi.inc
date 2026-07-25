@@ -196,7 +196,7 @@ void StartGrapple(int zombie, int victim)
 
 void GrappleFirstView(int zombie, int victim)
 {
-    float viewOffset[3] = {150.0, 0.0, 250.0};    // 这个位置决定了“眼睛”在哪里，可以放在僵尸的肩膀或头顶
+    float viewOffset[3] = {150.0, 0.0, 200.0};    // 这个位置决定了“眼睛”在哪里，可以放在僵尸的肩膀或头顶
     float viewAngles[3] = {15.0, 180.0, 0.0};     // 这个角度决定了“眼睛”朝哪里看，{0, 180, 0} 大致是朝向后方，即僵尸的脸
 
     int viewControl = CreateEntityByName("point_viewcontrol");
@@ -274,7 +274,8 @@ public Action Timer_GrappleThink(Handle timer, DataPack pack)
     g_iUsePressStep[victim] = 0;
 
     // 生成擒抱伤害
-    Shake(victim, 10.0, 10.0, 1.0);
+    Fade(victim, 128, 0, 16, {255, 0, 0, 100});      // Fade 是屏幕空间覆盖层，不受影响
+    // Shake(victim, 10.0, 10.0, 1.0);               // 没用，视角已经被绑到point_viewcontrol去了
     SDKHooks_TakeDamage(victim, zombie, zombie, PANGZI_GRAPPLE_DAMAGE, DMG_SLASH, _, _, _, false);
 
     // 音效

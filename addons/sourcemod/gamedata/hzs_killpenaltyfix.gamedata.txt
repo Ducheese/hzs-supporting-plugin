@@ -1,0 +1,64 @@
+"Games"
+{
+	"cstrike"
+	{
+		"Signatures"
+		{
+			"OnTakeDamage_AddAccount"
+			{
+				"library"	"server"
+				"windows"	"\x51\x8B\xCE\xE8\x2A\x2A\x2A\x2A\x5F\x5E"
+				"windows64"	"\x6B\xD0\xEC\xE8\x2A\x2A\x2A\x2A\x48\x8B\x7C\x24\x2A"
+			}
+			"EventKilled_AddAccount"
+			{
+				"library"	"server"
+				"windows"	"\x8D\x04\x89\x8B\xCE\xC1\xE0\x02\x50\xE8\x2A\x2A\x2A\x2A\x8B\xCE"
+				"windows64"	"\xB9\xE7\xFF\xFF\xFF\x48\x89\x74\x24\x2A\x45\x33\xC9\x41\xB0\x01\x2B\xC8\x8D\x14\x89\x48\x8B\xCF\xC1\xE2\x02\xE8\x2A\x2A\x2A\x2A"
+			}
+			"EventKilled_CheckForHostageAbuse"
+			{
+				"library"	"server"
+				"windows"	"\x56\x8B\xCB\xE8\x2A\x2A\x2A\x2A\xEB\x02"
+				"windows64"	"\x48\x8B\x05\x2A\x2A\x2A\x2A\x8B\x48\x58\x85\xC9\x0F\x8E"
+			}
+		}
+		"Addresses"
+		{
+			"OnTakeDamage_AddAccount"
+			{
+				"signature"	"OnTakeDamage_AddAccount"
+			}
+			"EventKilled_AddAccount"
+			{
+				"signature"	"EventKilled_AddAccount"
+			}
+			"EventKilled_CheckForHostageAbuse"
+			{
+				"signature"	"EventKilled_CheckForHostageAbuse"
+			}
+		}
+		"Offsets"
+		{
+			"OnTakeDamage_CallOffset"
+			{
+				"windows"	"3"
+				"windows64"	"3"
+			}
+			"EventKilled_AddAccount_CallOffset"
+			{
+				"windows"	"9"
+				"windows64"	"27"
+			}
+			"EventKilled_Abuse_CallOffset"
+			{
+				"windows"	"3"
+				"windows64"	"10"
+			}
+			"IsWin64"
+			{
+				"windows64"	"1"
+			}
+		}
+	}
+}

@@ -92,13 +92,10 @@ public void Han_OnZombieDeath(int zombie, int killer)
     {
         CleanupProjectile(zombie);
     }
-    else if (IsSameName(zombie, ZOMBIE_BUTCHER)
-    && GetRandomFloat(0.0, 1.0) <= BUTCHER_TRAP_CHANCE
-    && g_iTrapCount < BUTCHER_TRAP_MAX
-    )
+    else if (IsSameName(zombie, ZOMBIE_BUTCHER))
     {
-        // 有限制的生成鬼手陷阱
-        StartTrap(zombie);
+        if (GetRandomFloat(0.0, 1.0) <= BUTCHER_TRAP_CHANCE && g_iTrapCount < BUTCHER_TRAP_MAX)  // 有限制的生成鬼手陷阱
+            StartTrap(zombie);
     }
     else if (IsSameName(zombie, ZOMBIE_WITCH))
     {
@@ -265,7 +262,7 @@ public void Han_OnZombieHurt(int zombie, int attacker)
         }
         // 没有概率要求，半血以下开始飞行think避险
         else if (g_hFly[zombie] == INVALID_HANDLE
-        && GetEntProp(zombie, Prop_Data, "m_iHealth") < g_iMaxHealth[zombie])
+        && GetEntProp(zombie, Prop_Data, "m_iHealth") < g_iMaxHealth[zombie] / 2)
         {
             /**
              * g_bIsSkillUsed 的更新在 EnterFlyingMode
@@ -381,9 +378,20 @@ public void Han_OnZombieAttack(int zombie, int victim)
     }
     else if (IsSameName(zombie, BOSS_YIXING) && !g_bIsSkillUsed[zombie])
     {
-        // 震荡波
-        g_bIsSkillUsed[zombie] = true;
-        StartShockWave(zombie);
+        // 震荡波只在一定范围内人数足够时触发
+        int iNearbyCount = 0;
+        for (int i = 1; i <= MaxClients; i++)
+        {
+            if (IsHumanAlive(i) && GetMeterDistance(zombie, i) < YIXING_SHOCK_RADIUS)
+            {
+                iNearbyCount++;
+            }
+        }
+        if (iNearbyCount >= YIXING_SHOCK_MIN)
+        {
+            g_bIsSkillUsed[zombie] = true;
+            StartShockWave(zombie);
+        }
     }
 }
 

@@ -108,6 +108,9 @@ public void Event_RoundStart(Event event, const char[] name, bool dontBroadcast)
     // 碎片系统残留（shooter + timer + owner 全清）
     CleanupDebris();
 
+    // 新回合似乎会kill掉cc
+    g_iFogCC = -1;
+
     // 避免开局买武器时触发
     g_bBotFindWeapon = false;
 }
@@ -166,7 +169,7 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
             }
             else
             {
-                if (GetRandomInt(1, 20) == 1)   // 大概率会被抱上两秒，这概率还可以
+                if (GetRandomInt(1, 15) == 1)   // 大概率会被抱上两秒，这概率还可以
                 {
                     g_iUsePressStep[client]++;
                     // PrintToChatAll("按键计数：%d", g_iUsePressStep[client]);
@@ -201,7 +204,7 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
             }
             else
             {
-                if (GetRandomInt(1, 20) == 1)
+                if (GetRandomInt(1, 30) == 1)
                 {
                     g_iUsePressStep[client]++;
                 }
@@ -209,8 +212,8 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
         }
         else if (g_bIsShock[client])            // 异形斗兽震荡波：移动减速
         {
-            vel[0] = 0.1 * vel[0];
-            vel[1] = 0.1 * vel[1];
+            vel[0] = 0.2 * vel[0];
+            vel[1] = 0.2 * vel[1];
 
             buttons &= ~IN_JUMP;
             buttons &= ~IN_DUCK;     // 也没法蹲

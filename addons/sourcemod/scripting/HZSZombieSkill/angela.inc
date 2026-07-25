@@ -43,6 +43,9 @@ public Action Timer_CreateSmashKnock(Handle timer, int zombie)
                 continue;
             }
 
+            if (g_bIsGrappled[victim])
+                continue;
+
             // 状态管理
             g_bIsStuck[victim] = false;
 
@@ -94,6 +97,9 @@ public Action Timer_CreateSwingKnock(Handle timer, int zombie)
             {
                 continue;
             }
+
+            if (g_bIsGrappled[victim])
+                continue;
 
             // 状态管理
             g_bIsStuck[victim] = false;
