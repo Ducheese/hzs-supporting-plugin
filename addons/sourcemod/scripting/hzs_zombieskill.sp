@@ -55,7 +55,8 @@ public void OnPluginStart()
 
     // Detour(Patch+DHook)
     PrepCCDetour();
-    PatchGiveUp();
+    PatchRangeJA();
+    PatchPathLengthJA();
     PrepIdleDetour();
 
     // SDKCall

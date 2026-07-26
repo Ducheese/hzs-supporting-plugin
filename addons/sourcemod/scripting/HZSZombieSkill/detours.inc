@@ -1,22 +1,41 @@
 //========================================================================================
-// 僵尸无视距离全图索敌（Patch: GiveUpJA + DHook: CHostage_Idle）
+// 僵尸无视距离全图索敌（Patch: RangeJA + PathLengthJA + DHook: CHostage_Idle）
 //========================================================================================
 
-void PatchGiveUp()
+void PatchRangeJA()
 {
     Handle gc = LoadGameConfigFile(GAMEDATA_CUSTOM);
     if (gc == INVALID_HANDLE)
         SetFailState("[hzs_zombieskill] Failed to load gamedata");
 
-    Address jaAddr = GameConfGetAddress(gc, "GiveUpAddr");
+    Address jaAddr = GameConfGetAddress(gc, "RangeJAAddr");
     if (jaAddr == Address_Null)
-        SetFailState("[hzs_zombieskill] Failed to resolve GiveUp address");
+        SetFailState("[hzs_zombieskill] Failed to resolve RangeJA address");
 
     // 0F 87 xx xx xx xx → 6x NOP（跳过 distance>2000 的 giveUp return）
     for (int i = 0; i < 6; i++)
         StoreToAddress(jaAddr + view_as<Address>(i), 0x90, NumberType_Int8);
 
-    LogMessage("[hzs_zombieskill] Patched GiveUpJA at %X", jaAddr);
+    LogMessage("[hzs_zombieskill] Patched RangeJA at %X", jaAddr);
+
+    delete gc;
+}
+
+void PatchPathLengthJA()
+{
+    Handle gc = LoadGameConfigFile(GAMEDATA_CUSTOM);
+    if (gc == INVALID_HANDLE)
+        SetFailState("[hzs_zombieskill] Failed to load gamedata");
+
+    Address jaAddr = GameConfGetAddress(gc, "PathLengthJAAddr");
+    if (jaAddr == Address_Null)
+        SetFailState("[hzs_zombieskill] Failed to resolve PathLength address");
+
+    // 0F 87 xx xx xx xx → 6x NOP（跳过路径长度 > 4000 的 giveUp return）
+    for (int i = 0; i < 6; i++)
+        StoreToAddress(jaAddr + view_as<Address>(i), 0x90, NumberType_Int8);
+
+    LogMessage("[hzs_zombieskill] Patched PathLengthJA at %X", jaAddr);
 
     delete gc;
 }
