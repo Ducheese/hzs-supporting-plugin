@@ -647,7 +647,7 @@ void CreatePoisonFog()
         if (cc != -1)
         {
             DispatchKeyValue(cc, "filename", LUT_ANGELA_GREEN);
-            DispatchKeyValue(cc, "maxweight", "1.0");
+            DispatchKeyValue(cc, "maxweight", "0.9");
             DispatchKeyValue(cc, "fadeInDuration", "3.0");
             DispatchKeyValue(cc, "fadeOutDuration", "3.0");
             DispatchKeyValue(cc, "minfalloff", "-1");
@@ -702,16 +702,16 @@ void RemovePoisonFog()
         SetVariantString("10000");
         AcceptEntityInput(fog, "SetEndDistLerpTo");
         AcceptEntityInput(fog, "StartFogTransition");
+
+        // 5s 后 fog fade 完毕，Kill 旧 fog 实体
+        g_iFogGeneration++;
+        DataPack pack = new DataPack();
+        pack.WriteCell(g_iFogGeneration);
+        pack.WriteCell(EntIndexToEntRef(fog));
+        CreateTimer(5.0, Timer_CleanupPoison, pack);
+
+        g_iFog = -1;
     }
-
-    // 5s 后 fog fade 完毕，Kill 旧 fog 实体
-    g_iFogGeneration++;
-    DataPack pack = new DataPack();
-    pack.WriteCell(g_iFogGeneration);
-    pack.WriteCell(EntIndexToEntRef(fog));
-    CreateTimer(5.0, Timer_CleanupPoison, pack);
-
-    g_iFog = -1;
     // g_iFogCC = -1;
 }
 

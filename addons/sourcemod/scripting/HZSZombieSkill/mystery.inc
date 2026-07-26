@@ -7,6 +7,7 @@ public Action Timer_MysteryNearThink(Handle timer, int zombie)
     if (!IsValidEntity(zombie) || GetEntProp(zombie, Prop_Data, "m_iHealth") <= 0)
     {
         g_hMysteryNear[zombie] = INVALID_HANDLE;
+        CleanupMysteryPortal(zombie);
         return Plugin_Stop;
     }
 
@@ -49,6 +50,11 @@ void StartPortal(int zombie, int target)
     DispatchSpawn(portal);
     SetVariantString("fasteridle");
     AcceptEntityInput(portal, "SetAnimation");
+
+    // renderfx对这个模型无法生效
+    // SetEntityRenderMode(portal, RENDER_TRANSCOLOR);
+    // SetEntityRenderColor(portal, 255, 255, 255, 255);
+    // SetEntityRenderFx(portal, RENDERFX_PULSE_FAST);
 
     // 传送门模型得翻面才能看见
     groundPos[2] += 5.0;
@@ -146,6 +152,8 @@ void CreateTesla(float pos[3])
     DispatchSpawn(tesla);
     ActivateEntity(tesla);
 
+    PushEntRef(g_iTesla, TESLA_POOL, tesla);
+
     pos[2] += 5.0;
     TeleportEntity(tesla, pos, NULL_VECTOR, NULL_VECTOR);
     AcceptEntityInput(tesla, "TurnOn");
@@ -157,7 +165,10 @@ public Action Timer_KillTesla(Handle timer, int ref)
 {
     int entity = EntRefToEntIndex(ref);
     if (entity != INVALID_ENT_REFERENCE && IsValidEntity(entity))
+    {
+        PopEntRef(g_iTesla, TESLA_POOL, entity);
         AcceptEntityInput(entity, "Kill");
+    }
     return Plugin_Stop;
 }
 

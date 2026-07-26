@@ -1,32 +1,43 @@
 //========================================================================================
-// 实体追踪池（泄漏检测）
+// 实体监控（泄漏检测）
+//
+// 设计：两层，互不依赖。
+//
+// 第一层 — 技能归因（精确，本插件自有实体）
+//   每个技能在「创建实体」处把实体记进所属系统的槽位（定长池 Push/Pop，或按
+//   owner 索引的数组），在「销毁」处清空。Timer 里用 IsValidEntity 数每个系统
+//   的存活实体。EntRef + IsValidEntity 自带有效性自检：就算某条销毁路径漏了
+//   Pop，槽位也只会读成空，绝不会把计数虚高。
+//
+// 第二层 — reality 直扫（兜底，服务器范围）
+//   每 30s 用 FindEntityByClassname("*") 把全图扫一遍，按 g_sTrackedClasses
+//   统计各类绝对数量。它直接看现实，不依赖任何记账，所以哪怕某技能忘了入池 /
+//   漏了清理，只要实体还在服务器上，这里就能暴露出来。同时给出服务器范围内的
+//   同类实体总数（含地图 / 其他插件创建的，作为上下文噪声，无害）。
+//
+// ── 新增技能接入清单（务必全部完成）────────────────────────────────────────
+//   1. 在创建处把实体写进所属系统槽位（Push 进池，或存入 owner 索引数组）。
+//   2. 在每一条销毁路径清空该槽位（Pop，或置 -1）。
+//   3. 在下方 Timer_EntityMonitor 的「技能归因」段加一行计数并打进 [EC-sys]。
+//   4. 若创建的 classname 是本插件从未用过的，追加到 g_sTrackedClasses（否则
+//      reality 扫描看不到它）。
 //========================================================================================
 
-// 增量计数器
-int g_iEntityCount;
-char g_sEntityClass[2048][64];
+//========================================================================================
+// 定长池（多实例、无天然 owner 键的实体用 Push/Pop 池）
+//========================================================================================
 
-int g_EC_Fog;            // env_fog_controller
-int g_EC_CC;             // color_correction
-int g_EC_Shooter;        // env_shooter
-int g_EC_ViewCtrl;       // point_viewcontrol
-int g_EC_Physics;        // prop_physics_override
-int g_EC_Trigger;        // trigger_multiple
-int g_EC_SmokeStack;     // env_smokestack
-int g_EC_Explosion;      // env_explosion
-int g_EC_Particle;       // info_particle_system
-int g_EC_PropDynamic;    // prop_dynamic
-
-// 系统归因追踪池
-#define PANGZI_DUMMY_POOL  8      // 胖子投掷 dummy（prop_dynamic）
-#define SMOKESTACK_POOL    16     // 迷雾僵尸 env_smokestack
-#define EXPLOSION_POOL     16     // 自爆僵尸 env_explosion
+#define PANGZI_DUMMY_POOL  64     // 胖子投掷 dummy（prop_dynamic）
+#define SMOKESTACK_POOL    64     // 迷雾僵尸 env_smokestack
+#define EXPLOSION_POOL     64     // 自爆僵尸 env_explosion
 #define PARTICLE_POOL      64     // info_particle_system（治疗光环 / 安哥拉自愈）
+#define TESLA_POOL         64     // 神秘电弧 point_tesla
 
 int g_iPangziDummy[PANGZI_DUMMY_POOL]   = {-1, ...};
 int g_iSmokeStack[SMOKESTACK_POOL]      = {-1, ...};
 int g_iExplosion[EXPLOSION_POOL]        = {-1, ...};
 int g_iParticle[PARTICLE_POOL]          = {-1, ...};
+int g_iTesla[TESLA_POOL]                = {-1, ...};
 
 //========================================================================================
 // 池操作
@@ -72,64 +83,39 @@ stock int CountPool(const int[] pool, int poolSize)
 }
 
 //========================================================================================
-// 调试：每秒实体总数记录（检测泄漏）
+// 本插件创建过的实体类注册表（reality 扫描的唯一白名单）
+// 新增技能若用到新的 classname，必须在此追加，否则 reality 扫描忽略它。
 //========================================================================================
 
-public void OnEntityCreated(int entity, const char[] classname)
+char g_sTrackedClasses[][64] = {
+    "prop_dynamic",            // 胖子 dummy / 伪装假身 / 屠夫视觉 / 神秘传送门
+    "prop_dynamic_override",   // 恶魔投掷物
+    "prop_physics_override",   // 屠夫受击体
+    "trigger_multiple",        // 屠夫触发器
+    "env_fog_controller",      // 安哥拉毒雾
+    "color_correction",        // 安哥拉毒雾CC / 女巫灰度CC
+    "env_shooter",             // 安哥拉碎片
+    "env_smokestack",          // 迷雾僵尸
+    "env_explosion",           // 自爆僵尸
+    "info_particle_system",    // 治疗光环 / 安哥拉自愈
+    "point_tesla",             // 神秘电弧
+    "point_viewcontrol"        // 胖子视角
+};
+
+//========================================================================================
+// 每秒采样：技能归因 + （每 30s）reality 直扫
+//========================================================================================
+
+public int StatsPanelHandler(Menu menu, MenuAction action, int param1, int param2)
 {
-    if (entity >= 0 && entity < sizeof(g_sEntityClass))
-        strcopy(g_sEntityClass[entity], sizeof(g_sEntityClass[]), classname);
-
-    g_iEntityCount++;
-
-    if      (StrEqual(classname, "env_fog_controller"))    g_EC_Fog++;
-    else if (StrEqual(classname, "color_correction"))      g_EC_CC++;
-    else if (StrEqual(classname, "env_shooter"))           g_EC_Shooter++;
-    else if (StrEqual(classname, "point_viewcontrol"))     g_EC_ViewCtrl++;
-    else if (StrEqual(classname, "prop_physics_override")) g_EC_Physics++;
-    else if (StrEqual(classname, "trigger_multiple"))      g_EC_Trigger++;
-    else if (StrEqual(classname, "env_smokestack"))        g_EC_SmokeStack++;
-    else if (StrEqual(classname, "env_explosion"))         g_EC_Explosion++;
-    else if (StrEqual(classname, "info_particle_system"))  g_EC_Particle++;
-    else if (StrEqual(classname, "prop_dynamic"))          g_EC_PropDynamic++;
-}
-
-public void OnEntityDestroyed(int entity)
-{
-    g_iEntityCount--;
-
-    if (entity < 0 || entity >= sizeof(g_sEntityClass) || g_sEntityClass[entity][0] == '\0')
-        return;
-
-    char cls[64];
-    strcopy(cls, sizeof(cls), g_sEntityClass[entity]);
-    g_sEntityClass[entity][0] = '\0';
-
-    if      (StrEqual(cls, "env_fog_controller"))    g_EC_Fog--;
-    else if (StrEqual(cls, "color_correction"))      g_EC_CC--;
-    else if (StrEqual(cls, "env_shooter"))           g_EC_Shooter--;
-    else if (StrEqual(cls, "point_viewcontrol"))     g_EC_ViewCtrl--;
-    else if (StrEqual(cls, "prop_physics_override")) g_EC_Physics--;
-    else if (StrEqual(cls, "trigger_multiple"))      g_EC_Trigger--;
-    else if (StrEqual(cls, "env_smokestack"))        g_EC_SmokeStack--;
-    else if (StrEqual(cls, "env_explosion"))         g_EC_Explosion--;
-    else if (StrEqual(cls, "info_particle_system"))  g_EC_Particle--;
-    else if (StrEqual(cls, "prop_dynamic"))          g_EC_PropDynamic--;
+    return 0;
 }
 
 public Action Timer_EntityMonitor(Handle timer)
 {
-    // ── 第一行：增量计数器 ──
-    LogMessage("[EC] total:%d  fog:%d  cc:%d  shooter:%d  view:%d  phys:%d  trig:%d  propdy:%d  smk:%d  exp:%d  ptc:%d",
-        g_iEntityCount,
-        g_EC_Fog, g_EC_CC, g_EC_Shooter, g_EC_ViewCtrl,
-        g_EC_Physics, g_EC_Trigger, g_EC_PropDynamic,
-        g_EC_SmokeStack, g_EC_Explosion, g_EC_Particle
-    );
-
-    // ── 第二行：僵尸系统归因 ──
-    int angela_fog     = (g_iFog     > 0 && IsValidEntity(g_iFog))     ? 1 : 0;
-    int angela_cc      = (g_iFogCC   > 0 && IsValidEntity(g_iFogCC))   ? 1 : 0;
+    // ── 第一层：技能归因 ──
+    int angela_fog     = (g_iFog   > 0 && IsValidEntity(g_iFog))   ? 1 : 0;
+    int angela_cc      = (g_iFogCC > 0 && IsValidEntity(g_iFogCC)) ? 1 : 0;
     int angela_shooter = CountPool(g_iDebrisShooter, DEBRIS_SHOOTER_POOL);
 
     int witch_cc;
@@ -139,48 +125,130 @@ public Action Timer_EntityMonitor(Handle timer)
         if (g_iWitchSevereCC[i] > 0 && IsValidEntity(g_iWitchSevereCC[i])) witch_cc++;
     }
 
-    int trap_vis, trap_phys, trap_trig;
+    int trap;            // 每个陷阱 = visual + phys + trigger 各一
     for (int i = 0; i < 2048; i++)
-    {
-        if (g_iTrapVisual[i] > 0 && IsValidEntity(g_iTrapVisual[i]))
-        {
-            trap_vis++;
-            trap_phys++;
-        }
-        if (g_iTrapTrigger[i] > 0 && IsValidEntity(g_iTrapTrigger[i]))
-            trap_trig++;
-    }
+        if (g_iTrapVisual[i] > 0 && IsValidEntity(g_iTrapVisual[i])) trap++;
 
     int imposter;
     for (int i = 0; i < 2048; i++)
-    {
-        if (g_iFakeBody[i] > 0 && IsValidEntity(g_iFakeBody[i]))
-            imposter++;
-    }
+        if (g_iFakeBody[i] > 0 && IsValidEntity(g_iFakeBody[i])) imposter++;
 
     int pangzi_view;
     for (int i = 1; i <= MaxClients; i++)
-    {
-        if (g_iViewControl[i] > 0 && IsValidEntity(g_iViewControl[i]))
-            pangzi_view++;
-    }
+        if (g_iViewControl[i] > 0 && IsValidEntity(g_iViewControl[i])) pangzi_view++;
 
     int pangzi_dummy = CountPool(g_iPangziDummy, PANGZI_DUMMY_POOL);
     int smoke        = CountPool(g_iSmokeStack,  SMOKESTACK_POOL);
     int explode      = CountPool(g_iExplosion,   EXPLOSION_POOL);
     int particle     = CountPool(g_iParticle,    PARTICLE_POOL);
+    int tesla        = CountPool(g_iTesla,       TESLA_POOL);
 
-    LogMessage("[EC-sys] angela_fog:%d  angela_cc:%d  angela_shooter:%d  witch_cc:%d  trap_vis:%d  trap_phys:%d  trap_trig:%d  imposter:%d  pangzi_view:%d  pangzi_dummy:%d  smoke:%d  explode:%d  particle:%d",
-        angela_fog, angela_cc, angela_shooter, witch_cc, trap_vis, trap_phys, trap_trig,
-        imposter, pangzi_view, pangzi_dummy, smoke, explode, particle
-    );
+    int deimos_proj;
+    for (int i = 0; i < 2048; i++)
+        if (g_iDeimosProjectile[i] > 0 && IsValidEntity(g_iDeimosProjectile[i])) deimos_proj++;
 
-    // ── 每 30s 全量交叉校验 ──
+    int mystery_portal;
+    for (int i = 0; i < 2048; i++)
+        if (g_iPortal[i] > 0 && IsValidEntity(g_iPortal[i])) mystery_portal++;
+
+    // 本插件存活实体总数（陷阱按 3 实体计：visual/phys/trigger）
+    int plugin_total = angela_fog + angela_cc + angela_shooter + witch_cc + trap * 3
+                     + imposter + pangzi_view + pangzi_dummy + smoke + explode
+                     + particle + tesla + deimos_proj + mystery_portal;
+
+    // ── 僵尸种类统计（HAN API 实时 tally）──
+    StringMap zCounts = new StringMap();
+    int zTotal = 0;
+    int zc = Han_GetZombieCount();
+    for (int i = 0; i < zc; i++)
+    {
+        int z = Han_GetZombieByIndex(i);
+        if (Han_IsZombie(z))
+        {
+            char zname[64];
+            Han_GetZombieName(z, zname, sizeof(zname));
+            int v = 0;
+            zCounts.GetValue(zname, v);
+            zCounts.SetValue(zname, v + 1);
+            zTotal++;
+        }
+    }
+
+    // ── 构建左侧 Panel ──
+    Panel panel = new Panel();
+    char line[128];
+
+    Format(line, sizeof(line), "僵尸%d / 技能实体%d", zTotal, plugin_total);
+    panel.SetTitle(line);
+
+    // 12 种僵尸：每行 = 僵尸计数 + 其相关实体（按实体本质 classname 标注）
+    int zn;
+    zn = 0; zCounts.GetValue(ZOMBIE_SMOKE, zn);
+    Format(line, sizeof(line), "迷雾:%d / env_smokestack:%d", zn, smoke);
+    panel.DrawText(line);
+
+    zn = 0; zCounts.GetValue(ZOMBIE_EXPLODE, zn);
+    Format(line, sizeof(line), "自爆:%d / env_explosion:%d", zn, explode);
+    panel.DrawText(line);
+
+    zn = 0; zCounts.GetValue(ZOMBIE_HEAL, zn);
+    Format(line, sizeof(line), "治疗:%d / info_particle:%d", zn, particle);
+    panel.DrawText(line);
+
+    zn = 0; zCounts.GetValue(ZOMBIE_GHOST, zn);
+    Format(line, sizeof(line), "幽灵:%d", zn);
+    panel.DrawText(line);
+
+    zn = 0; zCounts.GetValue(ZOMBIE_DEIMOS, zn);
+    Format(line, sizeof(line), "恶魔:%d / projectile:%d", zn, deimos_proj);
+    panel.DrawText(line);
+
+    zn = 0; zCounts.GetValue(ZOMBIE_BUTCHER, zn);
+    Format(line, sizeof(line), "屠夫:%d / trap:%d", zn, trap);
+    panel.DrawText(line);
+
+    zn = 0; zCounts.GetValue(ZOMBIE_WITCH, zn);
+    Format(line, sizeof(line), "女巫:%d / witch_cc:%d", zn, witch_cc);
+    panel.DrawText(line);
+
+    zn = 0; zCounts.GetValue(ZOMBIE_IMPOSTER, zn);
+    Format(line, sizeof(line), "伪人:%d / fakebody:%d", zn, imposter);
+    panel.DrawText(line);
+
+    zn = 0; zCounts.GetValue(ZOMBIE_MYSTERY, zn);
+    Format(line, sizeof(line), "神秘:%d / portal:%d tesla:%d", zn, mystery_portal, tesla);
+    panel.DrawText(line);
+
+    zn = 0; zCounts.GetValue(BOSS_ANGELA, zn);
+    Format(line, sizeof(line), "牢安:%d / env_fog:%d fog_cc:%d env_shooter:%d",
+        zn, angela_fog, angela_cc, angela_shooter);
+    panel.DrawText(line);
+
+    zn = 0; zCounts.GetValue(BOSS_PANGZI, zn);
+    Format(line, sizeof(line), "巨型:%d / viewcontrol:%d dummy:%d",
+        zn, pangzi_view, pangzi_dummy);
+    panel.DrawText(line);
+
+    zn = 0; zCounts.GetValue(BOSS_YIXING, zn);
+    Format(line, sizeof(line), "异形:%d", zn);
+    panel.DrawText(line);
+
+    delete zCounts;
+
+    // 每秒重发给所有未在菜单中的真实玩家，保持常驻
+    for (int client = 1; client <= MaxClients; client++)
+    {
+        if (IsClientInGame(client) && !IsFakeClient(client) && GetClientMenu(client) == MenuSource_None)
+            SendPanelToClient(panel, client, StatsPanelHandler, 2);
+    }
+    delete panel;
+
+    // ── 第二层：reality 直扫（每 30s，日志兜底，泄漏检测靠它）──
     static int tick;
     tick++;
     if (tick % 30 == 0)
     {
-        int real_fog, real_cc, real_shooter, real_view, real_phys, real_trig, real_smk, real_exp, real_ptc, real_propdy;
+        int counts[sizeof(g_sTrackedClasses)];
         int ent = -1;
         while ((ent = FindEntityByClassname(ent, "*")) != -1)
         {
@@ -188,30 +256,21 @@ public Action Timer_EntityMonitor(Handle timer)
                 continue;
             char cls[64];
             GetEntityClassname(ent, cls, sizeof(cls));
-            if      (StrEqual(cls, "env_fog_controller"))    real_fog++;
-            else if (StrEqual(cls, "color_correction"))      real_cc++;
-            else if (StrEqual(cls, "env_shooter"))           real_shooter++;
-            else if (StrEqual(cls, "point_viewcontrol"))     real_view++;
-            else if (StrEqual(cls, "prop_physics_override")) real_phys++;
-            else if (StrEqual(cls, "trigger_multiple"))      real_trig++;
-            else if (StrEqual(cls, "env_smokestack"))        real_smk++;
-            else if (StrEqual(cls, "env_explosion"))         real_exp++;
-            else if (StrEqual(cls, "info_particle_system"))  real_ptc++;
-            else if (StrEqual(cls, "prop_dynamic"))          real_propdy++;
+            for (int i = 0; i < sizeof(g_sTrackedClasses); i++)
+            {
+                if (StrEqual(cls, g_sTrackedClasses[i]))
+                {
+                    counts[i]++;
+                    break;
+                }
+            }
         }
 
-        if (g_EC_Fog      != real_fog    || g_EC_CC        != real_cc    || g_EC_Shooter   != real_shooter ||
-            g_EC_ViewCtrl != real_view   || g_EC_Physics   != real_phys  || g_EC_Trigger   != real_trig    ||
-            g_EC_SmokeStack != real_smk  || g_EC_Explosion != real_exp   || g_EC_Particle  != real_ptc     ||
-            g_EC_PropDynamic != real_propdy)
-        {
-            LogMessage("[EC-chk] MISMATCH fog: inc=%d real=%d  cc: inc=%d real=%d  shooter: inc=%d real=%d  view: inc=%d real=%d  phys: inc=%d real=%d  trig: inc=%d real=%d  smk: inc=%d real=%d  exp: inc=%d real=%d  ptc: inc=%d real=%d  propdy: inc=%d real=%d",
-                g_EC_Fog, real_fog, g_EC_CC, real_cc, g_EC_Shooter, real_shooter,
-                g_EC_ViewCtrl, real_view, g_EC_Physics, real_phys, g_EC_Trigger, real_trig,
-                g_EC_SmokeStack, real_smk, g_EC_Explosion, real_exp, g_EC_Particle, real_ptc,
-                g_EC_PropDynamic, real_propdy
-            );
-        }
+        char buf[1024];
+        buf[0] = '\0';
+        for (int i = 0; i < sizeof(g_sTrackedClasses); i++)
+            Format(buf, sizeof(buf), "%s %s:%d", buf, g_sTrackedClasses[i], counts[i]);
+        LogMessage("[EC-scan]%s", buf);
     }
 
     return Plugin_Continue;

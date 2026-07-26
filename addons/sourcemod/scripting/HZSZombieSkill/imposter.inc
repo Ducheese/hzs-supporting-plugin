@@ -7,6 +7,7 @@ public Action Timer_ImposterSyncThink(Handle timer, int zombie)
     if (!IsValidEntity(zombie) || GetEntProp(zombie, Prop_Data, "m_iHealth") <= 0)
     {
         g_hImposterSync[zombie] = INVALID_HANDLE;
+        KillFakeBody(zombie);
         return Plugin_Stop;
     }
 

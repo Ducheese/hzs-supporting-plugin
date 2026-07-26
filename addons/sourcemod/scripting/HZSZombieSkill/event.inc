@@ -147,22 +147,22 @@ public void Han_OnZombieDeath(int zombie, int killer)
         {
             KillTimer(g_hFly[zombie]);
             g_hFly[zombie] = INVALID_HANDLE;
+        }
 
-            if (g_BossState[zombie] == STATE_FLYING)
+        if (g_BossState[zombie] == STATE_FLYING)
+        {
+            // 说白了就是提前了 EnterGroundMode 的清理逻辑
+            g_iFlightCount--;
+            if (g_iFlightCount <= 0)
             {
-                // 说白了就是提前了 EnterGroundMode 的清理逻辑
-                g_iFlightCount--;
-                if (g_iFlightCount <= 0)
-                {
-                    RemovePoisonFog();
-                    RemovePoisonDamage();
-                }
-
-                if (g_iDebrisOwner == zombie)
-                    RemoveDebrisSystem(zombie);
-
-                OffsetAnimZ(zombie, false);
+                RemovePoisonFog();
+                RemovePoisonDamage();
             }
+
+            if (g_iDebrisOwner == zombie)
+                RemoveDebrisSystem(zombie);
+
+            OffsetAnimZ(zombie, false);
         }
 
         SDKUnhook(zombie, SDKHook_OnTakeDamage, OnFlyTakeDamage);

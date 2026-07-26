@@ -162,7 +162,7 @@ void StartShockWave(int zombie)
     pos[2] += 20.0;
 
     // 瞬间闪光
-    DynamicLight(pos, 75, 75, 255, 10, 500.0, 0.5, 0.0);
+    DynamicLight(pos, 75, 75, 255, 10, 500.0, 0.25, 0.0);
 
     // 光圈
     TE_SetupBeamRingPoint(pos, 10.0, 1000.0,

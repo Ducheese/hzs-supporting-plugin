@@ -70,7 +70,7 @@ public void OnPluginStart()
     HookEvent("player_spawn", Event_PlayerSpawn);
 
     // 每秒采样实体数
-    // CreateTimer(1.0, Timer_EntityMonitor, _, TIMER_REPEAT);
+    CreateTimer(1.0, Timer_EntityMonitor, _, TIMER_REPEAT);
 }
 
 public void OnMapStart()
@@ -95,11 +95,22 @@ public void OnClientDisconnect_Post(int client)
 
 public void Event_RoundStart(Event event, const char[] name, bool dontBroadcast)
 {
+    /**
+     * TerminateRound会引起roundstart事件的，这个没有疑问
+     * 关键是这里不能遗留报错，否则报错后的代码就不执行了
+     */
+
+    // 避免开局买武器时触发
+    g_bBotFindWeapon = false;
+
     // 应对CS_TerminateRound导致的清场（WinEndRound = true、hzs_setday、全人类死亡）
     g_iTrapCount = 0;
 
     // 全局单例：暴清除飞残留，避免跨轮泄漏
     g_iFlightCount = 0;
+
+    // 新回合似乎会kill掉cc
+    g_iFogCC = -1;
 
     // 毒雾残留（雾 + CC + 天空盒 + 风声）
     RemovePoisonFog();
@@ -108,11 +119,17 @@ public void Event_RoundStart(Event event, const char[] name, bool dontBroadcast)
     // 碎片系统残留（shooter + timer + owner 全清）
     CleanupDebris();
 
-    // 新回合似乎会kill掉cc
-    g_iFogCC = -1;
-
-    // 避免开局买武器时触发
-    g_bBotFindWeapon = false;
+    // point_viewcontrol 在 s_PreserveEnts 里，跨回合不自动销毁
+    for (int i = 1; i <= MaxClients; i++)
+    {
+        int vc = g_iViewControl[i];
+        if (vc != -1)
+        {
+            if (IsValidEntity(vc))
+                AcceptEntityInput(vc, "Kill");
+            g_iViewControl[i] = -1;
+        }
+    }
 }
 
 public void Event_RoundFreezeEnd(Event event, const char[] name, bool dontBroadcast)
