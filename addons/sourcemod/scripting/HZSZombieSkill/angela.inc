@@ -547,54 +547,6 @@ void FlapWing(int zombie)
 }
 
 //========================================================================================
-// 飞行受击拦截
-//========================================================================================
-
-public Action OnFlyTakeDamage(int zombie, int &attacker, int &inflictor, float &damage, int &damagetype)
-{
-    // 自愈期间：累计子弹数，伤害正常放行
-    if (g_hHeal[zombie] != INVALID_HANDLE)
-    {
-        g_iBulletCount[zombie]++;
-        return Plugin_Continue;
-    }
-
-    // 地面且非自愈模式放行
-    if (g_BossState[zombie] != STATE_FLYING)
-        return Plugin_Continue;
-
-    // 飞行模式：伤害随高度衰减
-    float groundDist = GetDistanceToGround(zombie);
-    float factor = 1.0 - (groundDist / 800.0);
-    if (factor < 0.0) factor = 0.0;
-    // float original = damage;
-    damage *= factor;
-
-    // debug 输出
-    // if (IsValidClient(attacker))
-    // {
-    //     int target = GetEntDataEnt2(zombie, g_iLeaderOffset);
-    //     float targetDist = -1.0;
-    //     if (target > 0)
-    //     {
-    //         float zPos[3], tPos[3];
-    //         GetEntPropVector(zombie, Prop_Send, "m_vecOrigin", zPos);
-    //         GetEntPropVector(target, Prop_Send, "m_vecOrigin", tPos);
-    //         zPos[2] = 0.0;
-    //         tPos[2] = 0.0;
-    //         // 只看水平距离，没法用公共距离函数
-    //         targetDist = GetVectorDistance(zPos, tPos) * GAMEUNITS_TO_METERS;
-    //     }
-    //     PrintToChat(attacker, "高度: %.0f | 衰减: %.0f%% | 伤害: %.0f -> %.0f | 累计: %d | 目标距离: %.1fm",
-    //         groundDist, factor * 100, original, damage, g_flFlyDamage[zombie] + damage, targetDist);
-    // }
-
-    g_flFlyDamage[zombie] += damage;
-
-    return Plugin_Changed;
-}
-
-//========================================================================================
 // 安哥拉技能：飞行增强 — 毒雾
 //========================================================================================
 

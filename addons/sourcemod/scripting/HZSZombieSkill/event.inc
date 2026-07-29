@@ -51,8 +51,7 @@ public void Han_OnZombieCreated(int zombie)
     }
     else if (IsSameName(zombie, BOSS_ANGELA))
     {
-        // 主要是用于飞行期间的伤害计算，也有累积计数逻辑
-        SDKHook(zombie, SDKHook_OnTakeDamage, OnFlyTakeDamage);
+        // 伤害监控改在新API里进行
     }
     else if (IsSameName(zombie, BOSS_PANGZI))
     {
@@ -164,8 +163,6 @@ public void Han_OnZombieDeath(int zombie, int killer)
 
             OffsetAnimZ(zombie, false);
         }
-
-        SDKUnhook(zombie, SDKHook_OnTakeDamage, OnFlyTakeDamage);
     }
     else if (IsSameName(zombie, BOSS_PANGZI))
     {
@@ -195,6 +192,54 @@ public void Han_OnZombieDeath(int zombie, int killer)
 //========================================================================================
 // NPC僵尸受伤事件
 //========================================================================================
+
+public void Han_OnZombieDamagePre(int zombie, int attacker, int &damage)
+{
+    // 僵尸种类分支
+    if (IsSameName(zombie, BOSS_ANGELA))
+    {
+        // 自愈期间累计子弹数
+        if (g_hHeal[zombie] != INVALID_HANDLE)
+        {
+            g_iBulletCount[zombie]++;
+        }
+
+        // 飞行高度伤害衰减，伤害修改传出
+        if (g_hHeal[zombie] == INVALID_HANDLE && g_BossState[zombie] == STATE_FLYING)
+        {
+            // 计算衰减
+            float groundDist = GetDistanceToGround(zombie);
+            float factor = 1.0 - (groundDist / 2000.0);            // 硬编码1000，这个高度以上就衰减为0
+            if (factor < 0.0) factor = 0.0;
+
+            // 传入参数处理
+            float fDamage = float(damage);
+            // float original = fDamage;
+            fDamage *= factor;
+
+            // 累计伤害更新
+            g_flFlyDamage[zombie] += fDamage;
+
+            // 修改伤害
+            damage = RoundToZero(fDamage);
+
+            // int target = GetEntDataEnt2(zombie, g_iLeaderOffset);
+            // float targetDist = -1.0;
+            // if (target > 0)
+            // {
+            //     float zPos[3], tPos[3];
+            //     GetEntPropVector(zombie, Prop_Send, "m_vecOrigin", zPos);
+            //     GetEntPropVector(target, Prop_Send, "m_vecOrigin", tPos);
+            //     zPos[2] = 0.0;
+            //     tPos[2] = 0.0;
+            //     // 只看水平距离，没法用公共距离函数
+            //     targetDist = GetVectorDistance(zPos, tPos) * GAMEUNITS_TO_METERS;
+            // }
+            // PrintToChatAll("高度: %.0f | 衰减: %.0f%% | 伤害: %.0f -> %.0f | 累计: %.0f | 目标距离: %.1fm",
+            //     groundDist, factor * 100, original, fDamage, g_flFlyDamage[zombie], targetDist);
+        }
+    }
+}
 
 public void Han_OnZombieHurt(int zombie, int attacker)
 {
