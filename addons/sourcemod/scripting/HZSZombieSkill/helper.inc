@@ -608,6 +608,52 @@ stock void FindNearestWeapon(int client, int slot)
 }
 
 //========================================================================================
+// 头顶空间检测：trace 向上，MASK_SOLID 不打到东西说明露天可飞
+//========================================================================================
+
+stock bool IsBlockedSkybox(int entity)
+{
+    // 向上无限 trace，和 IsBlockedAboveDist 一致：TraceEntityFilter_Projectile
+    float pos[3];
+    GetEntPropVector(entity, Prop_Send, "m_vecOrigin", pos);
+
+    Handle trace = TR_TraceRayFilterEx(pos, {-90.0, 0.0, 0.0}, MASK_SOLID, RayType_Infinite, TraceEntityFilter_Projectile, entity);
+
+    bool bHit = TR_DidHit(trace);
+    bool bBlocked = true;       // 默认有遮挡
+    if (!bHit)
+    {
+        bBlocked = false;       // 什么都没打到 → 露天 → 无遮挡
+    }
+    else if (TR_GetSurfaceProps(trace) == 76)
+    {
+        bBlocked = false;       // 打到天空盒也算露天 → 无遮挡
+    }
+    delete trace;
+
+    return bBlocked;
+}
+
+//========================================================================================
+// 头顶空间检测：向上指定距离内有无固体阻挡
+//========================================================================================
+
+stock bool IsBlockedAboveDist(int entity, float distance)
+{
+    float start[3], end[3];
+    GetEntPropVector(entity, Prop_Send, "m_vecOrigin", start);
+
+    end = start;
+    end[2] += distance;
+
+    Handle trace = TR_TraceRayFilterEx(start, end, MASK_SOLID, RayType_EndPoint, TraceEntityFilter_Projectile, entity);
+    bool bHit = TR_DidHit(trace);
+    delete trace;
+
+    return bHit;
+}
+
+//========================================================================================
 // 强制缴械（不缴刀）
 //========================================================================================
 

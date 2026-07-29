@@ -94,7 +94,7 @@
 #define ANGELA_FLY_ANIM_OFFSET  5.0        // 飞行时安哥拉视觉模型修正下移量（单位：米）
 #define ANGELA_FLY_POISON_MIN   3.0        // 毒伤最短间隔（秒）或毒伤最低伤害
 #define ANGELA_FLY_POISON_MAX   10.0       // 毒伤最长间隔（秒）或毒伤最高伤害
-#define ANGELA_FLY_BULLET       50         // 迫使安哥拉提前落地所需累计子弹命中数
+#define ANGELA_FLY_DAMAGE       2000.0     // 迫使安哥拉提前落地所需累计受击伤害量
 
 #define DEBRIS_MODEL_COUNT      10         // 碎片模型种类数
 #define DEBRIS_SHOOTER_POOL     32         // env_shooter 池大小（暂且取最大玩家数，一人最多分配一个shooter）
@@ -273,7 +273,7 @@ int g_iPortal[2048] = {-1, ...};                                 // 传送门实
 //========================================================================================
 
 // 飞行以外的逻辑
-int g_iBulletCount[2048];                                        // 安哥拉在自愈/飞行期间所受的累计子弹数
+int g_iBulletCount[2048];                                        // 安哥拉在自愈期间所受的累计子弹数
 int g_iZombieCall[MAXPLAYERS+1];                                 // 玩家是否被集中攻击，记录的是安哥拉的实体号
 Handle g_hHeal[2048] = {INVALID_HANDLE, ...};                    // 实现治疗效果所用的timer，巫蛊术尸和安哥拉共用
 
@@ -311,6 +311,7 @@ char g_sDebrisModels[DEBRIS_MODEL_COUNT][] =
 // 飞行逻辑（H-AN提供）
 float g_flLastFlyEnd[2048];                       // 记录上一次飞行开始/结束的时间（飞行CD逻辑）
 float g_flLastFlySound[2048];                     // 记录上一次扇翅膀音效的时间，用于播放音效
+float g_flFlyDamage[2048];                        // 飞行期间累计受击伤害
 Handle g_hFly[2048] = {INVALID_HANDLE, ...};      // 实现飞行所用的timer
 
 enum BossState

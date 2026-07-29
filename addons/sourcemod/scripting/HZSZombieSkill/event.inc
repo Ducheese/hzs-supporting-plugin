@@ -214,7 +214,8 @@ public void Han_OnZombieHurt(int zombie, int attacker)
     }
     else if (IsSameName(zombie, ZOMBIE_DEIMOS) && !g_bIsSkillUsed[zombie])
     {
-        if (IsTargetForward(zombie, attacker))
+        if (!IsBlockedAboveDist(zombie, 10.0 / GAMEUNITS_TO_METERS)
+        && IsTargetForward(zombie, attacker))
         {
             g_bIsSkillUsed[zombie] = true;
             StartProjectile(zombie, attacker);
@@ -273,7 +274,8 @@ public void Han_OnZombieHurt(int zombie, int attacker)
     else if (IsSameName(zombie, BOSS_PANGZI) && !g_bIsSkillUsed[zombie])
     {
         // 半血以上投掷僵尸
-        if (GetMeterDistance(zombie, attacker) > PANGZI_THROW_RANGE
+        if (!IsBlockedAboveDist(zombie, 10.0 / GAMEUNITS_TO_METERS)
+        && GetMeterDistance(zombie, attacker) > PANGZI_THROW_RANGE
         && IsTargetForward(zombie, attacker)                      // 在前方（防止子弹僵尸卡墙）
         && attacker == GetEntDataEnt2(zombie, g_iLeaderOffset)    // 且目标和攻击者是同一个
         && GetEntProp(zombie, Prop_Data, "m_iHealth") > g_iMaxHealth[zombie] / 2)
@@ -360,7 +362,7 @@ public void Han_OnZombieAttack(int zombie, int victim)
             StartCall(zombie, victim);
         }
         // 群体击飞1 - 砸地动作
-        else if (rand == 2)
+        else if (rand == 2 && !IsBlockedAboveDist(zombie, 10.0 / GAMEUNITS_TO_METERS))
         {
             g_bIsSkillUsed[zombie] = true;
             StartSmash(zombie);
@@ -444,6 +446,7 @@ void InitZombieState(int zombie)
     // BOSS 安哥拉 — 飞行
     g_hFly[zombie] = INVALID_HANDLE;
     g_iBulletCount[zombie] = 0;
+    g_flFlyDamage[zombie] = 0.0;
     g_BossState[zombie] = STATE_GROUND;
     g_Mode[zombie] = FLY_RANDOM;
     g_flLastFlyEnd[zombie] = 0.0;

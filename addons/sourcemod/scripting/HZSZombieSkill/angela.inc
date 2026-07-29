@@ -308,7 +308,7 @@ void EnterFlyingMode(int zombie)
     g_flLastFlyEnd[zombie] = GetEngineTime();                // 飞行开始计时（共用一个数组）
 
     g_bIsSkillUsed[zombie] = true;                           // 其它技能无法使用
-    g_iBulletCount[zombie] = 0;                              // 重置命中计数
+    g_flFlyDamage[zombie] = 0.0;                             // 重置受击伤害累计
 
     // 飞行增强
     if (g_iFlightCount == 0)
@@ -399,7 +399,7 @@ public Action Timer_FlyThink(Handle timer, int zombie)
 
         if (currentTime - g_flLastFlyEnd[zombie] >= ANGELA_FLY_CD     // 飞行的CD
         && !g_bIsSkillUsed[zombie]                                    // 正在使用其它技能时无法飞行，避免冲突
-        )
+        && !IsBlockedSkybox(zombie))                                  // 头顶被遮挡则不飞
         {
             EnterFlyingMode(zombie);                                  // 有CD立刻起飞
         }
@@ -411,8 +411,8 @@ public Action Timer_FlyThink(Handle timer, int zombie)
     // 如果当前是飞行模式，检查持续时间
     else if (g_BossState[zombie] == STATE_FLYING)
     {
-        if (currentTime - g_flLastFlyEnd[zombie] >= ANGELA_FLY_TIME  // 飞行持续时间
-        || g_iBulletCount[zombie] >= ANGELA_FLY_BULLET)              // 受击达到阈值
+        if (currentTime - g_flLastFlyEnd[zombie] >= ANGELA_FLY_TIME   // 飞行持续时间
+        || g_flFlyDamage[zombie] >= ANGELA_FLY_DAMAGE)                // 受击伤害达到阈值
         {
             EnterGroundMode(zombie);
         }
@@ -585,11 +585,11 @@ public Action OnFlyTakeDamage(int zombie, int &attacker, int &inflictor, float &
     //         // 只看水平距离，没法用公共距离函数
     //         targetDist = GetVectorDistance(zPos, tPos) * GAMEUNITS_TO_METERS;
     //     }
-    //     PrintToChat(attacker, "高度: %.0f | 衰减: %.0f%% | 伤害: %.0f -> %.0f | 子弹: %d | 目标距离: %.1fm",
-    //         groundDist, factor * 100, original, damage, g_iBulletCount[zombie] + 1, targetDist);
+    //     PrintToChat(attacker, "高度: %.0f | 衰减: %.0f%% | 伤害: %.0f -> %.0f | 累计: %d | 目标距离: %.1fm",
+    //         groundDist, factor * 100, original, damage, g_flFlyDamage[zombie] + damage, targetDist);
     // }
 
-    g_iBulletCount[zombie]++;
+    g_flFlyDamage[zombie] += damage;
 
     return Plugin_Changed;
 }
