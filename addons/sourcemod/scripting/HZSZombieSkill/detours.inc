@@ -66,10 +66,20 @@ public MRESReturn OnIdle_Pre(int zombie)
 
 void PrepCCDetour()
 {
-    // CColorCorrection vtable[19] = UpdateTransmitState（IDA 确认）
-    g_hShouldTransmitDetour = DHookCreate(19, HookType_Entity, ReturnType_Int, ThisPointer_CBaseEntity);
+    Handle gc = LoadGameConfigFile(GAMEDATA_CUSTOM);
+    if (gc == INVALID_HANDLE)
+        SetFailState("[hzs_zombieskill] Failed to load gamedata");
+
+    // CColorCorrection vtable = UpdateTransmitState：32 位 index 19，64 位 21（IDA 实测，64 位 CBaseEntity 多了 2 个虚函数）
+    int off = GameConfGetOffset(gc, "CCUpdateTransmitStateIndex");
+    if (off == -1)
+        SetFailState("[hzs_zombieskill] Failed to read CCUpdateTransmitStateIndex offset");
+
+    g_hShouldTransmitDetour = DHookCreate(off, HookType_Entity, ReturnType_Int, ThisPointer_CBaseEntity);
     if (g_hShouldTransmitDetour == INVALID_HANDLE)
         LogError("[hzs_zombieskill] Failed to create UpdateTransmitState vtable hook");
+
+    delete gc;
 }
 
 public MRESReturn OnCCUpdateTransmitState_Pre(int entity, Handle hReturn)
