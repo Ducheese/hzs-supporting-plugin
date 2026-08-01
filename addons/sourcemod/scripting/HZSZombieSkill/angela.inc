@@ -328,6 +328,11 @@ void EnterFlyingMode(int zombie)
 
     // 修复补丁
     OffsetAnimZ(zombie, true);                               // 视觉模型下移，对齐碰撞箱
+
+    // 音效
+    float pos[3];
+    GetEntPropVector(zombie, Prop_Send, "m_vecOrigin", pos);
+    EmitAmbientSound(SFX_FLY2, pos, _, SNDLEVEL_GUNFIRE, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
 }
 
 void EnterGroundMode(int zombie)
@@ -353,6 +358,92 @@ void EnterGroundMode(int zombie)
 
     // 修复补丁
     OffsetAnimZ(zombie, false);                              // 视觉模型归位
+
+    if (g_flFlyDamage[zombie] >= ANGELA_FLY_DAMAGE)
+    {
+        // 文字提示
+        char ZombieName[32];
+        Han_GetZombieName(zombie, ZombieName, sizeof(ZombieName));
+        CPrintToChatAll("{green}[华仔] {red}%s被打下来了，快乘胜追击！", ZombieName);
+    }
+}
+
+void CreateSoulFire(int zombie)
+{
+    // 创建灵魂火模型
+    int fire = CreateEntityByName("prop_dynamic");
+    if (fire == -1)
+        return;
+
+    DispatchKeyValue(fire, "model", MODEL_ZOMBIESOUL);
+    DispatchKeyValue(fire, "solid", "0");
+    DispatchKeyValue(fire, "disableshadows", "1");
+    DispatchSpawn(fire);
+    ActivateEntity(fire);
+
+    SetEntPropFloat(fire, Prop_Send, "m_flModelScale", ANGELA_FIRE_SCALE);
+    SetEntityRenderColor(fire, 128, 128, 128, 255);    // alpha失效，只能调rgb，基线为128
+    SetEntProp(fire, Prop_Send, "m_nBody", 0);         // 翻书模型，通过切bodygroup模拟动画帧
+
+    float pos[3];
+    GetEntPropVector(zombie, Prop_Send, "m_vecOrigin", pos);
+    TeleportEntity(fire, pos, NULL_VECTOR, NULL_VECTOR);
+    SetVariantString("!activator");
+    AcceptEntityInput(fire, "SetParent", zombie);
+
+    // 数组更新
+    g_iSoulfire[zombie] = EntIndexToEntRef(fire);
+
+    // 远近 LOD
+    SDKHook(fire, SDKHook_SetTransmit, SoulFireSetTransmit);
+
+    int anim = FindAnimEntity(zombie);
+    if (anim != -1 && IsValidEntity(anim))
+        SDKHook(anim, SDKHook_SetTransmit, SoulFireSetTransmit);
+}
+
+void RemoveSoulFire(int zombie)
+{
+    // 销毁灵魂火（hook随实体销毁自动摘除）
+    int fire = EntRefToEntIndex(g_iSoulfire[zombie]);
+    if (fire > 0 && IsValidEntity(fire))
+        AcceptEntityInput(fire, "Kill");
+
+    // 数组更新
+    g_iSoulfire[zombie] = -1;
+}
+
+// 离得近显示动画实体，离得远显示灵魂火
+public Action SoulFireSetTransmit(int entity, int client)
+{   
+    // 致盲期间，既看不见动画实体，也看不见灵魂火
+    if (g_bIsBlind[client])
+        return Plugin_Handled;
+
+    // 无主就不隐藏（无主属于Bug了，两个模型都看得见）
+    int zombie = GetEntPropEnt(entity, Prop_Data, "m_hParent");
+    if (zombie == -1 || !IsValidEntity(zombie))
+        return Plugin_Continue;
+
+    // 毒雾完全形态（fogstart=0/fogend=1000）才允许远近交换
+    bool fogActive = false;
+    if (g_iFog != -1 && IsValidEntity(g_iFog))
+    {
+        float fs = GetEntPropFloat(g_iFog, Prop_Data, "m_fog.start");
+        float fe = GetEntPropFloat(g_iFog, Prop_Data, "m_fog.end");
+        fogActive = (fs <= 1.0 && fe <= 1001.0);   // 容差防浮点误差
+    }
+
+    // 飞行状态+毒雾稳态+水平距离
+    bool far = fogActive
+        && g_BossState[zombie] == STATE_FLYING
+        && GetMeterDistance2D(zombie, client) > ANGELA_FIRE_LOD;
+
+    // prop_dynamic远显近隐，prop_dynamic_ornament相反（有点硬编码的意思）
+    char cls[32];
+    GetEntityClassname(entity, cls, sizeof(cls));
+    bool show = StrEqual(cls, "prop_dynamic") ? far : !far;
+    return show ? Plugin_Continue : Plugin_Handled;
 }
 
 void OffsetAnimZ(int zombie, bool bFlying)
@@ -474,6 +565,18 @@ void FlyingLogic(int zombie)
     // 扇动翅膀
     FlapWing(zombie);
 
+    // 灵魂火翻书模型动画驱动
+    int fire = EntRefToEntIndex(g_iSoulfire[zombie]);
+    if (fire != INVALID_ENT_REFERENCE && IsValidEntity(fire))
+    {
+        SetEntProp(fire, Prop_Send, "m_nBody",
+            (GetEntProp(fire, Prop_Send, "m_nBody") + 1) % ANGELA_FIRE_FRAMES);
+
+        // 呼吸效果：RGB正弦脉动 128±64（2秒周期）
+        int v = 128 + RoundToNearest(64.0 * Sine(GetGameTime() * FLOAT_PI));
+        SetEntityRenderColor(fire, v, v, v, 255);
+    }
+
     // debug 输出
     // {
     //     int leader = GetEntDataEnt2(zombie, g_iLeaderOffset);
@@ -511,15 +614,8 @@ void GetFlyingMode(int zombie, int target)
 
     if (target > 0)
     {
-        float zPos[3], tPos[3];
-        GetEntPropVector(zombie, Prop_Send, "m_vecOrigin", zPos);
-        GetEntPropVector(target, Prop_Send, "m_vecOrigin", tPos);
-
-        zPos[2] = 0.0;
-        tPos[2] = 0.0;
-
         // 只看水平距离，没法用公共距离函数
-        if (GetVectorDistance(zPos, tPos) <= 500.0)
+        if (GetMeterDistance2D(zombie, target) <= 500.0 * GAMEUNITS_TO_METERS)
             g_Mode[zombie] = FLY_TARGET;                // 执行低飞模式
         else
             g_Mode[zombie] = FLY_RANDOM;                // 执行高飞模式
@@ -542,7 +638,7 @@ void FlapWing(int zombie)
         g_flLastFlySound[zombie] = currentTime;
 
         Han_SetCustomAnimationEx(zombie, "run_upper_knife", 0.9);
-        EmitAmbientSound(SFX_FLY, pos, _, SNDLEVEL_GUNFIRE, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
+        EmitAmbientSound(SFX_FLY1, pos, _, SNDLEVEL_GUNFIRE, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
     }
 }
 

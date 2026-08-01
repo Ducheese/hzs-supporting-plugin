@@ -51,7 +51,8 @@ public void Han_OnZombieCreated(int zombie)
     }
     else if (IsSameName(zombie, BOSS_ANGELA))
     {
-        // 伤害监控改在新API里进行
+        // 灵魂火出生即创建，可见性完全由SetTransmit按距离管控
+        CreateSoulFire(zombie);
     }
     else if (IsSameName(zombie, BOSS_PANGZI))
     {
@@ -163,6 +164,8 @@ public void Han_OnZombieDeath(int zombie, int killer)
 
             OffsetAnimZ(zombie, false);
         }
+
+        RemoveSoulFire(zombie);
     }
     else if (IsSameName(zombie, BOSS_PANGZI))
     {
@@ -209,7 +212,7 @@ public void Han_OnZombieDamagePre(int zombie, int attacker, int &damage)
         {
             // 计算衰减
             float groundDist = GetDistanceToGround(zombie);
-            float factor = 1.0 - (groundDist / 2000.0);            // 硬编码1000，这个高度以上就衰减为0
+            float factor = 1.0 - (groundDist / ANGELA_FLY_FALLOFF * GAMEUNITS_TO_METERS);            // 这个高度以上就衰减为0
             if (factor < 0.0) factor = 0.0;
 
             // 传入参数处理
@@ -226,15 +229,7 @@ public void Han_OnZombieDamagePre(int zombie, int attacker, int &damage)
             // int target = GetEntDataEnt2(zombie, g_iLeaderOffset);
             // float targetDist = -1.0;
             // if (target > 0)
-            // {
-            //     float zPos[3], tPos[3];
-            //     GetEntPropVector(zombie, Prop_Send, "m_vecOrigin", zPos);
-            //     GetEntPropVector(target, Prop_Send, "m_vecOrigin", tPos);
-            //     zPos[2] = 0.0;
-            //     tPos[2] = 0.0;
-            //     // 只看水平距离，没法用公共距离函数
-            //     targetDist = GetVectorDistance(zPos, tPos) * GAMEUNITS_TO_METERS;
-            // }
+            //     targetDist = GetMeterDistance2D(zombie, target);
             // PrintToChatAll("高度: %.0f | 衰减: %.0f%% | 伤害: %.0f -> %.0f | 累计: %.0f | 目标距离: %.1fm",
             //     groundDist, factor * 100, original, fDamage, g_flFlyDamage[zombie], targetDist);
         }
@@ -496,6 +491,7 @@ void InitZombieState(int zombie)
     g_Mode[zombie] = FLY_RANDOM;
     g_flLastFlyEnd[zombie] = 0.0;
     g_flLastFlySound[zombie] = 0.0;
+    g_iSoulfire[zombie] = -1;
 
     // BOSS 巨型狂暴形态僵尸 — 冲锋/擒抱/投掷
     g_hCharge[zombie] = INVALID_HANDLE;

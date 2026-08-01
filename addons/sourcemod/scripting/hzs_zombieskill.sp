@@ -375,6 +375,7 @@ void InitModelCache()
     PrecacheModel(MODEL_HL2PORTAL, true);    // 传送门
     PrecacheModel(MODEL_ZOMBIETRAP, true);   // 鬼手陷阱
     PrecacheModel(MODEL_ZOMBIEPROJ, true);   // 僵尸投掷物
+    PrecacheModel(MODEL_ZOMBIESOUL, true);   // 灵魂火
     PrecacheModel(TOOL_BEAMSPRITE, true);	 // 辅助线
     PrecacheModel(TOOL_TRAPPHYS, true);      // 受击体
 
@@ -418,7 +419,8 @@ void InitSoundCache()
     PrecacheSound(SFX_HEAL1, true);
     PrecacheSound(SFX_HEAL2, true);
     PrecacheSound(SFX_HEAL3, true);
-    PrecacheSound(SFX_FLY, true);
+    PrecacheSound(SFX_FLY1, true);
+    PrecacheSound(SFX_FLY2, true);
     PrecacheSound(SFX_WIND, true);
     PrecacheSound(SFX_COUGH1, true);
     PrecacheSound(SFX_COUGH2, true);

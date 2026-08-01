@@ -1,0 +1,10 @@
+"UnlitGeneric"
+{
+	"$basetexture"	"models\effects\soulfire\soulfire"
+	"$nofog" 	"1"
+	"$ignorez"	"1"
+	// "$model"	"1"
+	// "$nocull"	"1" // 不需要，没有帮助
+    "$additive"	"1" // 关键
+    // "$translucent"	"1" // 做不到每个方向看都正常显示
+}

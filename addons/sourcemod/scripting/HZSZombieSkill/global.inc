@@ -12,6 +12,7 @@
 #define MODEL_HL2PORTAL        "models/props_combine/combine_citadelcloudcenter.mdl"    // 半条命2第二章天空大漩涡模型
 #define MODEL_ZOMBIETRAP       "models/heavyzombietrap/zombitrap.mdl"       // 陷阱视觉模型
 #define MODEL_ZOMBIEPROJ       "models/weapons/HanNewWeapon/shoudantoulu/w_eq_fraggrenade.mdl"   // 僵尸投掷物（爆弹兽颅）
+#define MODEL_ZOMBIESOUL       "models/effects/soulfire.mdl"                // 灵魂火模型
 #define TOOL_TRAPPHYS          "models/props/de_nuke/crate_small.mdl"       // 陷阱受击体模型（木头受击音效来源）
 #define TOOL_BEAMSPRITE        "materials/sprites/physbeam.vmt"             // 可视化辅助线（比如碰撞箱、实体连线）
 
@@ -76,8 +77,8 @@
 #define WITCH_BLIND_TIME        10.0       // 女巫僵尸致盲效果持续时间（秒）
 
 // 技能参数（神秘僵尸）
-#define MYSTERY_PORTAL_RANGE    15.0       // 神秘僵尸能发动传送门的最远距离（米）
-#define MYSTERY_PORTAL_RADIUS   1.25       // 神秘僵尸传送门有效半径（米）
+#define MYSTERY_PORTAL_RANGE    15.0       // 神秘僵尸能发动传送门的最远距离（单位：米）
+#define MYSTERY_PORTAL_RADIUS   1.25       // 神秘僵尸传送门有效半径（单位：米）
 #define MYSTERY_PORTAL_TIME     3.0        // 神秘僵尸传送门蓄力时间（秒）
 
 // 技能参数（BOSS安哥拉）
@@ -89,12 +90,16 @@
 // 两种群体击飞在水平和垂直方向上有力度区别，不方便在这里修改值
 #define ANGELA_FLY_TIME         30.0       // 安哥拉飞行的持续时间（秒）
 #define ANGELA_FLY_CD           60.0       // 安哥拉飞行的冷却时间（秒）
-#define ANGELA_FLY_PUSH_RADIUS  30.0       // 安哥拉飞行刮风作用范围（米）
+#define ANGELA_FLY_PUSH_RADIUS  30.0       // 安哥拉飞行刮风作用范围（单位：米）
 #define ANGELA_FLY_PUSH_POWER   200.0      // 安哥拉飞行刮风力度
 #define ANGELA_FLY_ANIM_OFFSET  5.0        // 飞行时安哥拉视觉模型修正下移量（单位：米）
 #define ANGELA_FLY_POISON_MIN   3.0        // 毒伤最短间隔（秒）或毒伤最低伤害
 #define ANGELA_FLY_POISON_MAX   10.0       // 毒伤最长间隔（秒）或毒伤最高伤害
 #define ANGELA_FLY_DAMAGE       2000.0     // 迫使安哥拉提前落地所需累计受击伤害量
+#define ANGELA_FLY_FALLOFF      40.0       // 安哥拉离地这个高度以上后，所有子弹伤害衰减为0（单位：米）
+#define ANGELA_FIRE_FRAMES      40         // 灵魂火翻书总帧数（与qc的frame_001..040对应）
+#define ANGELA_FIRE_SCALE       8.0        // 灵魂火模型缩放倍数
+#define ANGELA_FIRE_LOD         20.0       // 灵魂火LOD交换距离（单位：米）
 
 #define DEBRIS_MODEL_COUNT      10         // 碎片模型种类数
 #define DEBRIS_SHOOTER_POOL     32         // env_shooter 池大小（暂且取最大玩家数，一人最多分配一个shooter）
@@ -155,7 +160,8 @@
 #define SFX_HEAL1              "custom/tank_growl_09.wav"                   // 安哥拉自愈时的吐息声
 #define SFX_HEAL2              "custom/tank_breathe_06.wav"                 // 安哥拉自愈至满血时的吐息声
 #define SFX_HEAL3              "custom/tank_growl_02.wav"                   // 安哥拉自愈被打断时的吐息声
-#define SFX_FLY                "weapons/angela/angra_zbs_fly2.wav"          // 安哥拉扇动翅膀的音效
+#define SFX_FLY1               "weapons/angela/angra_zbs_fly2.wav"          // 安哥拉扇动翅膀的音效
+#define SFX_FLY2               "custom/tank_breathe_02.wav"                 // 安哥拉起飞时的吐息声
 #define SFX_WIND               "custom/heavy_wind01.wav"                    // 安哥拉飞行大风声
 #define SFX_COUGH1             "custom/cough4.wav"                          // 毒雾咳嗽音效1
 #define SFX_COUGH2             "custom/cough5.wav"                          // 毒雾咳嗽音效2
@@ -276,6 +282,9 @@ int g_iPortal[2048] = {-1, ...};                                 // 传送门实
 int g_iBulletCount[2048];                                        // 安哥拉在自愈期间所受的累计子弹数
 int g_iZombieCall[MAXPLAYERS+1];                                 // 玩家是否被集中攻击，记录的是安哥拉的实体号
 Handle g_hHeal[2048] = {INVALID_HANDLE, ...};                    // 实现治疗效果所用的timer，巫蛊术尸和安哥拉共用
+
+// 飞行增强 — 灵魂火
+int g_iSoulfire[2048];                                           // 安哥拉的灵魂火实体
 
 // 飞行增强 — 毒雾
 int g_iFlightCount = 0;                                          // 正在飞行的安哥拉数量，用以处理多安哥拉飞行效果冲突

@@ -64,6 +64,18 @@ stock float GetMeterDistance(int entity1, int entity2)
     return GetVectorDistance(pos1, pos2) * GAMEUNITS_TO_METERS;
 }
 
+stock float GetMeterDistance2D(int entity1, int entity2)    // 只看水平距离（忽略高度差）
+{
+    float pos1[3];
+    float pos2[3];
+
+    GetEntPropVector(entity1, Prop_Send, "m_vecOrigin", pos1);
+    GetEntPropVector(entity2, Prop_Send, "m_vecOrigin", pos2);
+    pos1[2] = 0.0;
+    pos2[2] = 0.0;
+    return GetVectorDistance(pos1, pos2) * GAMEUNITS_TO_METERS;
+}
+
 //========================================================================================
 // 朝向判断（修改自botstayhere.sp）
 //========================================================================================
