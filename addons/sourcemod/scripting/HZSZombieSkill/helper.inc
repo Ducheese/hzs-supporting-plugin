@@ -447,6 +447,32 @@ public Action Timer_UnstuckThink(Handle timer, int ref)
 }
 
 //========================================================================================
+// 天空盒表面序号（v91=76 / Steam64=77）
+//========================================================================================
+
+// default_silent 表面属性的序号：v91 的 surfaceproperties 表缺 wasabiball 所以是 76，
+// Steam 官方完整表是 77。gamedata 的 windows/windows64 由 SourceMod 运行时按架构自动匹配。
+static int g_iSkySurfaceProp = -1;    // 缓存，-1 = 尚未读取
+
+stock int GetSkySurfaceProp()
+{
+    if (g_iSkySurfaceProp != -1)
+        return g_iSkySurfaceProp;
+
+    Handle gc = LoadGameConfigFile(GAMEDATA_CUSTOM);
+    if (gc != INVALID_HANDLE)
+    {
+        g_iSkySurfaceProp = GameConfGetOffset(gc, "SkySurfacePropIndex");
+        delete gc;
+    }
+
+    if (g_iSkySurfaceProp < 0)
+        g_iSkySurfaceProp = 76;       // 读不到时回退 v91 的序号
+
+    return g_iSkySurfaceProp;
+}
+
+//========================================================================================
 // 检测脚下天空盒并传送至随机 T 复活点
 //========================================================================================
 
@@ -462,8 +488,8 @@ stock bool TeleportOffSkybox(int entity)
     bool bSkybox = !bHit;
     if (bHit)
     {
-        // 表面属性 76 = sky（CS:S 的天空盒材质）
-        bSkybox = TR_GetSurfaceProps(trace) == 76;
+        // 表面属性 = 天空盒表面（v91=76 / Steam64=77，见 GetSkySurfaceProp）
+        bSkybox = TR_GetSurfaceProps(trace) == GetSkySurfaceProp();
     }
     delete trace;
 
@@ -637,7 +663,7 @@ stock bool IsBlockedSkybox(int entity)
     {
         bBlocked = false;       // 什么都没打到 → 露天 → 无遮挡
     }
-    else if (TR_GetSurfaceProps(trace) == 76)
+    else if (TR_GetSurfaceProps(trace) == GetSkySurfaceProp())
     {
         bBlocked = false;       // 打到天空盒也算露天 → 无遮挡
     }

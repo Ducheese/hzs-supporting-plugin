@@ -481,7 +481,7 @@ void ThrowZombie(int zombie, int victim)
          *     SetEntPropVector(dummy, Prop_Send, "m_vecMaxs", maxs);
          */
         // 这里用 error 模型占位，反正看不见
-        SetEntityModel(dummy, "models/error.mdl");
+        SetEntityModel(dummy, TOOL_DUMMY);
         SetEntityRenderMode(dummy, RENDER_NONE);
 
         // 生成 dummy 实体并传送初始位置

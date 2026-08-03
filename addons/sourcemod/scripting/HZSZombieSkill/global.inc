@@ -15,6 +15,7 @@
 #define MODEL_ZOMBIESOUL       "models/effects/soulfire.mdl"                // 灵魂火模型
 #define TOOL_TRAPPHYS          "models/props/de_nuke/crate_small.mdl"       // 陷阱受击体模型（木头受击音效来源）
 #define TOOL_BEAMSPRITE        "materials/sprites/physbeam.vmt"             // 可视化辅助线（比如碰撞箱、实体连线）
+#define TOOL_DUMMY             "models/error.mdl"                           // 占位模型
 
 // 函数签名
 #define GAMEDATA_CUSTOM        "hzs_zombieskill.gamedata"                   // IDA 逆向获得的签名

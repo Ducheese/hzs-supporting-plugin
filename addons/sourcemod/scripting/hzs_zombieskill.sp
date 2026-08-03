@@ -50,8 +50,8 @@ public void OnPluginStart()
 
     // 都在当前代码内，只是归一类而已
     InitHumanState();
-    InitModelCache();
-    InitSoundCache();
+    // InitModelCache();
+    // InitSoundCache();
 
     // Detour(Patch+DHook)
     PrepCCDetour();
@@ -77,6 +77,9 @@ public void OnPluginStart()
 public void OnMapStart()
 {
     // 为方便round exec插件加载/卸载，因此初始化就不写这了
+    InitHumanState();
+    InitModelCache();
+    InitSoundCache();
 }
 
 public void OnClientPutInServer(int client)
@@ -378,6 +381,7 @@ void InitModelCache()
     PrecacheModel(MODEL_ZOMBIESOUL, true);   // 灵魂火
     PrecacheModel(TOOL_BEAMSPRITE, true);	 // 辅助线
     PrecacheModel(TOOL_TRAPPHYS, true);      // 受击体
+    PrecacheModel(TOOL_DUMMY, true);         // dummy占位模型，64位必须预缓存，神人
 
     // 用于鬼手陷阱受击反馈
     g_iBloodSpray = PrecacheModel("sprites/bloodspray.vmt");

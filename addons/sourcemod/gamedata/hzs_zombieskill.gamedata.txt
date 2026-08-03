@@ -65,6 +65,11 @@
                 "windows"    "19"
                 "windows64"  "21"
             }
+            "SkySurfacePropIndex"
+            {
+                "windows"    "76"
+                "windows64"  "77"
+            }
         }
     }
 }
