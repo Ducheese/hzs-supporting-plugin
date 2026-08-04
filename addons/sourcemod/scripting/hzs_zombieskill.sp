@@ -71,15 +71,59 @@ public void OnPluginStart()
     HookEvent("player_spawn", Event_PlayerSpawn);
 
     // 每秒采样实体数
-    CreateTimer(1.0, Timer_EntityMonitor, _, TIMER_REPEAT);
+    // CreateTimer(1.0, Timer_EntityMonitor, _, TIMER_REPEAT);
 }
 
 public void OnMapStart()
 {
+    /**
+     * 换图时所有 NO_MAPCHANGE timer 已被引擎移除，但句柄数组残留旧值，
+     * 必须先全量复位，否则 InitHumanState/round_start 的清理函数会对已死句柄 KillTimer 报错
+     */
+    ResetAllTimerHandles();
+
     // 为方便round exec插件加载/卸载，因此初始化就不写这了
     InitHumanState();
     InitModelCache();
     InitSoundCache();
+}
+
+void ResetAllTimerHandles()
+{
+    // 玩家维度
+    for (int i = 1; i <= MaxClients; i++)
+    {
+        g_hWitchBlind[i] = INVALID_HANDLE;
+        g_hWitchDSPToggle[i] = INVALID_HANDLE;
+        g_hPoisonDmg[i] = INVALID_HANDLE;
+        g_hGrapple[i] = INVALID_HANDLE;
+        g_hGrapplePack[i] = INVALID_HANDLE;
+    }
+
+    // 实体维度（僵尸/陷阱）
+    for (int i = 0; i < 2048; i++)
+    {
+        g_hTrapLifetime[i] = INVALID_HANDLE;
+        g_hDeimosAim[i] = INVALID_HANDLE;
+        g_hDeimosProj[i] = INVALID_HANDLE;
+        g_hWitchNear[i] = INVALID_HANDLE;
+        g_hImposterSync[i] = INVALID_HANDLE;
+        g_hMysteryNear[i] = INVALID_HANDLE;
+        g_hMysterySwap[i] = INVALID_HANDLE;
+        g_hHeal[i] = INVALID_HANDLE;
+        g_hFly[i] = INVALID_HANDLE;
+        g_hCharge[i] = INVALID_HANDLE;
+        g_hChargePack[i] = INVALID_HANDLE;
+        g_hMovetype[i] = INVALID_HANDLE;
+    }
+
+    // 全局单例
+    g_hDebris = INVALID_HANDLE;
+
+    // 毒雾残留（实体索引会被新图实体复用，必须复位）
+    g_iFog = -1;
+    g_iFogCC = -1;
+    g_iFogGeneration++;
 }
 
 public void OnClientPutInServer(int client)

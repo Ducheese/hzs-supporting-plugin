@@ -985,7 +985,10 @@ void CleanupDebris()
 public Action Timer_DebrisTick(Handle timer)
 {
     if (g_iDebrisOwner == -1)
+    {
+        g_hDebris = INVALID_HANDLE;
         return Plugin_Stop;
+    }
 
     // owner 死亡或提前落地（被子弹打下来），找其他安哥拉接替
     if (!IsValidEntity(g_iDebrisOwner) || GetEntProp(g_iDebrisOwner, Prop_Data, "m_iHealth") <= 0
