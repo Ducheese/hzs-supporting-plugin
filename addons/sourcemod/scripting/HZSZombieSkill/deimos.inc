@@ -155,7 +155,7 @@ void LaunchProjectile(int zombie, int target)
     g_flDeimosAimStart[zombie] = GetEngineTime();
 
     // 后续用 SND_CHANGEVOL|SND_CHANGEPITCH 原地改参数，复用同一声道而非重建
-    EmitSoundToAll(SFX_DEIMOS3, proj, SNDCHAN_STATIC, SNDLEVEL_NORMAL, SND_LOOPING, SNDVOL_NORMAL, SNDPITCH_NORMAL);
+    EmitSoundToAll(SFX_DEIMOS3, proj, SNDCHAN_STATIC, SNDLEVEL_NORMAL, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
 
     // 飞行think（离散teleport，同时负责超时判断）
     g_hDeimosProj[zombie] = CreateTimer(0.01, Timer_DeimosProjThink, proj, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
@@ -233,10 +233,7 @@ public Action Timer_DeimosProjThink(Handle timer, int proj)
 
     TeleportEntity(proj, pos, angles, NULL_VECTOR);
 
-    // 飞行风阻声调制
-    UpdateDeimosWind(proj, vel, gravity, elapsed);
-
-    // 命中检测
+    // 命中检测（先于调制）
     int target = FindNearestHuman(proj, DEIMOS_PROJ_RANGE / GAMEUNITS_TO_METERS);
     if (target != -1)
     {
@@ -262,6 +259,9 @@ public Action Timer_DeimosProjThink(Handle timer, int proj)
         CreateTimer(DEIMOS_PROJ_CD, Timer_SkillEnd, zombie);
         return Plugin_Stop;
     }
+
+    // 飞行风阻声调制（仅未命中帧）
+    UpdateDeimosWind(proj, vel, gravity, elapsed);
 
     return Plugin_Continue;
 }
@@ -324,7 +324,7 @@ void CheckProjParry(int client)
 void StopDeimosWind(int proj)
 {
     if (IsValidEntity(proj))
-        EmitSoundToAll(SFX_DEIMOS3, proj, SNDCHAN_STATIC, SNDLEVEL_NORMAL, SND_STOPLOOPING);
+        EmitSoundToAll(SFX_DEIMOS3, proj, SNDCHAN_STATIC, SNDLEVEL_NORMAL, SND_STOP | SND_IGNORE_NAME);
 }
 
 void CleanupProjectile(int zombie)

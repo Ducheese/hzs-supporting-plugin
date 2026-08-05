@@ -180,11 +180,8 @@
 #define SFX_DASH4              "custom/body_medium_break2.wav"              // 玩家被冲撞命中时的骨折音效
 #define SFX_SHOCK1             "custom/electra_blast1.wav"                  // 异形斗兽震荡波释放时的音效
 #define SFX_SHOCK2             "custom/electra_hit.wav"                     // 玩家被震荡波命中时的电流音效
-
-// 声音 flag 兼容：此版 SourceMod include 未暴露 SND_LOOPING，引擎原生值 = 0x0008
-#if !defined SND_LOOPING
-    #define SND_LOOPING 8
-#endif
+#define SND_STOP            (1<<2)   // 4  停 (实体,声道,sfx) 匹配的声道
+#define SND_IGNORE_NAME     (1<<9)   // 512 忽略声道+sfx 匹配，按实体匹配全部（用于 STOP 全清）
 
 //========================================================================================
 // HANDLES & VARIABLES
