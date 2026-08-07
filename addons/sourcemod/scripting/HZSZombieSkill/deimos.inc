@@ -240,6 +240,9 @@ public Action Timer_DeimosProjThink(Handle timer, int proj)
         // 屏幕震动
         Shake(target, 10.0, 10.0, 1.0);
 
+        // 粒子
+        WriteParticle("z_acid_zombie_blast", pos, 1.0);
+
         // 爆炸音效
         EmitAmbientSound(SFX_DEIMOS1, pos, _, SNDLEVEL_GUNFIRE, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
 
@@ -304,6 +307,9 @@ void CheckProjParry(int client)
         float sparkDir[3] = {0.0, 0.0, 1.0};
         TE_SetupSparks(projPos, sparkDir, 2, 2);
         TE_SendToAll();
+
+        // 粒子
+        WriteParticle("z_acid_zombie_impact", projPos, 1.0);
 
         // 弹反音效
         EmitSoundToClient(client, SFX_DEIMOS2, _, SNDCHAN_STATIC, SNDLEVEL_NORMAL, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);

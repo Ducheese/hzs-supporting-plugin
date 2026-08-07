@@ -6,8 +6,7 @@ void StartSmoke(int zombie)
 {
     // 普通体型僵尸参考身高（来自[H-AN-CSS]ZombieScenario.sp）
     float pos[3];
-    GetEntPropVector(zombie, Prop_Send, "m_vecOrigin", pos);
-    pos[2] += 55.0;
+    GetEntityTopCenter(zombie, pos);
 
     // 生成黑烟
     CreateSmoke(pos);
@@ -174,9 +173,8 @@ public Action Timer_RepeatHealing(Handle timer, int entity)
     }
 
     float pos[3];
-    GetEntPropVector(entity, Prop_Send, "m_vecOrigin", pos);
-    pos[2] += 50.0;
-    WriteParticle("z_group_healer_zombie_buff", pos, 0.1);     // 即便缩短时间，依然有点太密集了
+    GetEntityTopCenter(entity, pos);
+    WriteParticle("z_group_healer_zombie_buff", pos, 1.0);     // 即便缩短时间，依然有点太密集了
 
     return Plugin_Continue;
 }

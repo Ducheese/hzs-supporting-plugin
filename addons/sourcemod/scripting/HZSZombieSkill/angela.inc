@@ -249,10 +249,9 @@ public Action Timer_RepeatSelfHealing(Handle timer, int zombie)
 
     // 基础信息
     float pos[3];
-    GetEntPropVector(zombie, Prop_Send, "m_vecOrigin", pos);
+    GetEntityTopCenter(zombie, pos);
 
     // 特效
-    pos[2] += 100.0;
     WriteParticle("z_group_healer_zombie_buff", pos, 1.0);
 
     // 音效

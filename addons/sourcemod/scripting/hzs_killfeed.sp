@@ -87,7 +87,7 @@ public Plugin myinfo =
 
 public void OnPluginStart()
 {
-    g_cvFeedTime = CreateConVar("hzs_killfeed_time", "2.0", "每行击杀信息显示时长（秒）", FCVAR_NOTIFY, true, 0.5, true, 10.0);
+    g_cvFeedTime = CreateConVar("sm_hzs_killfeed_time", "2.0", "每行击杀信息显示时长（秒）", FCVAR_NOTIFY, true, 0.5, true, 10.0);
 
     HookEvent("round_start", Event_RoundStart, EventHookMode_Post);
 }
