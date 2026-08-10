@@ -48,7 +48,7 @@ public Plugin myinfo =
 public void OnPluginStart()
 {
     CreateConVar("sm_hzs_bottruerespawn_version", VERSION, "插件版本", FCVAR_PROTECTED);
-    cvarRespawnLives = CreateConVar("sm_hzs_bottruerespawn_lives", "3", "BOT生命总数", FCVAR_NOTIFY, true, 1.0);
+    cvarRespawnLives = CreateConVar("sm_hzs_bottruerespawn_lives", "3", "BOT生命总数（0=无限复活）", FCVAR_NOTIFY, true, 0.0);
     cvarRespawnCountdown = CreateConVar("sm_hzs_bottruerespawn_countdown", "15.0", "BOT复活倒计时", FCVAR_NOTIFY, true, 0.0);
     cvarRespawnProtect = CreateConVar("sm_hzs_bottruerespawn_protect", "3.0", "BOT复活无敌时间", FCVAR_NOTIFY, true, 0.0);
 
@@ -157,10 +157,13 @@ public void Event_PlayerDeath(Handle event, const char[] name, bool dontBroadcas
 
     if (!IsValidClient(client, false) || !IsFakeClient(client)) return;
 
-    // 生命数扣除
-    g_iLivesRemaining[client]--;
+    // 无限复活模式：cvar 取 0（含负数）时实时判定，不扣生命
+    bool bInfinite = (GetConVarInt(cvarRespawnLives) <= 0);
 
-    if (g_iLivesRemaining[client] > 0)
+    if (!bInfinite)
+        g_iLivesRemaining[client]--;
+
+    if (bInfinite || g_iLivesRemaining[client] > 0)
     {
         // 还有命：启动真实复活倒计时
         PrintDeathMessage(client, false);
@@ -208,6 +211,8 @@ void PrintDeathMessage(int client, bool deadForever)
 {
     if (deadForever)
         CPrintToChatAll("{green}[华仔] {red}%s死了！彻底死透了！", g_ClientName[client]);
+    else if (GetConVarInt(cvarRespawnLives) <= 0)
+        CPrintToChatAll("{green}[华仔] {red}%s死了！", g_ClientName[client]);
     else
         CPrintToChatAll("{green}[华仔] {red}%s死了！他还剩%d条命", g_ClientName[client], g_iLivesRemaining[client]);
 }
@@ -285,7 +290,12 @@ void UpdateNamePrefix(int client, bool waitingRespawn)
     char NewName[64];
 
     if (!waitingRespawn)
-        Format(NewName, sizeof(NewName), "[❤x%d] %s", g_iLivesRemaining[client], g_ClientName[client]);
+    {
+        if (GetConVarInt(cvarRespawnLives) <= 0)
+            Format(NewName, sizeof(NewName), "[❤∞] %s", g_ClientName[client]);
+        else
+            Format(NewName, sizeof(NewName), "[❤x%d] %s", g_iLivesRemaining[client], g_ClientName[client]);
+    }
     else
     {
         int temp = RoundToCeil(GetConVarFloat(cvarRespawnCountdown) - (GetGameTime() - g_fDeadTime[client]));

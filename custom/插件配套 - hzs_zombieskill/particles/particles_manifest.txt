@@ -1,15 +1,13 @@
 particles_manifest
 {
-	"file"		"particles/error.pcf"
-	"file"		"particles/antlion_blood.pcf"
+	"file"		"particles/achievement.pcf"
 	"file"		"particles/blood_impact.pcf"
-	"file"		"particles/water_impact.pcf"
 	"file"		"particles/fire_01.pcf"
 	"file"		"particles/burning_fx.pcf"
-	"file"		"particles/combineball.pcf"
-	"file"		"particles/vortigaunt_fx.pcf"
-	"file"		"particles/rocket_fx.pcf"
+	"file"		"particles/water_impact.pcf"
+	"file"		"!particles/muzzleflashes.pcf"
+	"file"		"particles/error.pcf"
     
-    // 大灾变僵尸技能特效 https://steamcommunity.com/sharedfiles/filedetails/?id=2119972050
+    // 僵尸技能粒子效果
     "file"		"!particles/z_zombie_effects.pcf"
 }

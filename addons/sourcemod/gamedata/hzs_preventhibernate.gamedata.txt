@@ -1,0 +1,21 @@
+"Games"
+{
+    "cstrike"
+    {
+        "Signatures"
+        {
+            "bHaveAnyClients"
+            {
+                "library"    "engine"
+                "windows64"  "\x40\x2A\x2A\x39\x1D\x2A\x2A\x2A\x2A\x7E\x60\x48\x89\x74\x24\x70\x48\x89\x7C\x24\x68\x90\x48\x8B\x05\x2A\x2A\x2A\x2A\x48\x8B\x34\xD8"
+            }
+        }
+        "Addresses"
+        {
+            "bHaveAnyClients"
+            {
+                "signature"    "bHaveAnyClients"
+            }
+        }
+    }
+}
