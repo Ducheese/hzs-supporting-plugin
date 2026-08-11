@@ -25,8 +25,8 @@
 #define FEED_CHANNEL  2          // 准星下方通道
 #define SCORE_CHANNEL 1          // 积分榜通道（原版奖牌位）
 #define FEED_Y        0.55       // 准星下方
-#define SCORE_X       0.40       // 积分榜（准星左侧）
-#define SCORE_Y       0.42       // 两行起始：✪积分 / 名次▲▼差距
+#define SCORE_X       0.36       // 积分榜（准星左侧）
+#define SCORE_Y       0.40       // 两行起始：✪积分 / 名次▲▼差距
 
 #define STREAK_WINDOW 5.0        // 连杀时间窗（秒）
 

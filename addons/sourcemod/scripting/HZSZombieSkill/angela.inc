@@ -728,12 +728,8 @@ void RemovePoisonFog()
     if (g_sOriginalSky[0] != '\0' && g_hRLoadNamedSkys != INVALID_HANDLE)
         SDKCall(g_hRLoadNamedSkys, g_sOriginalSky);
 
-    // 落地瞬间：停风声（风阻随 STATE_GROUND 自动停）
-    for (int i = 1; i <= MaxClients; i++)
-    {
-        if (IsValidClient(i))
-            StopSound(i, SNDCHAN_STATIC, SFX_WIND);
-    }
+    // 落地瞬间：停风声（soundsource 必须与播放行一致=1，SND_STOP|SND_IGNORE_NAME 按实体全清）
+    EmitSoundToAll(SFX_WIND, 1, SNDCHAN_STATIC, SNDLEVEL_GUNFIRE, SND_STOP | SND_IGNORE_NAME);
 
     // CC 开始 fade out（fadeOutDuration=5.0 已在创建时设好）
     int cc = g_iFogCC;
@@ -1018,20 +1014,49 @@ public Action Timer_DebrisTick(Handle timer)
     float angelaPos[3];
     GetEntPropVector(g_iDebrisOwner, Prop_Send, "m_vecOrigin", angelaPos);
 
+    // 收集存活人类，按到安哥拉的平方距离升序排序（碎片只发给最近的池子容量个人）
+    int clients[MAXPLAYERS + 1];
+    float distSq[MAXPLAYERS + 1];
+    int clientCount = 0;
+    for (int client = 1; client <= MaxClients; client++)
+    {
+        if (!IsHumanAlive(client)) continue;
+        float cpos[3];
+        GetClientAbsOrigin(client, cpos);
+        float dx = cpos[0] - angelaPos[0];
+        float dy = cpos[1] - angelaPos[1];
+        float dz = cpos[2] - angelaPos[2];
+        distSq[clientCount] = dx * dx + dy * dy + dz * dz;
+        clients[clientCount++] = client;
+    }
+
+    // 插入排序（存活人类 ≤32，每 tick 全排没压力）
+    for (int i = 1; i < clientCount; i++)
+    {
+        int c = clients[i];
+        float d = distSq[i];
+        int j = i;
+        while (j > 0 && d < distSq[j - 1])
+        {
+            clients[j] = clients[j - 1];
+            distSq[j] = distSq[j - 1];
+            j--;
+        }
+        clients[j] = c;
+        distSq[j] = d;
+    }
+
     float range = DEBRIS_SIDE_LENGTH / GAMEUNITS_TO_METERS;
     float base  = DEBRIS_BASE_HEIGHT / GAMEUNITS_TO_METERS;
     float half  = range / 2.0;
 
-    for (int client = 1; client <= MaxClients; client++)
+    // 最近的 min(池子可用数, 存活人数) 人各分一个 shooter（顺序分配，随机性已由位置随机提供）
+    int limit = clientCount < poolSize ? clientCount : poolSize;
+    for (int n = 0; n < limit; n++)
     {
-        if (!IsHumanAlive(client)) continue;
-        if (poolSize == 0) break;
+        int client = clients[n];
 
-        int r = GetRandomInt(0, poolSize - 1);
-        int idx = pool[r];
-        pool[r] = pool[--poolSize];
-
-        int shooter = EntRefToEntIndex(g_iDebrisShooter[idx]);
+        int shooter = EntRefToEntIndex(g_iDebrisShooter[pool[n]]);
         if (shooter == INVALID_ENT_REFERENCE || !IsValidEntity(shooter))
             continue;
 

@@ -219,11 +219,23 @@ public Action Timer_TrapEscapeThink(Handle timer, DataPack pack)
 
 public Action OnTrapTakeDamage(int phys, int &attacker, int &inflictor, float &damage, int &damagetype)
 {
-    // 受击特效：未被踩中 +16，被踩中 +32
+    // 受击特效：未被踩中 +16，被踩中 +32；方向微随机 + 4 档叠加（模仿 HZS_barnacle CreateBloodSprite）
     float hitPos[3];
     GetEntPropVector(phys, Prop_Send, "m_vecOrigin", hitPos);
     hitPos[2] += (g_iTrapVictim[phys] != -1) ? 32.0 : 16.0;
-    TE_SetupBloodSprite(hitPos, view_as<float>({0.0, 0.0, 0.0}), {255, 0, 0, 255}, 3, g_iBloodSpray, g_iBloodDrop);
+
+    float vAngle[3];
+    vAngle[0] = GetRandomFloat(-3.0, 3.0);
+    vAngle[1] = GetRandomFloat(-3.0, 3.0);
+    vAngle[2] = GetRandomFloat(-3.0, 3.0);
+
+    TE_SetupBloodSprite(hitPos, vAngle, {255, 0, 0, 255}, 5, g_iBloodSpray, g_iBloodDrop);
+    TE_SendToAll();
+    TE_SetupBloodSprite(hitPos, vAngle, {255, 0, 0, 255}, 6, g_iBloodSpray, g_iBloodDrop);
+    TE_SendToAll();
+    TE_SetupBloodSprite(hitPos, vAngle, {255, 0, 0, 255}, 7, g_iBloodSpray, g_iBloodDrop);
+    TE_SendToAll();
+    TE_SetupBloodSprite(hitPos, vAngle, {255, 0, 0, 255}, 8, g_iBloodSpray, g_iBloodDrop);
     TE_SendToAll();
 
     // 只关心是否会被打死，血量交给引擎处理

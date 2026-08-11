@@ -103,7 +103,7 @@
 #define ANGELA_FIRE_LOD         20.0       // 灵魂火LOD交换距离（单位：米）
 
 #define DEBRIS_MODEL_COUNT      10         // 碎片模型种类数
-#define DEBRIS_SHOOTER_POOL     32         // env_shooter 池大小（暂且取最大玩家数，一人最多分配一个shooter）
+#define DEBRIS_SHOOTER_POOL     10         // env_shooter 池大小（每 tick 最多 10 个碎片同时在飞）
 #define DEBRIS_INTERVAL         0.1        // 碎片生成间隔（秒）
 #define DEBRIS_SIDE_LENGTH      10.0       // 碎片生成空间边长（单位：米），生成空间是个正方体
 #define DEBRIS_BASE_HEIGHT      2.0        // 碎片生成空间底部高度（单位：米）

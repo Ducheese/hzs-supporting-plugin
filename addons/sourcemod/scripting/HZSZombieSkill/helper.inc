@@ -56,6 +56,9 @@ stock bool IsHumanAlive(int client)                    // 判断人类是否活�
 
 stock float GetMeterDistance(int entity1, int entity2)
 {
+    if (entity1 < 1 || entity2 < 1 || !IsValidEntity(entity1) || !IsValidEntity(entity2))
+        return 999999.0;
+
     float pos1[3];
     float pos2[3];
 
@@ -66,6 +69,9 @@ stock float GetMeterDistance(int entity1, int entity2)
 
 stock float GetMeterDistance2D(int entity1, int entity2)    // 只看水平距离（忽略高度差）
 {
+    if (entity1 < 1 || entity2 < 1 || !IsValidEntity(entity1) || !IsValidEntity(entity2))
+        return 999999.0;
+
     float pos1[3];
     float pos2[3];
 
