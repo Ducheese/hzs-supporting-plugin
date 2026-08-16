@@ -163,7 +163,8 @@ int GetZombieType(int zombie)
 }
 
 //========================================================================================
-// 连杀（5s 窗口，2=DOUBLE 3=TRIPLE >3=MULTI，提示作为 feed 高亮行；文本照抄原插件 medals）
+// 连杀（5s 窗口，2=DOUBLE 3=TRIPLE >3=MULTI，提示作为 feed 高亮行；连杀额外加分：
+// DOUBLE +100 / TRIPLE +200 / MULTI +300，与击杀基础分叠加）
 //========================================================================================
 
 void StreakCheck(int client)
@@ -173,9 +174,17 @@ void StreakCheck(int client)
     if (now - g_fLastKillTime[client] < STREAK_WINDOW)
     {
         g_iStreak[client]++;
-        if (g_iStreak[client] == 2)      AddFeedLine(client, "DOUBLE KILL", TYPE_STREAK);
-        else if (g_iStreak[client] == 3) AddFeedLine(client, "TRIPLE KILL", TYPE_STREAK);
-        else if (g_iStreak[client] > 3)  AddFeedLine(client, "MULTI KILL", TYPE_STREAK);
+        int bonus = 0;
+        char label[32];
+        if (g_iStreak[client] == 2)       { bonus = 100; strcopy(label, sizeof(label), "DOUBLE KILL +100"); }
+        else if (g_iStreak[client] == 3)  { bonus = 200; strcopy(label, sizeof(label), "TRIPLE KILL +200"); }
+        else if (g_iStreak[client] > 3)   { bonus = 300; strcopy(label, sizeof(label), "MULTI KILL +300"); }
+
+        if (bonus > 0)
+        {
+            g_iScore[client] += bonus;
+            AddFeedLine(client, label, TYPE_STREAK);
+        }
     }
     else
     {
