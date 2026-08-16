@@ -1,0 +1,32 @@
+"Games"
+{
+	"cstrike"
+	{
+		"Signatures"
+		{
+			"GameRulesCheck"
+			{
+				"library"	"server"
+				"windows64"	"\x8B\x55\x10\x48\x8B\x01\xFF\x90\xE8\x00\x00\x00\x84\xC0\x74\x1B"
+			}
+		}
+		"Addresses"
+		{
+			"GameRulesCheck"
+			{
+				"signature"	"GameRulesCheck"
+			}
+		}
+		"Offsets"
+		{
+			"GameRules_CrashOffset"
+			{
+				"windows64"	"3"
+			}
+			"GameRules_ShellOffset"
+			{
+				"windows64"	"1522468"
+			}
+		}
+	}
+}

@@ -28,7 +28,7 @@
 #define SCORE_X       0.36       // 积分榜（准星左侧）
 #define SCORE_Y       0.40       // 两行起始：✪积分 / 名次▲▼差距
 
-#define STREAK_WINDOW 5.0        // 连杀时间窗（秒）
+#define STREAK_WINDOW 3.0        // 连杀时间窗（秒）
 
 // 各类型击杀积分：普通 50 / 特殊 200 / BOSS 1000（索引 = TYPE_*）
 static const int g_iKillReward[3] = {50, 200, 1000};
