@@ -19,6 +19,7 @@ void OpenMainMenu(int client)
     menu.AddItem("turret", "HZS机枪炮台");
     menu.AddItem("zipline", "HZS滑索");
     menu.AddItem("cheer", "欢呼");
+    menu.AddItem("scream", "吸引僵尸");
     menu.AddItem("sell", "Sell半价回收");
     menu.AddItem("hitmarker", "命中反馈开关");
     menu.AddItem("guide_play", "玩法提示");
@@ -59,6 +60,11 @@ public int MenuHandler_MainMenu(Menu menu, MenuAction action, int param1, int pa
         else if (StrEqual(info, "cheer"))
         {
             FakeClientCommand(client, "sm_cheer");
+            OpenMainMenu(client);
+        }
+        else if (StrEqual(info, "scream"))
+        {
+            FakeClientCommand(client, "sm_scream");
             OpenMainMenu(client);
         }
         else if (StrEqual(info, "sell"))

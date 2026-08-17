@@ -94,6 +94,11 @@ public Action Timer_DashThink(Handle timer, int zombie)
 
 public Action Timer_EndDash(Handle timer, int zombie)
 {
+    if (!IsValidEntity(zombie) || GetEntProp(zombie, Prop_Data, "m_iHealth") <= 0)
+    {
+        return Plugin_Stop;
+    }
+
     // 冲撞结束，清理句柄
     if (g_hCharge[zombie] != INVALID_HANDLE)
     {

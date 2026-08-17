@@ -260,7 +260,7 @@ Handle g_hShouldTransmitDetour;                                  // DHook: CColo
 //========================================================================================
 
 int g_iImposterTarget[2048];                                     // 伪人僵尸正在复制的人类玩家，注意：复制的人 不等于 攻击目标
-int g_iFakeBody[2048];                                           // 假身体 prop_dynamic 实体号
+int g_iFakeBody[2048];                                           // 假身体 prop_dynamic 的 EntRef
 bool g_bImposterPaused[2048];                                    // 人类停步时伪人也暂停跟随，尽量避免腿不动但模型继续平移的情况
 Handle g_hImposterSync[2048] = {INVALID_HANDLE, ...};            // 假身体动画同步timer
 

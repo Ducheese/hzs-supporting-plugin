@@ -47,7 +47,7 @@ public Action Timer_ImposterSyncThink(Handle timer, int zombie)
             int newFake = CreateFakeBody(zombie, human);
             if (newFake != -1)
             {
-                g_iFakeBody[zombie] = newFake;
+                g_iFakeBody[zombie] = EntIndexToEntRef(newFake);
                 SetEntityRenderColor(newFake, 255, 255, 255, 255);
             }
         }
@@ -65,10 +65,16 @@ public Action Timer_ImposterSyncThink(Handle timer, int zombie)
     }
 
     // 有 target → 同步动作
-    int fake = g_iFakeBody[zombie];
-    if (fake > 0 && IsValidEntity(fake))
+    int fake = EntRefToEntIndex(g_iFakeBody[zombie]);
+    if (fake != INVALID_ENT_REFERENCE && IsValidEntity(fake))
     {
         SyncFakeBodyAnimation(zombie, fake, target);
+    }
+    else
+    {
+        // 假身已被删除，下一 tick 重新选择目标并创建
+        g_iFakeBody[zombie] = -1;
+        g_iImposterTarget[zombie] = -1;
     }
 
     return Plugin_Continue;
@@ -77,12 +83,13 @@ public Action Timer_ImposterSyncThink(Handle timer, int zombie)
 // 杀假身（ClearParent + Kill）
 void KillFakeBody(int zombie)
 {
-    int fake = g_iFakeBody[zombie];
-    if (fake > 0 && IsValidEntity(fake))
+    int fake = EntRefToEntIndex(g_iFakeBody[zombie]);
+    g_iFakeBody[zombie] = -1;
+
+    if (fake != INVALID_ENT_REFERENCE && IsValidEntity(fake))
     {
         AcceptEntityInput(fake, "ClearParent");
         AcceptEntityInput(fake, "Kill");
-        g_iFakeBody[zombie] = -1;
     }
 }
 

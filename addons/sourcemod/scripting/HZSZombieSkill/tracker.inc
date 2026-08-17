@@ -131,7 +131,11 @@ public Action Timer_EntityMonitor(Handle timer)
 
     int imposter;
     for (int i = 0; i < 2048; i++)
-        if (g_iFakeBody[i] > 0 && IsValidEntity(g_iFakeBody[i])) imposter++;
+    {
+        int fake = EntRefToEntIndex(g_iFakeBody[i]);
+        if (fake != INVALID_ENT_REFERENCE && IsValidEntity(fake))
+            imposter++;
+    }
 
     int pangzi_view;
     for (int i = 1; i <= MaxClients; i++)

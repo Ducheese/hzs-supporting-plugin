@@ -4,6 +4,14 @@
 
 #define VERSION                "1.0"
 #define GAMEUNITS_TO_METERS    0.01905 
+#define SCREAM_SOUND_COUNT     3
+
+static const char SCREAM_SOUNDS[][] =
+{
+    "player/zaako-zaako.wav",
+    "player/mambo.wav",
+    "player/ciallo.wav"
+};
 
 //========================================================================================
 // INCLUDES
@@ -28,7 +36,6 @@ float lastCallTime[MAXPLAYERS+1];
 ConVar cvarScreamCooling;
 ConVar cvarScreamRange;
 ConVar cvarScreamDuration;
-ConVar cvarScreamFilePath;
 
 //========================================================================================
 //========================================================================================
@@ -48,7 +55,6 @@ public void OnPluginStart()
     cvarScreamCooling = CreateConVar("sm_hzs_scream_cooling", "60.0", "尖叫技能冷却时间", FCVAR_NOTIFY, true, 0.0);
     cvarScreamRange = CreateConVar("sm_hzs_scream_range", "30.0", "尖叫技能的有效范围（单位：米）", FCVAR_NOTIFY, true, 1.0);
     cvarScreamDuration = CreateConVar("sm_hzs_scream_duration", "15.0", "尖叫技能吸引僵尸的持续时间", FCVAR_NOTIFY, true, 1.0);
-    cvarScreamFilePath = CreateConVar("sm_hzs_scream_filepath", "player/waoh.wav", "尖叫音频路径（不带sound/）", FCVAR_NOTIFY);
 
     RegConsoleCmd("sm_scream", Cmd_ZombieCall);
 }
@@ -58,6 +64,11 @@ public void OnMapStart()
     for (int i = 1; i <= MaxClients; i++)
     {
         lastCallTime[i] = -9999.0;
+    }
+
+    for (int i = 0; i < SCREAM_SOUND_COUNT; i++)
+    {
+        PrecacheSound(SCREAM_SOUNDS[i], true);
     }
 }
 
@@ -114,12 +125,19 @@ public Action Cmd_ZombieCall(int client, any args)
         CreateZombieCall(client, GetConVarFloat(cvarScreamRange), GetConVarFloat(cvarScreamDuration));
 
         // 发出环境音
-        char FilePath[PLATFORM_MAX_PATH];
-        GetConVarString(cvarScreamFilePath, FilePath, sizeof(FilePath));
-        PrecacheSound(FilePath, true);
-        EmitAmbientSound(FilePath, fClientOrigin, client, SNDLEVEL_NORMAL, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
+        int sound = GetRandomInt(0, SCREAM_SOUND_COUNT - 1);
+        PrecacheSound(SCREAM_SOUNDS[sound], true);
+        EmitAmbientSound(SCREAM_SOUNDS[sound], fClientOrigin, client, SNDLEVEL_GUNFIRE, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
 
-        CPrintToChat(client, "{green}[华仔] {red}你使用了尖叫技能！僵尸将朝你袭来！");
+        CPrintToChat(client, "{green}[华仔] {red}你使用了技能！僵尸将朝你袭来！");
+
+        for (int i = 1; i <= MaxClients; i++)
+        {
+            if (i == client || !IsValidClient(i) || IsFakeClient(i))
+                continue;
+
+            CPrintToChat(i, "{green}[华仔] {red}%N 正在吸引僵尸！快给予掩护！", client);
+        }
     }
     else
     {
