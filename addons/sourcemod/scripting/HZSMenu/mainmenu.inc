@@ -20,6 +20,7 @@ void OpenMainMenu(int client)
     menu.AddItem("zipline", "HZS滑索");
     menu.AddItem("cheer", "欢呼");
     menu.AddItem("scream", "吸引僵尸");
+    menu.AddItem("guanyu", "关羽之歌");
     menu.AddItem("sell", "Sell半价回收");
     menu.AddItem("hitmarker", "命中反馈开关");
     menu.AddItem("guide_play", "玩法提示");
@@ -65,6 +66,11 @@ public int MenuHandler_MainMenu(Menu menu, MenuAction action, int param1, int pa
         else if (StrEqual(info, "scream"))
         {
             FakeClientCommand(client, "sm_scream");
+            OpenMainMenu(client);
+        }
+        else if (StrEqual(info, "guanyu"))
+        {
+            FakeClientCommand(client, "sm_guanyu");
             OpenMainMenu(client);
         }
         else if (StrEqual(info, "sell"))

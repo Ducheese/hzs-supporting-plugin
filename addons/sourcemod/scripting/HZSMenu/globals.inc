@@ -16,3 +16,12 @@ Handle g_hCookieHitmarkerSound = null;
 bool g_bHitmarkerOverlay[MAXPLAYERS + 1] = {true, ...};
 bool g_bHitmarkerSound[MAXPLAYERS + 1] = {true, ...};
 
+// ============================================================================
+// >> 关羽之歌（菜单技能：全服播放音效，冷却 60s）
+// ============================================================================
+
+#define GUANYU_SOUND      "player/guanyuzhige.wav"
+#define GUANYU_COOLDOWN   60.0
+
+float g_fGuanyuCooldown[MAXPLAYERS + 1];
+

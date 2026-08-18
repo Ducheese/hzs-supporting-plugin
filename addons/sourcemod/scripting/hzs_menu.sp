@@ -29,11 +29,22 @@ public Plugin myinfo =
 public void OnPluginStart()
 {
     RegConsoleCmd("sm_menu", Cmd_Menu, "打开快捷菜单");
+    RegConsoleCmd("sm_guanyu", Cmd_Guanyu, "关羽之歌");
 
     RegisterCookies();
 
     // 每 30s 提示打开快捷菜单
     CreateTimer(30.0, Timer_MenuReminder, _, TIMER_REPEAT);
+}
+
+public void OnMapStart()
+{
+    PrecacheSound(GUANYU_SOUND, true);
+
+    for (int i = 1; i <= MaxClients; i++)
+    {
+        g_fGuanyuCooldown[i] = -9999.0;
+    }
 }
 
 // 每 30s 全服提示
@@ -64,4 +75,33 @@ public void OnClientDisconnect(int client)
 public void OnClientCookiesCached(int client)
 {
     LoadClientCookies(client);
+}
+
+public Action Cmd_Guanyu(int client, int args)
+{
+    // client 0 = 控制台：无冷却，直接播放
+    if (client >= 1 && !IsClientInGame(client))
+        return Plugin_Handled;
+
+    if (client >= 1)
+    {
+        float now = GetGameTime();
+        if (now - g_fGuanyuCooldown[client] < GUANYU_COOLDOWN)
+        {
+            PrintToChat(client, "\x04[关羽之歌] \x07FFFFFF你已经释怀过了，再等等吧");
+            return Plugin_Handled;
+        }
+        g_fGuanyuCooldown[client] = now;
+    }
+
+    EmitSoundToAll(GUANYU_SOUND);
+
+    char name[MAX_NAME_LENGTH];
+    if (client >= 1)
+        GetClientName(client, name, sizeof(name));
+    else
+        strcopy(name, sizeof(name), "管理员");
+    PrintToChatAll("\x04[关羽之歌] \x03%s \x07FFFFFF释怀了", name);
+
+    return Plugin_Handled;
 }

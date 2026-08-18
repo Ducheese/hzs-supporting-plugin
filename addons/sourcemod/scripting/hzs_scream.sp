@@ -4,13 +4,14 @@
 
 #define VERSION                "1.0"
 #define GAMEUNITS_TO_METERS    0.01905 
-#define SCREAM_SOUND_COUNT     3
+#define SCREAM_SOUND_COUNT     4
 
 static const char SCREAM_SOUNDS[][] =
 {
     "player/zaako-zaako.wav",
     "player/mambo.wav",
-    "player/ciallo.wav"
+    "player/ciallo.wav",
+    "player/baka.wav"
 };
 
 //========================================================================================
@@ -107,7 +108,11 @@ public Action Cmd_ZombieCall(int client, any args)
             return Plugin_Handled;
     }
 
-    if (!IsPlayerAlive(client)) return Plugin_Handled;
+    if (!IsPlayerAlive(client))
+    {
+        CPrintToChat(client, "{green}[华仔] {red}死亡状态无法使用技能！");
+        return Plugin_Handled;
+    }
 
     float fClientOrigin[3];
     GetClientEyePosition(client, fClientOrigin);
