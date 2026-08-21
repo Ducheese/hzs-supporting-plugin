@@ -2,17 +2,73 @@
 // HZSMenu/hitmarkermenu.inc — 命中反馈开关子菜单 + Cookie 持久化
 // ============================================================================
 
-void RegisterCookies()
+void RegisterHitmarkerCookies()
 {
     // 注册名保持部署过的原名（改名会导致玩家历史设置丢失）
     g_hCookieHitmarkerOverlay = RegClientCookie("hzs_hitmarker_overlay", "HZS Hitmarker Overlay", CookieAccess_Protected);
     g_hCookieHitmarkerSound = RegClientCookie("hzs_hitmarker_sound", "HZS Hitmarker Sound", CookieAccess_Protected);
 }
 
-void LoadClientCookies(int client)
+void ResetClientHitmarker(int client)
+{
+    if (client >= 1 && client <= MaxClients)
+    {
+        g_bHitmarkerOverlay[client] = true;
+        g_bHitmarkerSound[client] = true;
+        g_bHitmarkerManual[client] = false;
+    }
+}
+
+void SetClientHitmarkerOverlay(int client, bool enable)
+{
+    if (client < 1 || client > MaxClients || !IsClientInGame(client))
+        return;
+
+    g_bHitmarkerOverlay[client] = enable;
+
+    if (AreClientCookiesCached(client))
+    {
+        SetClientCookie(client, g_hCookieHitmarkerOverlay, enable ? "1" : "0");
+    }
+    else
+    {
+        g_bHitmarkerManual[client] = true;
+    }
+
+    SyncHitmarkerSettings(client);
+}
+
+void SetClientHitmarkerSound(int client, bool enable)
+{
+    if (client < 1 || client > MaxClients || !IsClientInGame(client))
+        return;
+
+    g_bHitmarkerSound[client] = enable;
+
+    if (AreClientCookiesCached(client))
+    {
+        SetClientCookie(client, g_hCookieHitmarkerSound, enable ? "1" : "0");
+    }
+    else
+    {
+        g_bHitmarkerManual[client] = true;
+    }
+
+    SyncHitmarkerSettings(client);
+}
+
+void LoadClientHitmarkerCookies(int client)
 {
     if (client < 1 || client > MaxClients || !IsClientInGame(client) || IsFakeClient(client))
         return;
+
+    // 若玩家在 Cookie 载入完成前已手动修改，将新设置写回 Cookie 保存
+    if (g_bHitmarkerManual[client])
+    {
+        SetClientCookie(client, g_hCookieHitmarkerOverlay, g_bHitmarkerOverlay[client] ? "1" : "0");
+        SetClientCookie(client, g_hCookieHitmarkerSound, g_bHitmarkerSound[client] ? "1" : "0");
+        return;
+    }
 
     // 命中贴图开关
     char sOverlay[8];
@@ -78,15 +134,11 @@ public int MenuHandler_HitmarkerMenu(Menu menu, MenuAction action, int param1, i
 
         if (StrEqual(info, "overlay"))
         {
-            g_bHitmarkerOverlay[client] = !g_bHitmarkerOverlay[client];
-            SetClientCookie(client, g_hCookieHitmarkerOverlay, g_bHitmarkerOverlay[client] ? "1" : "0");
-            FakeClientCommand(client, "sm_hitmarker_overlay %d", g_bHitmarkerOverlay[client] ? 1 : 0);
+            SetClientHitmarkerOverlay(client, !g_bHitmarkerOverlay[client]);
         }
         else if (StrEqual(info, "sound"))
         {
-            g_bHitmarkerSound[client] = !g_bHitmarkerSound[client];
-            SetClientCookie(client, g_hCookieHitmarkerSound, g_bHitmarkerSound[client] ? "1" : "0");
-            FakeClientCommand(client, "sm_hitmarker_sound %d", g_bHitmarkerSound[client] ? 1 : 0);
+            SetClientHitmarkerSound(client, !g_bHitmarkerSound[client]);
         }
 
         OpenHitmarkerMenu(client);

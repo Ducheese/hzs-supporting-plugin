@@ -8,6 +8,7 @@
 #include "HZSMenu/globals.inc"
 #include "HZSMenu/mainmenu.inc"
 #include "HZSMenu/sellmenu.inc"
+#include "HZSMenu/gunshotmenu.inc"
 #include "HZSMenu/hitmarkermenu.inc"
 #include "HZSMenu/guidemenu.inc"
 #include "HZSMenu/serverresmenu.inc"
@@ -30,11 +31,20 @@ public void OnPluginStart()
 {
     RegConsoleCmd("sm_menu", Cmd_Menu, "打开快捷菜单");
     RegConsoleCmd("sm_guanyu", Cmd_Guanyu, "关羽之歌");
+    RegConsoleCmd("sm_muteguns", Cmd_MuteGuns, "切换他人枪声消去 (0/1)");
 
-    RegisterCookies();
+    RegisterHitmarkerCookies();
+    RegisterGunshotCookies();
+
+    AddTempEntHook("Shotgun Shot", Hook_TEFireBullets);
 
     // 每 30s 提示打开快捷菜单
     CreateTimer(30.0, Timer_MenuReminder, _, TIMER_REPEAT);
+}
+
+public void OnPluginEnd()
+{
+    RemoveTempEntHook("Shotgun Shot", Hook_TEFireBullets);
 }
 
 public void OnMapStart()
@@ -62,19 +72,20 @@ public Action Timer_MenuReminder(Handle timer)
 
 public void OnClientPutInServer(int client)
 {
-    g_bHitmarkerOverlay[client] = true;
-    g_bHitmarkerSound[client] = true;
+    ResetClientHitmarker(client);
+    ResetClientGunshot(client);
 }
 
 public void OnClientDisconnect(int client)
 {
-    g_bHitmarkerOverlay[client] = true;
-    g_bHitmarkerSound[client] = true;
+    ResetClientHitmarker(client);
+    ResetClientGunshot(client);
 }
 
 public void OnClientCookiesCached(int client)
 {
-    LoadClientCookies(client);
+    LoadClientHitmarkerCookies(client);
+    LoadClientGunshotCookies(client);
 }
 
 public Action Cmd_Guanyu(int client, int args)

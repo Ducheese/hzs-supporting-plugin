@@ -23,6 +23,7 @@ void OpenMainMenu(int client)
     menu.AddItem("guanyu", "关羽之歌");
     menu.AddItem("sell", "Sell半价回收");
     menu.AddItem("musicbox", "音乐盒");
+    menu.AddItem("gunshot", "他人枪声消去");
     menu.AddItem("hitmarker", "命中反馈开关");
     menu.AddItem("guide_play", "玩法提示");
     menu.AddItem("guide_res", "资源兼容");
@@ -77,6 +78,10 @@ public int MenuHandler_MainMenu(Menu menu, MenuAction action, int param1, int pa
         else if (StrEqual(info, "musicbox"))
         {
             FakeClientCommand(client, "sm_musicbox");
+        }
+        else if (StrEqual(info, "gunshot"))
+        {
+            OpenGunshotMenu(client);
         }
         else if (StrEqual(info, "sell"))
         {

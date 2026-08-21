@@ -15,6 +15,7 @@ Handle g_hCookieHitmarkerSound = null;
 // 开关状态（按玩家）
 bool g_bHitmarkerOverlay[MAXPLAYERS + 1] = {true, ...};
 bool g_bHitmarkerSound[MAXPLAYERS + 1] = {true, ...};
+bool g_bHitmarkerManual[MAXPLAYERS + 1];
 
 // ============================================================================
 // >> 关羽之歌（菜单技能：全服播放音效，冷却 60s）
@@ -24,4 +25,14 @@ bool g_bHitmarkerSound[MAXPLAYERS + 1] = {true, ...};
 #define GUANYU_COOLDOWN   60.0
 
 float g_fGuanyuCooldown[MAXPLAYERS + 1];
+
+// ============================================================================
+// >> 他人枪声消去（开关控制）
+// ============================================================================
+
+Handle g_hCookieMuteGunshots = null;
+bool g_bMuteGunshots[MAXPLAYERS + 1] = {false, ...};
+bool g_bGunshotManual[MAXPLAYERS + 1];
+
+
 
