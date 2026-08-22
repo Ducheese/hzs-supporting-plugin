@@ -314,6 +314,8 @@ void CheckProjParry(int client)
         // 弹反音效
         EmitSoundToClient(client, SFX_DEIMOS2, _, SNDCHAN_STATIC, SNDLEVEL_NORMAL, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
 
+        HZS_KillFeed_AddEvent(client, "格挡投掷物 +200", 200, HZS_FEED_RESCUE);
+
         // 停风阻声
         StopDeimosWind(proj);
 

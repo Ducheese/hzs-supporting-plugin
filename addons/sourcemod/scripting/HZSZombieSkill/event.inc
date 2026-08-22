@@ -175,6 +175,7 @@ public void Han_OnZombieDeath(int zombie, int killer)
          * 这里清理函数并非冗余
          */
         // 如果在冲锋就停止冲锋句柄
+        bool wasCharging = (g_hCharge[zombie] != INVALID_HANDLE);
         ClearChargeHandles(zombie);
 
         int victim = g_iGrappling[zombie];
@@ -184,11 +185,39 @@ public void Han_OnZombieDeath(int zombie, int killer)
         {
             ClearGrappleHandles(victim);
             EndGrapple(zombie, victim);
+
+            if (IsValidClient(killer))
+            {
+                if (killer != victim)
+                {
+                    HZS_KillFeed_AddEvent(killer, "解救受擒抱队友 +200", 200, HZS_FEED_RESCUE);
+                }
+                else
+                {
+                    HZS_KillFeed_AddEvent(killer, "反杀擒抱 +800", 800, HZS_FEED_BOSS);  // 理论上不可能发生
+                }
+            }
+        }
+        else if (wasCharging)
+        {
+            if (IsValidClient(killer))
+            {
+                HZS_KillFeed_AddEvent(killer, "打断冲锋 +800", 800, HZS_FEED_BOSS);
+            }
         }
     }
     else if (IsSameName(zombie, BOSS_YIXING))
     {
+        bool wasCharging = (g_hCharge[zombie] != INVALID_HANDLE);
         ClearChargeHandles(zombie);
+
+        if (wasCharging)
+        {
+            if (IsValidClient(killer))
+            {
+                HZS_KillFeed_AddEvent(killer, "打断冲撞 +800", 800, HZS_FEED_BOSS);
+            }
+        }
     }
 }
 
@@ -218,6 +247,7 @@ public void Han_OnZombieDamagePre(int zombie, int attacker, int &damage)
         if (g_hHeal[zombie] != INVALID_HANDLE)
         {
             g_iBulletCount[zombie]++;
+            g_iLastHealDamager[zombie] = attacker;
         }
 
         // 飞行高度伤害衰减，伤害修改传出
@@ -235,6 +265,7 @@ public void Han_OnZombieDamagePre(int zombie, int attacker, int &damage)
 
             // 累计伤害更新
             g_flFlyDamage[zombie] += fDamage;
+            g_iLastHealDamager[zombie] = attacker;
 
             // 修改伤害
             damage = RoundToZero(fDamage);
@@ -474,6 +505,7 @@ void InitZombieState(int zombie)
 
     // 治疗僵尸 / BOSS 安哥拉 — 自愈
     g_hHeal[zombie] = INVALID_HANDLE;
+    g_iLastHealDamager[zombie] = -1;
 
     // 嗜血女巫 — 靠近检测
     g_hWitchNear[zombie] = INVALID_HANDLE;

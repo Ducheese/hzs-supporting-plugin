@@ -278,6 +278,7 @@ int g_iPortal[2048] = {-1, ...};                                 // 传送门实
 
 // 飞行以外的逻辑
 int g_iBulletCount[2048];                                        // 安哥拉在自愈期间所受的累计子弹数
+int g_iLastHealDamager[2048];                                    // 记录最后攻击自愈安哥拉的玩家
 int g_iZombieCall[MAXPLAYERS+1];                                 // 玩家是否被集中攻击，记录的是安哥拉的实体号
 Handle g_hHeal[2048] = {INVALID_HANDLE, ...};                    // 实现治疗效果所用的timer，巫蛊术尸和安哥拉共用
 

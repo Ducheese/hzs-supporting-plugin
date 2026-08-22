@@ -13,6 +13,7 @@
 
 #include <morecolors>
 #include <HanZombieScenarioAPI>
+#include <hzs_killfeed>
 
 #include "HZSZombieSkill/global"       // 全局变量定义
 #include "HZSZombieSkill/tracker"      // 实体追踪池

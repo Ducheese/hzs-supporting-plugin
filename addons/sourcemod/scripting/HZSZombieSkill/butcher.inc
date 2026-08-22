@@ -250,13 +250,45 @@ public Action OnTrapTakeDamage(int phys, int &attacker, int &inflictor, float &d
             g_hTrapLifetime[phys] = INVALID_HANDLE;
         }
 
-        // 释放被控制的玩家
         int victim = g_iTrapVictim[phys];
-        if (victim != -1)
+        bool isActivelyTrapping = (victim > 0 && IsHumanAlive(victim) && g_bIsStuck[victim]);
+
+        if (isActivelyTrapping)
         {
+            // 状态 2：激活且正抓着人（解救队友 +200 / 自救 +100）
             g_bIsStuck[victim] = false;
             ClearGrappleHandles(victim);
             g_iTrapVictim[phys] = -1;
+
+            if (IsValidClient(attacker))
+            {
+                if (attacker != victim)
+                {
+                    HZS_KillFeed_AddEvent(attacker, "解救受困队友 +200", 200, HZS_FEED_RESCUE);
+                }
+                else
+                {
+                    HZS_KillFeed_AddEvent(attacker, "清理鬼手陷阱 +100", 100, HZS_FEED_NORMAL);
+                }
+            }
+        }
+        else if (victim == -1)
+        {
+            // 状态 1：未激活状态（排雷 +100）
+            if (IsValidClient(attacker))
+            {
+                HZS_KillFeed_AddEvent(attacker, "清理鬼手陷阱 +100", 100, HZS_FEED_NORMAL);
+            }
+        }
+        else
+        {
+            // 状态 3：激活但人已挣脱后的残余实体（+50）
+            g_iTrapVictim[phys] = -1;
+
+            if (IsValidClient(attacker))
+            {
+                HZS_KillFeed_AddEvent(attacker, "清理残余鬼手 +50", 50, HZS_FEED_NORMAL);
+            }
         }
 
         KillTrapVisualAndTrigger(phys);

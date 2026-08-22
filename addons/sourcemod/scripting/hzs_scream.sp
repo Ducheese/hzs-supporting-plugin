@@ -27,6 +27,7 @@ static const char SCREAM_SOUNDS[][] =
 #include <cstrike>
 #include <morecolors>
 #include <HanZombieScenarioAPI>
+#include <hzs_killfeed>
 
 //========================================================================================
 // HANDLES & VARIABLES
@@ -127,7 +128,15 @@ public Action Cmd_ZombieCall(int client, any args)
         Shake(client, 30.0, 10.0, 3.0);
 
         // 吸引僵尸
-        CreateZombieCall(client, GetConVarFloat(cvarScreamRange), GetConVarFloat(cvarScreamDuration));
+        int attracted = CreateZombieCall(client, GetConVarFloat(cvarScreamRange), GetConVarFloat(cvarScreamDuration));
+
+        if (attracted > 0)
+        {
+            int reward = attracted * 50;
+            char msg[64];
+            Format(msg, sizeof(msg), "吸引僵尸 (%d只) +%d", attracted, reward);
+            HZS_KillFeed_AddEvent(client, msg, reward, HZS_FEED_TACTICAL);
+        }
 
         // 发出环境音
         int sound = GetRandomInt(0, SCREAM_SOUND_COUNT - 1);
@@ -160,7 +169,7 @@ public Action Cmd_ZombieCall(int client, any args)
 // FUCTIONS
 //========================================================================================
 
-void CreateZombieCall(int client, float dist, float duration)      // client主动吸引范围内僵尸
+int CreateZombieCall(int client, float dist, float duration)      // client主动吸引范围内僵尸
 {
     float fClientOrigin[3], fTargetOrigin[3];
     GetEntPropVector(client, Prop_Send, "m_vecOrigin", fClientOrigin);
@@ -168,6 +177,7 @@ void CreateZombieCall(int client, float dist, float duration)      // client主�
     float fTargetDistance;
 
     int count = Han_GetZombieCount();
+    int attracted = 0;
 
     for (int i = 0; i < count; i++)
     {
@@ -189,8 +199,11 @@ void CreateZombieCall(int client, float dist, float duration)      // client主�
             }
 
             Han_SetZombieTarget(zombie, client, duration);
+            attracted++;
         }
     }
+
+    return attracted;
 }
 
 //========================================================================================

@@ -276,6 +276,12 @@ void EndSelfHealingFail(int zombie)
     // 文字音效反馈
     EmitAmbientSound(SFX_HEAL3, pos, _, SNDLEVEL_GUNFIRE, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
     CPrintToChatAll("{green}[华仔] {red}%s的自愈被打断，快乘胜追击！", ZombieName);
+
+    int interrupter = g_iLastHealDamager[zombie];
+    if (IsValidClient(interrupter))
+    {
+        HZS_KillFeed_AddEvent(interrupter, "打断自愈 +800", 800, HZS_FEED_BOSS);
+    }
 }
 
 void EndSelfHealingSuccess(int zombie)
@@ -364,6 +370,12 @@ void EnterGroundMode(int zombie)
         char ZombieName[32];
         Han_GetZombieName(zombie, ZombieName, sizeof(ZombieName));
         CPrintToChatAll("{green}[华仔] {red}%s被打下来了，快乘胜追击！", ZombieName);
+
+        int interrupter = g_iLastHealDamager[zombie];
+        if (IsValidClient(interrupter))
+        {
+            HZS_KillFeed_AddEvent(interrupter, "打断飞行毒雾 +800", 800, HZS_FEED_BOSS);
+        }
     }
 }
 

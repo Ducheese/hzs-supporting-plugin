@@ -14,6 +14,8 @@
 
 #include <sourcemod>
 #include <sdktools>
+#include <sdkhooks>
+#include <cstrike>
 #include <HanZombieScenarioAPI>
 
 //========================================================================================
@@ -42,6 +44,8 @@ static const int g_iKillReward[3] = {50, 200, 1000};
 #define TYPE_SPECIAL  1
 #define TYPE_BOSS     2
 #define TYPE_STREAK   3        // feed 行类型：连杀提示
+#define TYPE_RESCUE   4        // feed 行类型：救援
+#define TYPE_TACTICAL 5        // feed 行类型：战术
 
 #define BOSS_NAME_COUNT 3
 static const char BOSS_NAMES[][] =
@@ -70,16 +74,48 @@ float g_fLastKillTime[MAXPLAYERS + 1];
 char g_sFeed[MAXPLAYERS + 1][FEED_LINES][FEED_LEN];
 int g_iFeedType[MAXPLAYERS + 1][FEED_LINES];
 
+// 武器支援追踪（实体索引 0~2047）
+int g_iWeaponDropper[2048];
+float g_fWeaponDropTime[2048];
+
 ConVar g_cvFeedTime;
 
 public Plugin myinfo =
 {
     name = "HZS Kill Feed",
     author = "Ducheese",
-    description = "HAN 灾变击杀信息流：准星下方滚动 + 分档积分榜 + 连杀提示",
-    version = "1.0.0",
+    description = "HAN 灾变击杀信息流：准星下方滚动 + 分档积分榜 + 连杀提示 + 战术事件广播",
+    version = "1.1",
     url = "https://space.bilibili.com/1889622121"
 };
+
+public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max)
+{
+    CreateNative("HZS_KillFeed_AddEvent", Native_AddEvent);
+    RegPluginLibrary("hzs_killfeed");
+    return APLRes_Success;
+}
+
+public int Native_AddEvent(Handle plugin, int numParams)
+{
+    int client = GetNativeCell(1);
+    if (client <= 0 || client > MaxClients || !IsClientInGame(client))
+        return 0;
+
+    char eventName[FEED_LEN];
+    GetNativeString(2, eventName, sizeof(eventName));
+    int reward = GetNativeCell(3);
+    int type = GetNativeCell(4);
+
+    if (reward > 0)
+    {
+        g_iScore[client] += reward;
+        UpdateScoreboard();
+    }
+
+    AddFeedLine(client, eventName, type);
+    return 1;
+}
 
 //========================================================================================
 // 生命周期
@@ -90,6 +126,21 @@ public void OnPluginStart()
     g_cvFeedTime = CreateConVar("sm_hzs_killfeed_time", "2.0", "每行击杀信息显示时长（秒）", FCVAR_NOTIFY, true, 0.5, true, 10.0);
 
     HookEvent("round_start", Event_RoundStart, EventHookMode_Post);
+
+    for (int i = 1; i <= MaxClients; i++)
+    {
+        if (IsClientInGame(i))
+        {
+            SDKHook(i, SDKHook_WeaponDropPost, Hook_WeaponDropPost);
+            SDKHook(i, SDKHook_WeaponEquipPost, Hook_WeaponEquipPost);
+        }
+    }
+}
+
+public void OnClientPutInServer(int client)
+{
+    SDKHook(client, SDKHook_WeaponDropPost, Hook_WeaponDropPost);
+    SDKHook(client, SDKHook_WeaponEquipPost, Hook_WeaponEquipPost);
 }
 
 public void Event_RoundStart(Event event, const char[] name, bool dontBroadcast)
@@ -102,7 +153,42 @@ public void Event_RoundStart(Event event, const char[] name, bool dontBroadcast)
         g_fLastKillTime[i] = 0.0;
     }
 
+    for (int w = 0; w < 2048; w++)
+    {
+        g_iWeaponDropper[w] = 0;
+        g_fWeaponDropTime[w] = 0.0;
+    }
+
     // UpdateScoreboard();
+}
+
+public void Hook_WeaponDropPost(int client, int weapon)
+{
+    if (client > 0 && client <= MaxClients && weapon > 0 && weapon < 2048)
+    {
+        g_iWeaponDropper[weapon] = client;
+        g_fWeaponDropTime[weapon] = GetGameTime();
+    }
+}
+
+public void Hook_WeaponEquipPost(int client, int weapon)
+{
+    if (weapon <= 0 || weapon >= 2048 || g_iWeaponDropper[weapon] <= 0)
+        return;
+
+    int dropper = g_iWeaponDropper[weapon];
+    float dropTime = g_fWeaponDropTime[weapon];
+    g_iWeaponDropper[weapon] = 0; // 消耗标记
+
+    if (dropper != client && GetGameTime() - dropTime <= 5.0)
+    {
+        if (IsClientInGame(dropper))
+        {
+            g_iScore[dropper] += 200;
+            UpdateScoreboard();
+            AddFeedLine(dropper, "支援武器 +200", TYPE_RESCUE);
+        }
+    }
 }
 
 public void OnClientDisconnect(int client)
@@ -250,10 +336,12 @@ void ShowFeed(int client)
     // 按最新一行的类型染色（HUD 单色，整块一起染）
     switch (g_iFeedType[client][0])
     {
-        case TYPE_SPECIAL: SetHudTextParams(-1.0, FEED_Y, g_cvFeedTime.FloatValue, 135, 206, 250, 255);  // 特殊：浅蓝
-        case TYPE_BOSS:    SetHudTextParams(-1.0, FEED_Y, g_cvFeedTime.FloatValue, 255, 200, 0, 255);    // BOSS：金
-        case TYPE_STREAK:  SetHudTextParams(-1.0, FEED_Y, g_cvFeedTime.FloatValue, 255, 80, 80, 255);    // 连杀：红
-        default:           SetHudTextParams(-1.0, FEED_Y, g_cvFeedTime.FloatValue, 255, 255, 255, 255);  // 普通：白
+        case TYPE_SPECIAL:  SetHudTextParams(-1.0, FEED_Y, g_cvFeedTime.FloatValue, 135, 206, 250, 255);  // 特殊：浅蓝
+        case TYPE_BOSS:     SetHudTextParams(-1.0, FEED_Y, g_cvFeedTime.FloatValue, 255, 200, 0, 255);    // BOSS：金
+        case TYPE_STREAK:   SetHudTextParams(-1.0, FEED_Y, g_cvFeedTime.FloatValue, 255, 80, 80, 255);    // 连杀：红
+        case TYPE_RESCUE:   SetHudTextParams(-1.0, FEED_Y, g_cvFeedTime.FloatValue, 100, 255, 160, 255);  // 救援：薄荷绿
+        case TYPE_TACTICAL: SetHudTextParams(-1.0, FEED_Y, g_cvFeedTime.FloatValue, 205, 140, 60, 255);   // 战术：低饱和琥珀色
+        default:            SetHudTextParams(-1.0, FEED_Y, g_cvFeedTime.FloatValue, 255, 255, 255, 255);  // 普通：白
     }
     ShowHudText(client, FEED_CHANNEL, "%s", buffer);
 }
