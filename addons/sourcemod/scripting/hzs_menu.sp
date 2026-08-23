@@ -74,6 +74,11 @@ public void OnClientPutInServer(int client)
 {
     ResetClientHitmarker(client);
     ResetClientGunshot(client);
+
+    if (AreClientCookiesCached(client))
+    {
+        OnClientCookiesCached(client);
+    }
 }
 
 public void OnClientDisconnect(int client)
@@ -84,8 +89,11 @@ public void OnClientDisconnect(int client)
 
 public void OnClientCookiesCached(int client)
 {
-    LoadClientHitmarkerCookies(client);
-    LoadClientGunshotCookies(client);
+    if (IsClientInGame(client))
+    {
+        LoadClientHitmarkerCookies(client);
+        LoadClientGunshotCookies(client);
+    }
 }
 
 public Action Cmd_Guanyu(int client, int args)

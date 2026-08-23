@@ -54,6 +54,7 @@ public void OnPluginStart()
 
     HookEvent("player_spawn", Event_PlayerSpawn);                          // 给复活倒计时收个尾
     HookEvent("player_death", Event_PlayerDeath);                          // BOT死亡，更新生命计数，启动复活倒计时
+    HookEvent("player_team", Event_PlayerTeam);                            // 真人退出或补位BOT加入队伍时，启动复活
 
     HookEvent("round_start", Event_RoundStart);                            // 新回合重置所有BOT的生命总数
     HookEvent("round_freeze_end", Event_RoundFreezeEnd);                   // 为了配合round exec插件，即便晚于round start加载插件，也能顺利获取地图出生点实体信息
@@ -109,6 +110,27 @@ public void OnClientDisconnect_Post(int client)
 //========================================================================================
 // HOOK
 //========================================================================================
+
+public void Event_PlayerTeam(Handle event, const char[] name, bool dontBroadcast)
+{
+    int client = GetClientOfUserId(GetEventInt(event, "userid"));
+    int team = GetEventInt(event, "team");
+
+    if (IsValidClient(client, false) && IsFakeClient(client))
+    {
+        if (team > CS_TEAM_SPECTATOR && !IsPlayerAlive(client))
+        {
+            if (g_iLivesRemaining[client] <= 0)
+                g_iLivesRemaining[client] = GetConVarInt(cvarRespawnLives);
+
+            if (h_RespawnTask[client] == INVALID_HANDLE)
+            {
+                StartRespawnCountdown(client);
+                UpdateNamePrefix(client, true);
+            }
+        }
+    }
+}
 
 public void Event_RoundStart(Handle event, const char[] name, bool dontBroadcast)
 {

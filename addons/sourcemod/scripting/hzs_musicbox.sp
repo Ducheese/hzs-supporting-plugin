@@ -23,6 +23,7 @@ public Plugin myinfo =
 public void OnPluginStart()
 {
     g_hCookieVolume = RegClientCookie("hzs_musicbox_volume", "HZS Music Box Volume", CookieAccess_Protected);
+    g_hCookieEnabled = RegClientCookie("hzs_musicbox_enabled", "HZS Music Box Enabled", CookieAccess_Protected);
 
     RegConsoleCmd("sm_musicbox", Cmd_MusicBox, "打开 HZS 音乐盒菜单");
     RegConsoleCmd("sm_musicbox_start", Cmd_MusicBoxStart, "启动自己的 HZS 音乐盒");
@@ -33,6 +34,7 @@ public void OnPluginStart()
     RegConsoleCmd("sm_musicbox_volume", Cmd_MusicBoxVolume, "设置 HZS 音乐盒音量");
 
     HookEvent("round_start", Event_RoundStart, EventHookMode_Post);
+    HookEvent("player_spawn", Event_PlayerSpawn, EventHookMode_Post);
     AddNormalSoundHook(Hook_NormalSound);
 
     for (int client = 1; client <= MaxClients; client++)
@@ -40,8 +42,6 @@ public void OnPluginStart()
         g_iClientVolume[client] = MUSICBOX_DEFAULT_VOLUME;
         g_iClientTrack[client] = -1;
         g_bClientMusicPlaying[client] = false;
-        g_bClientCookiesReady[client] = false;
-        g_bClientVolumeManual[client] = false;
         g_bClientMusicStarted[client] = false;
         ResetClientShuffle(client);
         ResetClientHistory(client);
@@ -80,8 +80,6 @@ public void OnClientPutInServer(int client)
 {
     g_iClientVolume[client] = MUSICBOX_DEFAULT_VOLUME;
     g_bClientMusicPlaying[client] = false;
-    g_bClientCookiesReady[client] = false;
-    g_bClientVolumeManual[client] = false;
     g_bClientMusicStarted[client] = false;
 
     g_iClientTrack[client] = -1;
@@ -89,6 +87,11 @@ public void OnClientPutInServer(int client)
     StopClientNextTrackTimer(client);
     ResetClientShuffle(client);
     ResetClientHistory(client);
+
+    if (AreClientCookiesCached(client))
+    {
+        OnClientCookiesCached(client);
+    }
 }
 
 public void OnClientCookiesCached(int client)
@@ -96,16 +99,9 @@ public void OnClientCookiesCached(int client)
     if (!IsValidMusicClient(client))
         return;
 
-    g_bClientCookiesReady[client] = true;
-
-    // 若玩家在 Cookie 载入完成前已手动调节了音量，将新音量写回 Cookie 保存
-    if (g_bClientVolumeManual[client])
-    {
-        char value[8];
-        IntToString(g_iClientVolume[client], value, sizeof(value));
-        SetClientCookie(client, g_hCookieVolume, value);
-        return;
-    }
+    char sEnabled[8];
+    GetClientCookie(client, g_hCookieEnabled, sEnabled, sizeof(sEnabled));
+    g_bClientMusicStarted[client] = (sEnabled[0] != '\0' && StringToInt(sEnabled) != 0);
 
     char value[8];
     GetClientCookie(client, g_hCookieVolume, value, sizeof(value));
@@ -117,17 +113,10 @@ public void OnClientCookiesCached(int client)
     if (!IsAllowedVolume(volume))
         volume = MUSICBOX_DEFAULT_VOLUME;
 
-    int oldVolume = g_iClientVolume[client];
     g_iClientVolume[client] = volume;
-
-    // 统一走 SND_CHANGE_VOL，0 档用 0.02 保活（0.0 会丢通道重建而重播）
-    if (g_bClientMusicStarted[client] && g_iClientTrack[client] >= 0 && oldVolume != volume)
+    if (g_bClientMusicStarted[client] && g_iClientTrack[client] < 0)
     {
-        float newVol = float(volume) / 100.0;
-        if (newVol == 0.0) newVol = 0.02;
-        EmitSoundToClient(client, g_sTrackPath[g_iClientTrack[client]], GetMusicSource(client), SNDCHAN_STATIC,
-            SNDLEVEL_NONE, MUSICBOX_SOUND_CHANGE_VOLUME, newVol, SNDPITCH_NORMAL);
-        g_bClientMusicPlaying[client] = true;
+        StartTrackForClient(client, PickNextTrack(client), false);
     }
 }
 
@@ -136,8 +125,6 @@ public void OnClientDisconnect(int client)
     StopClientNextTrackTimer(client);
     StopTrackForClient(client);
     g_bClientMusicPlaying[client] = false;
-    g_bClientCookiesReady[client] = false;
-    g_bClientVolumeManual[client] = false;
     g_bClientMusicStarted[client] = false;
     g_iClientTrack[client] = -1;
     ResetClientShuffle(client);
@@ -155,6 +142,15 @@ public void Event_RoundStart(Event event, const char[] name, bool dontBroadcast)
         if (!g_bClientMusicStarted[client])
             continue;
 
+        StartTrackForClient(client, PickNextTrack(client), false);
+    }
+}
+
+public void Event_PlayerSpawn(Event event, const char[] name, bool dontBroadcast)
+{
+    int client = GetClientOfUserId(event.GetInt("userid"));
+    if (IsValidMusicClient(client) && g_bClientMusicStarted[client] && g_iClientTrack[client] < 0)
+    {
         StartTrackForClient(client, PickNextTrack(client), false);
     }
 }

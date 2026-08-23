@@ -44,7 +44,7 @@ public void OnPluginStart()
     CreateConVar("sm_hzs_knife_version", VERSION, "插件版本", FCVAR_PROTECTED);
     cvarKnifeDamage = CreateConVar("sm_hzs_knife_damage", "100", "近战武器范围伤害值", FCVAR_NOTIFY, true, 1.0);
     cvarKnifeRange = CreateConVar("sm_hzs_knife_range", "2.0", "近战武器有效攻击范围（单位：米）", FCVAR_NOTIFY, true, 0.0);
-    cvarKnifeSpeedThreshold = CreateConVar("sm_hzs_knife_speed_threshold", "250.0", "伤害倍率起始移速（units/s），低于此速度伤害无加成", FCVAR_NOTIFY, true, 0.0);
+    cvarKnifeSpeedThreshold = CreateConVar("sm_hzs_knife_speed_threshold", "250.0", "伤害与范围倍率起始移速（units/s），低于此速度无加成", FCVAR_NOTIFY, true, 0.0);
 
     HookEvent("weapon_fire", Event_WeaponFire);
 }
@@ -59,18 +59,19 @@ public void Event_WeaponFire(Handle event, const char[] name, bool dontBroadcast
 
     if (!CheckEquipKnife(attacker)) return;
 
-    // 伤害倍率：按攻击者当前移速加成（移速 > 阈值才递增）
+    // 伤害与范围倍率：按攻击者当前移速加成（移速 > 阈值才递增）
     float fClientVelocity[3];
     GetEntPropVector(attacker, Prop_Data, "m_vecVelocity", fClientVelocity);   // velocity 是 datamap 字段，不在发送表
     float fSpeed = SquareRoot(fClientVelocity[0]*fClientVelocity[0] + fClientVelocity[1]*fClientVelocity[1] + fClientVelocity[2]*fClientVelocity[2]);   // 全向速度
 
-    float fDamageMult = 1.0;
+    float fMult = 1.0;
     float fSpeedThreshold = GetConVarFloat(cvarKnifeSpeedThreshold);
     if (fSpeed > fSpeedThreshold)
     {
-        fDamageMult = fSpeed / fSpeedThreshold;   // 例：阈值250 → 移速500时倍率2.0
+        fMult = fSpeed / fSpeedThreshold;   // 例：阈值250 → 移速500时倍率2.0
     }
-    int iDamage = RoundToCeil(GetConVarInt(cvarKnifeDamage) * fDamageMult);
+    int iDamage = RoundToCeil(GetConVarInt(cvarKnifeDamage) * fMult);
+    float fMaxRange = GetConVarFloat(cvarKnifeRange) * fMult;
 
     // 数组准备
     float fClientOrigin[3], fTargetOrigin[3];
@@ -97,7 +98,7 @@ public void Event_WeaponFire(Handle event, const char[] name, bool dontBroadcast
             GetEntPropVector(zombie, Prop_Send, "m_vecOrigin", fTargetOrigin);
             fTargetDistance = GetVectorDistance(fClientOrigin, fTargetOrigin);
 
-            if (fTargetDistance*GAMEUNITS_TO_METERS > GetConVarFloat(cvarKnifeRange))   // 范围以外作用不到
+            if (fTargetDistance*GAMEUNITS_TO_METERS > fMaxRange)   // 范围以外作用不到（已按移速加成）
             {
                 continue;
             }

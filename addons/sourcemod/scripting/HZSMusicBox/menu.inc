@@ -24,7 +24,7 @@ public Action Cmd_MusicBoxStart(int client, int args)
         return Plugin_Handled;
     }
 
-    g_bClientMusicStarted[client] = true;
+    SetClientMusicStarted(client, true);
     StartTrackForClient(client, PickNextTrack(client), true);
     return Plugin_Handled;
 }
@@ -41,7 +41,7 @@ public Action Cmd_MusicBoxStop(int client, int args)
     }
 
     StopTrackForClient(client);
-    g_bClientMusicStarted[client] = false;
+    SetClientMusicStarted(client, false);
     PrintToChat(client, "\x04[音乐盒]\x01 已停止播放。");
     return Plugin_Handled;
 }
@@ -70,7 +70,7 @@ public Action Cmd_MusicBoxNext(int client, int args)
 
     if (!g_bClientMusicStarted[client] || g_iClientTrack[client] < 0)
     {
-        g_bClientMusicStarted[client] = true;
+        SetClientMusicStarted(client, true);
     }
 
     StartTrackForClient(client, PickNextTrack(client), true);

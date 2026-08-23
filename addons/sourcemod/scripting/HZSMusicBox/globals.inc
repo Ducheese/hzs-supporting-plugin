@@ -36,7 +36,6 @@ int g_iMusicSource = -1;
 
 int g_iClientVolume[MAXPLAYERS + 1];
 bool g_bClientMusicPlaying[MAXPLAYERS + 1];
-bool g_bClientCookiesReady[MAXPLAYERS + 1];
-bool g_bClientVolumeManual[MAXPLAYERS + 1];
 Handle g_hCookieVolume = INVALID_HANDLE;
+Handle g_hCookieEnabled = INVALID_HANDLE;
 

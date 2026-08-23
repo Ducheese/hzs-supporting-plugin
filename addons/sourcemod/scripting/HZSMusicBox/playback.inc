@@ -75,7 +75,6 @@ void StopAllMusic()
     for (int client = 1; client <= MaxClients; client++)
     {
         StopTrackForClient(client);
-        g_bClientMusicStarted[client] = false;
     }
 }
 
@@ -127,6 +126,19 @@ void StopClientSound(int client)
     g_bClientMusicPlaying[client] = false;
 }
 
+void SetClientMusicStarted(int client, bool started)
+{
+    if (!IsValidMusicClient(client))
+        return;
+
+    g_bClientMusicStarted[client] = started;
+
+    if (AreClientCookiesCached(client))
+    {
+        SetClientCookie(client, g_hCookieEnabled, started ? "1" : "0");
+    }
+}
+
 void SetClientMusicVolume(int client, int volume)
 {
     if (!IsValidMusicClient(client))
@@ -140,9 +152,8 @@ void SetClientMusicVolume(int client, int volume)
 
     int oldVolume = g_iClientVolume[client];
     g_iClientVolume[client] = volume;
-    g_bClientVolumeManual[client] = true;
 
-    if (g_bClientCookiesReady[client])
+    if (AreClientCookiesCached(client))
     {
         char value[8];
         IntToString(volume, value, sizeof(value));
