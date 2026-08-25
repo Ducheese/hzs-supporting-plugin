@@ -1,3 +1,7 @@
+// ============================================================================
+// HZSMusicBox/playback.inc — 实体发声、曲目起停、音量控制与声音拦截
+// ============================================================================
+
 void CreateMusicSource()
 {
     if (g_iMusicSource != -1 && IsValidEntity(g_iMusicSource))
@@ -70,7 +74,7 @@ public Action Timer_NextTrack(Handle timer, int userid)
     return Plugin_Stop;
 }
 
-void StopAllMusic()
+void StopAllMusicSound()
 {
     for (int client = 1; client <= MaxClients; client++)
     {
@@ -186,18 +190,17 @@ public Action Hook_NormalSound(int clients[MAXPLAYERS], int &numClients, char sa
     int &entity, int &channel, float &volume, int &level, int &pitch, int &flags,
     char soundEntry[PLATFORM_MAX_PATH], int &seed)
 {
-    // 如果是音乐盒自己的发声实体，直接放行
+    // 若为音乐盒自身发声实体，直接放行
     if (entity == g_iMusicSource && g_iMusicSource != -1)
         return Plugin_Continue;
 
-    // 拦截 sound/custom/stagevox 目录下的所有音频（对开启音乐盒且音量>0的玩家屏蔽）
+    // 拦截 sound/custom/stagevox 下的所有音频（对开启音乐盒且音量>0的玩家屏蔽）
     if (StrContains(sample, "stagevox", false) != -1)
     {
         int newTotal = 0;
         for (int i = 0; i < numClients; i++)
         {
             int client = clients[i];
-            // 如果玩家有效且未开启音乐盒（或音量为0），依然保留接收原版 stagevox
             if (IsValidMusicClient(client))
             {
                 if (!g_bClientMusicStarted[client] || g_iClientVolume[client] == 0)

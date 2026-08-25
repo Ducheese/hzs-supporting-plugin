@@ -158,7 +158,7 @@ void LaunchProjectile(int zombie, int target)
     EmitSoundToAll(SFX_DEIMOS3, proj, SNDCHAN_STATIC, SNDLEVEL_NORMAL, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL);
 
     // 飞行think（离散teleport，同时负责超时判断）
-    g_hDeimosProj[zombie] = CreateTimer(0.01, Timer_DeimosProjThink, proj, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
+    g_hDeimosProj[zombie] = CreateTimer(0.0, Timer_DeimosProjThink, proj, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
 }
 
 // vel 为发射初速度常量（取自 proj 的 m_vecMaxs），elapsed 为已飞行时间，函数内自行推导瞬时速度，不依赖跨帧状态

@@ -25,7 +25,7 @@
 			}
 			"GameRules_ShellOffset"
 			{
-				"windows64"	"1522468"
+				"windows64"	"1525236"
 			}
 		}
 	}

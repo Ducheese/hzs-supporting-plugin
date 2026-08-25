@@ -53,7 +53,7 @@ public Action Timer_WitchNearThink(Handle timer, int zombie)
                 /**
                  * 多个witch在旁边，计时叠加
                  */
-                g_flWitchNearTime[victim] += 0.1;
+                g_flWitchNearTime[victim] += 1.0;
                 if (g_flWitchNearTime[victim] >= WITCH_NEAR_TIME)
                     StartWitchPhase2(victim);
             }

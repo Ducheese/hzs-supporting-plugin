@@ -1,3 +1,7 @@
+// ============================================================================
+// HZSMusicBox/menu.inc — 菜单交互与指令控制
+// ============================================================================
+
 public Action Cmd_MusicBox(int client, int args)
 {
     if (!IsValidMusicClient(client))
@@ -20,7 +24,7 @@ public Action Cmd_MusicBoxStart(int client, int args)
 
     if (g_bClientMusicStarted[client] && g_iClientTrack[client] >= 0)
     {
-        PrintToChat(client, "\x04[音乐盒]\x01 音乐已在播放。");
+        PrintToChat(client, "\x04[音乐盒]\x01 音乐已在播放中。");
         return Plugin_Handled;
     }
 

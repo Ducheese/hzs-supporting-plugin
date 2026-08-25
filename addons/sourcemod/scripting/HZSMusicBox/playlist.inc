@@ -1,8 +1,9 @@
+// ============================================================================
+// HZSMusicBox/playlist.inc — 播放列表读取、预缓存、洗牌与历史栈管理
+// ============================================================================
+
 void LoadPlaylist()
 {
-    bool hadTracks = g_iTrackCount > 0;
-    g_iTrackCount = 0;
-
     char configPath[PLATFORM_MAX_PATH];
     BuildPath(Path_SM, configPath, sizeof(configPath), MUSICBOX_CONFIG);
 
@@ -21,9 +22,15 @@ void LoadPlaylist()
         return;
     }
 
+    char newPaths[MUSICBOX_MAX_TRACKS][PLATFORM_MAX_PATH];
+    char newTitles[MUSICBOX_MAX_TRACKS][MUSICBOX_TITLE_LENGTH];
+    char newArtists[MUSICBOX_MAX_TRACKS][MUSICBOX_ARTIST_LENGTH];
+    float newDurations[MUSICBOX_MAX_TRACKS];
+    int newCount = 0;
+
     do
     {
-        if (g_iTrackCount >= MUSICBOX_MAX_TRACKS)
+        if (newCount >= MUSICBOX_MAX_TRACKS)
         {
             LogError("Music box playlist exceeds the %d track limit", MUSICBOX_MAX_TRACKS);
             break;
@@ -39,23 +46,50 @@ void LoadPlaylist()
         float duration = kv.GetFloat("duration", 0.0);
         if (path[0] == '\0' || duration <= 0.0)
         {
-            LogError("Music box track %d is missing path or positive duration", g_iTrackCount + 1);
+            LogError("Music box track %d is missing path or positive duration", newCount + 1);
             continue;
         }
 
-        strcopy(g_sTrackPath[g_iTrackCount], sizeof(g_sTrackPath[]), path);
-        strcopy(g_sTrackTitle[g_iTrackCount], sizeof(g_sTrackTitle[]), title);
-        strcopy(g_sTrackArtist[g_iTrackCount], sizeof(g_sTrackArtist[]), artist);
-        g_fTrackDuration[g_iTrackCount] = duration;
-        g_iTrackCount++;
+        strcopy(newPaths[newCount], sizeof(newPaths[]), path);
+        strcopy(newTitles[newCount], sizeof(newTitles[]), title);
+        strcopy(newArtists[newCount], sizeof(newArtists[]), artist);
+        newDurations[newCount] = duration;
+        newCount++;
     }
     while (kv.GotoNextKey());
 
     delete kv;
+
+    // 比对曲目配置是否真正发生变动
+    bool playlistChanged = (newCount != g_iTrackCount);
+    if (!playlistChanged)
+    {
+        for (int i = 0; i < newCount; i++)
+        {
+            if (!StrEqual(g_sTrackPath[i], newPaths[i]))
+            {
+                playlistChanged = true;
+                break;
+            }
+        }
+    }
+
+    g_iTrackCount = newCount;
+    for (int i = 0; i < newCount; i++)
+    {
+        strcopy(g_sTrackPath[i], sizeof(g_sTrackPath[]), newPaths[i]);
+        strcopy(g_sTrackTitle[i], sizeof(g_sTrackTitle[]), newTitles[i]);
+        strcopy(g_sTrackArtist[i], sizeof(g_sTrackArtist[]), newArtists[i]);
+        g_fTrackDuration[i] = newDurations[i];
+    }
+
     PrintToServer("[HZS Music Box] Loaded %d track(s)", g_iTrackCount);
 
-    if (hadTracks && g_iTrackCount > 0)
+    // 仅在曲目配置真正发生变更时（如服主增删歌曲）才重置洗牌池与历史栈
+    if (playlistChanged)
+    {
         ResetAllClientPlaylists();
+    }
 }
 
 void PrecachePlaylist()
@@ -103,6 +137,7 @@ void BuildClientShuffle(int client, int excludeTrack = -1)
     for (int i = 0; i < g_iTrackCount; i++)
         g_iClientShuffle[client][i] = i;
 
+    // Fisher-Yates 洗牌算法
     for (int i = g_iTrackCount - 1; i > 0; i--)
     {
         int j = GetRandomInt(0, i);
@@ -111,6 +146,7 @@ void BuildClientShuffle(int client, int excludeTrack = -1)
         g_iClientShuffle[client][j] = tmp;
     }
 
+    // 避免新轮次第一首与刚播完的上一首完全相同
     if (excludeTrack >= 0 && g_iTrackCount > 1 && g_iClientShuffle[client][0] == excludeTrack)
     {
         int swap = GetRandomInt(1, g_iTrackCount - 1);
@@ -130,14 +166,14 @@ int PickNextTrack(int client)
     if (g_iTrackCount == 1)
         return 0;
 
-    // 1. 若玩家之前按过“上一首”回退到历史中，顺着历史向前走
+    // 1. 若玩家之前按过“上一首”回退在历史中，顺着历史向前进
     if (g_iClientHistoryIndex[client] >= 0 && g_iClientHistoryIndex[client] + 1 < g_iClientHistoryCount[client])
     {
         g_iClientHistoryIndex[client]++;
         return g_iClientHistory[client][g_iClientHistoryIndex[client]];
     }
 
-    // 2. 否则从洗牌池中取出一首新歌
+    // 2. 否则从洗牌池中取出一首新曲
     if (g_iClientShufflePos[client] == -1 || g_iClientShuffleSize[client] != g_iTrackCount)
     {
         int prev = g_iClientTrack[client];
@@ -149,7 +185,7 @@ int PickNextTrack(int client)
         g_iClientShufflePos[client]++;
         if (g_iClientShufflePos[client] >= g_iClientShuffleSize[client])
         {
-            // 当前洗牌轮次耗尽，重洗一份（首曲避开刚播完的曲目）
+            // 当前洗牌轮次耗尽，重洗一份
             int prev = g_iClientTrack[client];
             BuildClientShuffle(client, prev);
             g_iClientShufflePos[client] = 0;
@@ -158,7 +194,7 @@ int PickNextTrack(int client)
 
     int nextTrack = g_iClientShuffle[client][g_iClientShufflePos[client]];
 
-    // 3. 将新选中的曲目压入历史栈末尾
+    // 3. 将新选中的曲目压入历史栈末尾（滑动窗口）
     if (g_iClientHistoryCount[client] < MUSICBOX_MAX_HISTORY)
     {
         g_iClientHistory[client][g_iClientHistoryCount[client]] = nextTrack;
@@ -167,7 +203,6 @@ int PickNextTrack(int client)
     }
     else
     {
-        // 历史栈已满，左移淘汰最旧的一首
         for (int i = 0; i < MUSICBOX_MAX_HISTORY - 1; i++)
         {
             g_iClientHistory[client][i] = g_iClientHistory[client][i + 1];
@@ -193,6 +228,6 @@ int PickPrevTrack(int client)
         return g_iClientHistory[client][g_iClientHistoryIndex[client]];
     }
 
-    // 历史栈已经回退到最开头，无更早曲目
+    // 已回退到历史栈最开头
     return -1;
 }

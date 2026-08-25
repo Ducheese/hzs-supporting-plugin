@@ -123,7 +123,7 @@ public Action Timer_SwapPosition(Handle timer, int zombie)
     {
         // 范围内无人（或被控），不清除技能占位，重新开始检测
         CleanupMysteryPortal(zombie);
-        g_hMysteryNear[zombie] = CreateTimer(0.1, Timer_MysteryNearThink, zombie, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
+        g_hMysteryNear[zombie] = CreateTimer(1.0, Timer_MysteryNearThink, zombie, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
         return Plugin_Stop;
     }
 

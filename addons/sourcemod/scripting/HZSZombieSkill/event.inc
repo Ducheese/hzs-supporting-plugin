@@ -34,8 +34,8 @@ public void Han_OnZombieCreated(int zombie)
     }
     else if (IsSameName(zombie, ZOMBIE_WITCH))
     {
-        // 这个0.1s间隔要和witch.inc里的递增同步
-        g_hWitchNear[zombie] = CreateTimer(0.1, Timer_WitchNearThink, zombie, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
+        // 这个1.0s间隔要和witch.inc里的递增同步
+        g_hWitchNear[zombie] = CreateTimer(1.0, Timer_WitchNearThink, zombie, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
     }
     else if (IsSameName(zombie, ZOMBIE_GHOST))
     {
@@ -43,11 +43,11 @@ public void Han_OnZombieCreated(int zombie)
     }
     else if (IsSameName(zombie, ZOMBIE_IMPOSTER))
     {
-        g_hImposterSync[zombie] = CreateTimer(0.1, Timer_ImposterSyncThink, zombie, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
+        g_hImposterSync[zombie] = CreateTimer(1.0, Timer_ImposterSyncThink, zombie, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
     }
     else if (IsSameName(zombie, ZOMBIE_MYSTERY))
     {
-        g_hMysteryNear[zombie] = CreateTimer(0.1, Timer_MysteryNearThink, zombie, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
+        g_hMysteryNear[zombie] = CreateTimer(1.0, Timer_MysteryNearThink, zombie, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
     }
     else if (IsSameName(zombie, BOSS_ANGELA))
     {
@@ -241,7 +241,18 @@ public void Han_OnHumanWin()
 public void Han_OnZombieDamagePre(int zombie, int attacker, int &damage)
 {
     // 僵尸种类分支
-    if (IsSameName(zombie, BOSS_ANGELA))
+    if (IsSameName(zombie, ZOMBIE_SMOKE) && !g_bIsSkillUsed[zombie])
+    {
+        int health = GetEntProp(zombie, Prop_Data, "m_iHealth");
+
+        // 一击毙命则不喷烟
+        if (health - damage > 0)
+        {
+            g_bIsSkillUsed[zombie] = true;
+            StartSmoke(zombie);
+        }
+    }
+    else if (IsSameName(zombie, BOSS_ANGELA))
     {
         // 自愈期间累计子弹数
         if (g_hHeal[zombie] != INVALID_HANDLE)
@@ -285,8 +296,7 @@ public void Han_OnZombieHurt(int zombie, int attacker)
     // 僵尸种类分支
     if (IsSameName(zombie, ZOMBIE_SMOKE) && !g_bIsSkillUsed[zombie])
     {
-        g_bIsSkillUsed[zombie] = true;
-        StartSmoke(zombie);
+        // 迷雾僵尸的喷烟已移至 Han_OnZombieDamagePre 判致死（Hurt 时机在扣血前，无法判断是否致死）
     }
     else if (IsSameName(zombie, ZOMBIE_EXPLODE))
     {
@@ -352,7 +362,7 @@ public void Han_OnZombieHurt(int zombie, int attacker)
             /**
              * g_bIsSkillUsed 的更新在 EnterFlyingMode
              */
-            g_hFly[zombie] = CreateTimer(0.0, Timer_FlyThink, zombie, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
+            g_hFly[zombie] = CreateTimer(0.1, Timer_FlyThink, zombie, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
         }
     }
     else if (IsSameName(zombie, BOSS_PANGZI) && !g_bIsSkillUsed[zombie])

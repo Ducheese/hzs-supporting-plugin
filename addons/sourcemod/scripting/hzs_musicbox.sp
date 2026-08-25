@@ -1,3 +1,7 @@
+// ============================================================================
+// hzs_musicbox.sp — HAN 灾变音乐盒主插件
+// ============================================================================
+
 #pragma semicolon 1
 #pragma newdecls required
 
@@ -20,6 +24,10 @@ public Plugin myinfo =
     url = "https://space.bilibili.com/1889622121"
 };
 
+// ============================================================================
+// >> 插件生命周期
+// ============================================================================
+
 public void OnPluginStart()
 {
     g_hCookieVolume = RegClientCookie("hzs_musicbox_volume", "HZS Music Box Volume", CookieAccess_Protected);
@@ -34,15 +42,17 @@ public void OnPluginStart()
     RegConsoleCmd("sm_musicbox_volume", Cmd_MusicBoxVolume, "设置 HZS 音乐盒音量");
 
     HookEvent("round_start", Event_RoundStart, EventHookMode_Post);
-    HookEvent("player_spawn", Event_PlayerSpawn, EventHookMode_Post);
     AddNormalSoundHook(Hook_NormalSound);
 
+    // 仅在服务器启动/插件载入时初始化槽位默认值
     for (int client = 1; client <= MaxClients; client++)
     {
         g_iClientVolume[client] = MUSICBOX_DEFAULT_VOLUME;
         g_iClientTrack[client] = -1;
+        g_fClientTrackStartTime[client] = 0.0;
         g_bClientMusicPlaying[client] = false;
         g_bClientMusicStarted[client] = false;
+        g_hClientNextTrackTimer[client] = INVALID_HANDLE;
         ResetClientShuffle(client);
         ResetClientHistory(client);
     }
@@ -52,11 +62,10 @@ public void OnPluginStart()
 
 public void OnMapStart()
 {
-    // NO_MAPCHANGE timers are already destroyed by the engine at this point.
+    // 换图时清空计时器句柄、停止上一张图的声音并销毁旧发声实体
     ResetMapTimerHandles();
-    StopAllMusic();
+    StopAllMusicSound();
     DestroyMusicSource();
-    ResetAllClientPlaylists();
 
     LoadPlaylist();
     PrecachePlaylist();
@@ -65,33 +74,39 @@ public void OnMapStart()
 
 public void OnMapEnd()
 {
-    StopAllMusic();
+    StopAllMusicSound();
     DestroyMusicSource();
 }
 
 public void OnPluginEnd()
 {
     RemoveNormalSoundHook(Hook_NormalSound);
-    StopAllMusic();
+    StopAllMusicSound();
     DestroyMusicSource();
 }
 
+// ============================================================================
+// >> 玩家连接与 Cookie 管理
+// ============================================================================
+
 public void OnClientPutInServer(int client)
 {
-    g_iClientVolume[client] = MUSICBOX_DEFAULT_VOLUME;
-    g_bClientMusicPlaying[client] = false;
-    g_bClientMusicStarted[client] = false;
-
+    // 仅清理单局/单图的发声运行状态，绝不碰历史栈和洗牌池
     g_iClientTrack[client] = -1;
     g_fClientTrackStartTime[client] = 0.0;
+    g_bClientMusicPlaying[client] = false;
     StopClientNextTrackTimer(client);
-    ResetClientShuffle(client);
-    ResetClientHistory(client);
 
     if (AreClientCookiesCached(client))
     {
-        OnClientCookiesCached(client);
+        LoadClientCookies(client);
     }
+}
+
+public void OnClientDisconnect(int client)
+{
+    // 仅停止当前正在播放的声音与定时器，绝不碰历史栈和洗牌池
+    StopTrackForClient(client);
 }
 
 public void OnClientCookiesCached(int client)
@@ -99,37 +114,50 @@ public void OnClientCookiesCached(int client)
     if (!IsValidMusicClient(client))
         return;
 
+    LoadClientCookies(client);
+}
+
+void LoadClientCookies(int client)
+{
     char sEnabled[8];
     GetClientCookie(client, g_hCookieEnabled, sEnabled, sizeof(sEnabled));
-    g_bClientMusicStarted[client] = (sEnabled[0] != '\0' && StringToInt(sEnabled) != 0);
+    if (sEnabled[0] != '\0')
+    {
+        g_bClientMusicStarted[client] = (StringToInt(sEnabled) != 0);
+    }
 
-    char value[8];
-    GetClientCookie(client, g_hCookieVolume, value, sizeof(value));
+    char sVolume[8];
+    GetClientCookie(client, g_hCookieVolume, sVolume, sizeof(sVolume));
 
     int volume = MUSICBOX_DEFAULT_VOLUME;
-    if (value[0] != '\0')
-        volume = StringToInt(value);
+    if (sVolume[0] != '\0')
+        volume = StringToInt(sVolume);
 
     if (!IsAllowedVolume(volume))
         volume = MUSICBOX_DEFAULT_VOLUME;
 
+    int oldVolume = g_iClientVolume[client];
     g_iClientVolume[client] = volume;
-    if (g_bClientMusicStarted[client] && g_iClientTrack[client] < 0)
+
+    // 1. 若当前已在播放且音量有变动，热更新音量
+    if (g_bClientMusicStarted[client] && g_iClientTrack[client] >= 0 && oldVolume != volume)
+    {
+        float newVol = float(volume) / 100.0;
+        if (newVol == 0.0) newVol = 0.02;
+        EmitSoundToClient(client, g_sTrackPath[g_iClientTrack[client]], GetMusicSource(client), SNDCHAN_STATIC,
+            SNDLEVEL_NONE, MUSICBOX_SOUND_CHANGE_VOLUME, newVol, SNDPITCH_NORMAL);
+        g_bClientMusicPlaying[client] = true;
+    }
+    // 2. 中途进服补播：玩家已开启音乐盒且当前耳边无音乐在播放
+    else if (g_bClientMusicStarted[client] && g_iClientTrack[client] < 0)
     {
         StartTrackForClient(client, PickNextTrack(client), false);
     }
 }
 
-public void OnClientDisconnect(int client)
-{
-    StopClientNextTrackTimer(client);
-    StopTrackForClient(client);
-    g_bClientMusicPlaying[client] = false;
-    g_bClientMusicStarted[client] = false;
-    g_iClientTrack[client] = -1;
-    ResetClientShuffle(client);
-    ResetClientHistory(client);
-}
+// ============================================================================
+// >> 游戏事件与灾变接口
+// ============================================================================
 
 public void Event_RoundStart(Event event, const char[] name, bool dontBroadcast)
 {
@@ -141,16 +169,9 @@ public void Event_RoundStart(Event event, const char[] name, bool dontBroadcast)
             continue;
         if (!g_bClientMusicStarted[client])
             continue;
+        if (g_iClientTrack[client] >= 0)
+            continue;
 
-        StartTrackForClient(client, PickNextTrack(client), false);
-    }
-}
-
-public void Event_PlayerSpawn(Event event, const char[] name, bool dontBroadcast)
-{
-    int client = GetClientOfUserId(event.GetInt("userid"));
-    if (IsValidMusicClient(client) && g_bClientMusicStarted[client] && g_iClientTrack[client] < 0)
-    {
         StartTrackForClient(client, PickNextTrack(client), false);
     }
 }

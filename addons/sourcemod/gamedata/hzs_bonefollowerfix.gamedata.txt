@@ -27,7 +27,7 @@
 			}
 			"BoneFollower_ShellOffset"
 			{
-				"windows64"	"2207388"
+				"windows64"	"2210588"
 			}
 			"IsWin64"
 			{

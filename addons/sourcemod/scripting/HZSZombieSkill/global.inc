@@ -61,7 +61,7 @@
 #define DEIMOS_PROJ_PROP       "prop_dynamic_override" // 恶魔僵尸投掷物实体类型（字符），有物理参数的模型如果还用普通prop_dynamic会直接不渲染
 #define DEIMOS_PROJ_SKIN       "1"         // 恶魔僵尸投掷物皮肤组索引号（字符），1普通，2绿，3紫，0紫黑格子
 #define DEIMOS_PROJ_SCALE      "5.0"       // 恶魔僵尸投掷物模型体积倍数（字符）
-#define DEIMOS_PARRY_RANGE      2.5        // 人类弹反投掷物的最大范围（单位：米）
+#define DEIMOS_PARRY_RANGE      3.0        // 人类弹反投掷物的最大范围（单位：米）
 
 // 技能参数（屠夫僵尸）
 #define BUTCHER_TRAP_HEALTH     300        // 屠夫僵尸鬼手陷阱的血量
