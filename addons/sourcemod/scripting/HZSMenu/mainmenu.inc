@@ -13,6 +13,8 @@ public Action Cmd_Menu(int client, int args)
 
 void OpenMainMenu(int client)
 {
+    g_bInExtraGunsMenu[client] = false;
+
     Menu menu = new Menu(MenuHandler_MainMenu);
     menu.SetTitle("menu");
 
@@ -24,6 +26,7 @@ void OpenMainMenu(int client)
     menu.AddItem("sell", "Sell半价回收");
     menu.AddItem("musicbox", "音乐盒");
     menu.AddItem("gunshot", "他人枪声消去");
+    menu.AddItem("extraguns", "武器多持");
     menu.AddItem("hitmarker", "命中反馈开关");
     menu.AddItem("guide_play", "玩法提示");
     menu.AddItem("guide_res", "资源兼容");
@@ -82,6 +85,10 @@ public int MenuHandler_MainMenu(Menu menu, MenuAction action, int param1, int pa
         else if (StrEqual(info, "gunshot"))
         {
             OpenGunshotMenu(client);
+        }
+        else if (StrEqual(info, "extraguns"))
+        {
+            OpenExtraGunsMenu(client);
         }
         else if (StrEqual(info, "sell"))
         {

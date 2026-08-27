@@ -34,5 +34,15 @@ Handle g_hCookieMuteGunshots = null;
 bool g_bMuteGunshots[MAXPLAYERS + 1] = {false, ...};
 bool g_bGunshotManual[MAXPLAYERS + 1];
 
+// ============================================================================
+// >> 武器多持（开关控制 + 槽位显示）
+// ============================================================================
+
+Handle g_hCookieExtraGuns = null;
+bool g_bExtraGuns[MAXPLAYERS + 1] = {false, ...};    // 默认关
+bool g_bExtraGunsManual[MAXPLAYERS + 1];
+bool g_bInExtraGunsMenu[MAXPLAYERS + 1] = {false, ...}; // 是否正处于武器多持子菜单中
+
+
 
 

@@ -4,12 +4,14 @@
 #include <sourcemod>
 #include <sdktools>
 #include <clientprefs>
+#include <extraguns>
 
 #include "HZSMenu/globals.inc"
 #include "HZSMenu/mainmenu.inc"
 #include "HZSMenu/sellmenu.inc"
 #include "HZSMenu/gunshotmenu.inc"
 #include "HZSMenu/hitmarkermenu.inc"
+#include "HZSMenu/extragunsmenu.inc"
 #include "HZSMenu/guidemenu.inc"
 #include "HZSMenu/serverresmenu.inc"
 
@@ -35,6 +37,7 @@ public void OnPluginStart()
 
     RegisterHitmarkerCookies();
     RegisterGunshotCookies();
+    RegisterExtraGunsCookies();
 
     AddTempEntHook("Shotgun Shot", Hook_TEFireBullets);
 
@@ -74,6 +77,7 @@ public void OnClientPutInServer(int client)
 {
     ResetClientHitmarker(client);
     ResetClientGunshot(client);
+    ResetClientExtraGuns(client);
 
     if (AreClientCookiesCached(client))
     {
@@ -85,6 +89,7 @@ public void OnClientDisconnect(int client)
 {
     ResetClientHitmarker(client);
     ResetClientGunshot(client);
+    ResetClientExtraGuns(client);
 }
 
 public void OnClientCookiesCached(int client)
@@ -93,6 +98,7 @@ public void OnClientCookiesCached(int client)
     {
         LoadClientHitmarkerCookies(client);
         LoadClientGunshotCookies(client);
+        LoadClientExtraGunsCookies(client);
     }
 }
 
